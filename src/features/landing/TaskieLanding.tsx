@@ -1,4 +1,4 @@
-import { Children, useEffect, useRef, useState } from "react";
+import { Children, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import GoogleIcon from "../../components/icons/GoogleIcon";
 import CalendarIcon from "../../components/icons/CalendarIcon";
@@ -10,6 +10,14 @@ type PreviewCardProps = {
   accent?: "indigo" | "emerald" | "slate";
   children: ReactNode;
   className?: string;
+};
+
+type AuthButtonsProps = {
+  onEmailClick?: () => void;
+};
+
+type TaskieLandingProps = {
+  onNavigate?: (path: string) => void;
 };
 
 const accentMap = {
@@ -55,19 +63,19 @@ function PreviewCard({ title, children, accent = "slate", className }: PreviewCa
         </div>
         <div className="text-left">
           <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
-          <div className="text-sm text-slate-600">{rest}</div>
+          <div className="mt-2 flex flex-col gap-2 text-sm text-slate-600">{rest}</div>
         </div>
       </div>
     </article>
   );
 }
 
-function AuthButtons() {
+function AuthButtons({ onEmailClick }: AuthButtonsProps = {}) {
   return (
-    <div className="mt-6 grid place-items-center gap-4 md:mt-10">
+    <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
       <button
         type="button"
-        className="inline-flex w-[320px] max-w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-medium text-slate-800 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99]"
+        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] sm:min-w-[220px]"
         aria-label="Continue with Google"
       >
         <GoogleIcon className="h-4 w-4" />
@@ -75,8 +83,9 @@ function AuthButtons() {
       </button>
       <button
         type="button"
-        className="inline-flex w-[320px] max-w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99]"
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] sm:min-w-[200px]"
         aria-label="Continue with email"
+        onClick={onEmailClick}
       >
         Continue with email
       </button>
@@ -84,9 +93,27 @@ function AuthButtons() {
   );
 }
 
-export default function TaskieLanding() {
+export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
   const aboutRef = useRef<HTMLElement | null>(null);
   const [aboutVisible, setAboutVisible] = useState(false);
+
+  const navigateTo = useCallback(
+    (path: string) => {
+      if (!path) return;
+      if (onNavigate) {
+        onNavigate(path);
+        return;
+      }
+      if (typeof window !== "undefined") {
+        window.location.href = path;
+      }
+    },
+    [onNavigate]
+  );
+
+  const goToLogin = useCallback(() => {
+    navigateTo("/login");
+  }, [navigateTo]);
 
   useEffect(() => {
     const node = aboutRef.current;
@@ -112,6 +139,11 @@ export default function TaskieLanding() {
     aboutRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleLoginNavClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    goToLogin();
+  };
+
   return (
     <div id="top" className="min-h-screen bg-neutral-50 text-slate-900 selection:bg-indigo-200 selection:text-slate-900">
       <header className="flex items-center justify-between border-b border-slate-200/80 px-6 py-5 md:px-10">
@@ -131,6 +163,9 @@ export default function TaskieLanding() {
           <a className={navLinkClass} href="#about" onClick={handleAboutClick}>
             About
           </a>
+          <a className={navLinkClass} href="/login" onClick={handleLoginNavClick}>
+            Log in
+          </a>
         </nav>
       </header>
 
@@ -139,52 +174,83 @@ export default function TaskieLanding() {
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.02] [background-image:repeating-linear-gradient(90deg,transparent,transparent_63px,#0f172a_64px),repeating-linear-gradient(0deg,transparent,transparent_23px,#0f172a_24px)]"
       />
 
-      <main className="mx-auto max-w-5xl px-6 md:px-10">
-        <section className="relative flex min-h-[70vh] flex-col justify-center py-16 text-center md:py-24 lg:py-28">
-          <div className="absolute bottom-12 left-1/2 h-[2px] w-56 -translate-x-1/2 bg-indigo-400/40" aria-hidden />
-          <div className="pointer-events-none absolute inset-x-0 top-[20%] -z-10 flex justify-center">
-            <div className="h-64 w-[min(580px,90%)] rounded-full bg-gradient-to-r from-indigo-200/40 via-slate-200/60 to-indigo-200/40 blur-3xl" />
+      <main className="mx-auto max-w-6xl px-6 md:px-10">
+        <section className="relative min-h-[calc(100vh-140px)] py-16 md:min-h-[calc(100vh-160px)] md:py-24 lg:py-28">
+          <div className="pointer-events-none absolute inset-x-0 top-[15%] -z-10 flex justify-center">
+            <div className="h-64 w-[min(620px,92%)] rounded-full bg-gradient-to-r from-indigo-200/40 via-slate-200/50 to-indigo-200/40 blur-3xl" />
           </div>
+          <div className="absolute bottom-12 left-1/2 hidden h-[2px] w-56 -translate-x-1/2 bg-indigo-400/40 md:block" aria-hidden />
 
-          <h1 className="text-5xl font-bold leading-none tracking-tight text-slate-900 transition-transform duration-500 ease-out group-hover:scale-[1.03] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:via-purple-500 group-hover:to-slate-900 md:text-6xl lg:text-7xl">
-            <span className="bg-gradient-to-b from-slate-900 to-slate-700 bg-clip-text text-transparent">Taskie</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 md:text-xl">Study smarter, daily.</p>
+          <div className="grid items-start gap-12 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+            <div className="text-center md:text-left">
+              <span className="inline-flex items-center justify-center rounded-full border border-indigo-200/60 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-600">
+                Daily focus OS
+              </span>
+              <h1 className="mt-6 text-5xl font-bold leading-tight tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
+                Rituals that keep study momentum alive
+              </h1>
+              <p className="mx-auto mt-6 max-w-xl text-base text-slate-600 md:mx-0 md:text-lg">
+                Taskie combines intentional planning, calm timers, and celebration of streaks so you keep moving forward every single day.
+              </p>
 
-          <section id="preview" className="py-8 md:py-12">
-            <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
-              <PreviewCard title="Weekly plan" accent="indigo">
-                <CalendarIcon className="h-6 w-6 text-indigo-600/80" />
-                <p className="mt-2 text-sm">Auto-generated study blocks aligned to your goals.</p>
-              </PreviewCard>
-              <PreviewCard title="Focus timer" accent="slate">
-                <TimerIcon className="h-6 w-6 text-slate-700/80" />
-                <p className="mt-2 text-sm">Pomodoro sessions with gentle breaks and stats.</p>
-              </PreviewCard>
-              <PreviewCard title="Progress" accent="emerald">
-                <ChartIcon className="h-6 w-6 text-emerald-600/80" />
-                <p className="mt-2 text-sm">Streaks, completion %, and trend insights.</p>
-              </PreviewCard>
+              <AuthButtons onEmailClick={goToLogin} />
+
+              <ul className="mt-8 flex flex-col gap-3 text-left text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:gap-5">
+                <li className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-indigo-400" aria-hidden />
+                  Adaptive weekly plans
+                </li>
+                <li className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-purple-400" aria-hidden />
+                  Gentle breaks that protect focus
+                </li>
+                <li className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden />
+                  Progress insights that feel encouraging
+                </li>
+              </ul>
             </div>
-          </section>
 
-          <AuthButtons />
-
-          <p className="mt-8 text-sm text-slate-500">
-            No account?{' '}
-            <a
-              href="#create"
-              className="underline decoration-indigo-500/60 underline-offset-4 transition-colors hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
-            >
-              Create one
-            </a>
-          </p>
+            <div className="relative mx-auto w-full max-w-md md:max-w-none">
+              <span className="absolute inset-x-8 top-0 h-[3px] rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" aria-hidden />
+              <div className="relative rounded-[32px] border border-slate-200 bg-white/90 p-6 shadow-[0_28px_70px_-45px_rgba(15,23,42,0.35)] backdrop-blur-sm sm:p-8 lg:p-9">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <PreviewCard
+                    title="Weekly plan"
+                    accent="indigo"
+                    className="sm:col-span-2 min-h-[220px] border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-indigo-100"
+                  >
+                    <CalendarIcon className="h-6 w-6 text-indigo-600/80" />
+                    <p>Auto-generated study blocks that flex with your energy levels.</p>
+                    <ul className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-500">
+                      <li className="rounded-full bg-white/70 px-3 py-1 text-[11px] text-indigo-600">Syncs with your calendar</li>
+                      <li className="rounded-full bg-white/70 px-3 py-1 text-[11px] text-indigo-600">Adapts to priorities</li>
+                    </ul>
+                  </PreviewCard>
+                  <PreviewCard title="Focus timer" accent="slate" className="h-full bg-gradient-to-br from-slate-50 via-white to-slate-100 border-slate-200/80">
+                    <TimerIcon className="h-6 w-6 text-slate-700/80" />
+                    <p>Pomodoro-inspired sessions with mindful reminders.</p>
+                  </PreviewCard>
+                  <PreviewCard title="Progress" accent="emerald" className="h-full bg-gradient-to-br from-emerald-50 via-white to-emerald-100/80 border-emerald-200/70">
+                    <ChartIcon className="h-6 w-6 text-emerald-600/80" />
+                    <p>Celebrate streaks, completion %, and gentle nudges forward.</p>
+                  </PreviewCard>
+                </div>
+                <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-xs uppercase tracking-[0.32em] text-slate-500">
+                  Preview mode - full experience coming soon
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section
           id="about"
           ref={aboutRef}
-          className={`pb-20 text-left md:pb-24 transition-all duration-700 ease-out ${aboutVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          className={[
+            "mt-16 md:mt-24 pb-20 text-left transition-all duration-700 ease-out md:pb-24",
+            aboutVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10",
+          ].join(" ")}
         >
           <div className="grid gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-35px_rgba(30,41,59,0.35)] transition hover:shadow-[0_30px_70px_-45px_rgba(79,70,229,0.35)] sm:p-10 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <div className="space-y-3">
@@ -200,8 +266,8 @@ export default function TaskieLanding() {
       </main>
 
       <footer className="mt-8 border-t border-slate-200/80">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6 text-[11px] text-slate-500 md:px-10">
-          <div>c {new Date().getFullYear()} Taskie</div>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 text-[11px] text-slate-500 md:px-10">
+          <div>&copy; {new Date().getFullYear()} Taskie</div>
           <div className="flex gap-6">
             <a className={navLinkClass} href="#terms">
               Terms
@@ -216,13 +282,6 @@ export default function TaskieLanding() {
     </div>
   );
 }
-
-
-
-
-
-
-
 
 
 
