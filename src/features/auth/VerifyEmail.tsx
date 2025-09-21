@@ -17,7 +17,7 @@ function readTokenFromLocation(): string {
 }
 
 export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
-  const { user, verification, resendVerification, verifyEmail } = useAuth();
+  const { user, verification, resendVerification, verifyEmail, isAuthenticated } = useAuth();
   const [checkState, setCheckState] = useState<SubmissionState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -211,4 +211,3 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
     </div>
   );
 }
-

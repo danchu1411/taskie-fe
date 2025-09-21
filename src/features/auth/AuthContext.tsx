@@ -60,6 +60,15 @@ type VerificationResponsePayload = {
   expiresAt?: string | null;
 };
 
+type ForgotPasswordResponse = {
+  status?: string;
+  expiresAt?: string | null;
+};
+
+type ResetPasswordResponse = {
+  passwordReset: boolean;
+};
+
 type AuthContextValue = {
   user: AuthUser | null;
   tokens: AuthTokens | null;
@@ -72,7 +81,8 @@ type AuthContextValue = {
   logout: (payload?: LogoutArgs) => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
   resendVerification: (email?: string) => Promise<VerificationInfo>;
-  requestPasswordReset: (email: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<ForgotPasswordResponse>;
+  resetPassword: (payload: { token: string; password: string }) => Promise<ResetPasswordResponse>;
   setAuthState: (state: StoredAuthState | null, options?: { remember?: boolean }) => void;
   setPromptVerification: (flag: boolean) => void;
 };
@@ -97,7 +107,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function normalizeVerification(
   payload: VerificationResponsePayload | null | undefined,
-  user: AuthUser | null | undefined
+  user: AuthUser | null | undefined,
 ): VerificationInfo | null {
   if (payload?.status) {
     return {
@@ -118,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authState, setAuthStateInternal] = useState<StoredAuthState | null>(initialState);
   const [status, setStatus] = useState<AuthStatus>(initialState ? "authenticated" : "idle");
   const [verification, setVerification] = useState<VerificationInfo | null>(
-    initialState ? normalizeVerification(null, initialState.user) : null
+    initialState ? normalizeVerification(null, initialState.user) : null,
   );
   const [shouldPromptVerification, setShouldPromptVerification] = useState<boolean>(false);
   const shouldPersistRef = useRef<boolean>(Boolean(initialState));
@@ -143,26 +153,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shouldPersistRef.current = remember;
       setRuntimeAccessToken(state.tokens.accessToken);
       setAuthStateInternal(state);
-      setVerification((prev) => {
-        if (state.user.emailVerified) {
-          return { status: "verified", expiresAt: null };
-        }
-        return prev ?? { status: "pending", expiresAt: null };
-      });
       if (remember) {
         saveAuthState(state);
       } else {
         clearAuthState();
       }
     },
-    []
+    [],
   );
 
   const hydrateState = useCallback(
     (
       payload: AuthResponsePayload,
       remember?: boolean,
-      options?: { promptVerification?: boolean }
+      options?: { promptVerification?: boolean },
     ) => {
       const snapshot: StoredAuthState = {
         user: {
@@ -176,12 +180,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShouldPromptVerification(Boolean(options?.promptVerification && !snapshot.user.emailVerified));
       setStatus("authenticated");
     },
-    [setAuthState, setShouldPromptVerification]
+    [setAuthState],
   );
 
   const handleAuthFailure = useCallback(
     () => setStatus(authState ? "authenticated" : "idle"),
-    [authState]
+    [authState],
   );
 
   const login = useCallback(
@@ -195,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [hydrateState, handleAuthFailure]
+    [hydrateState, handleAuthFailure],
   );
 
   const signUp = useCallback(
@@ -213,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [hydrateState, handleAuthFailure]
+    [hydrateState, handleAuthFailure],
   );
 
   const logout = useCallback(
@@ -232,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("Failed to revoke refresh token", error);
       }
     },
-    [authState, setAuthState]
+    [authState, setAuthState],
   );
 
   const verifyEmail = useCallback(
@@ -259,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus("idle");
       }
     },
-    [authState, setAuthState]
+    [authState, setAuthState],
   );
 
   const resendVerification = useCallback(
@@ -280,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShouldPromptVerification(true);
       return info;
     },
-    [authState?.user?.email]
+    [authState?.user?.email],
   );
 
   const requestPasswordReset = useCallback(
@@ -290,7 +294,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Email is required");
       }
       try {
-        await api.post<ForgotPasswordResponse>("/auth/password/forgot", { email: trimmed });
+        const response = await api.post<ForgotPasswordResponse>("/auth/password/forgot", { email: trimmed });
+        return response.data ?? { status: "unknown" };
       } catch (error) {
         if (isAxiosError(error)) {
           const data = error.response?.data as { message?: string; error?: string } | undefined;
@@ -299,22 +304,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    []
+    [],
   );
-}
-      const response = await api.post<ResendVerificationResponse>("/auth/verify-email/resend", {
-        email: payloadEmail,
+
+  const resetPassword = useCallback(
+    async ({ token, password }: { token: string; password: string }) => {
+      const trimmedToken = token.trim();
+      if (!trimmedToken) {
+        throw new Error("Reset token is required");
+      }
+      const response = await api.post<ResetPasswordResponse>("/auth/password/reset", {
+        token: trimmedToken,
+        password,
       });
-      const info: VerificationInfo = {
-        status: response.data.status ?? "sent",
-        expiresAt: response.data.expiresAt ?? null,
-        lastRequestedAt: new Date().toISOString(),
-      };
-      setVerification(info);
-      setShouldPromptVerification(true);
-      return info;
+      return response.data;
     },
-    [authState?.user?.email]
+    [],
   );
 
   const value = useMemo<AuthContextValue>(
@@ -327,7 +332,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verification,
       login,
       signUp,
-      logout,\n      verifyEmail,\n      resendVerification,\n      requestPasswordReset,\n      setAuthState,\n      setPromptVerification: setShouldPromptVerification,
+      logout,
+      verifyEmail,
+      resendVerification,
+      requestPasswordReset,
+      resetPassword,
+      setAuthState,
+      setPromptVerification: setShouldPromptVerification,
     }),
     [
       authState,
@@ -336,8 +347,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verification,
       login,
       signUp,
-      logout,\n      verifyEmail,\n      resendVerification,\n      requestPasswordReset,\n      setAuthState,\n      setShouldPromptVerification
-    ]
+      logout,
+      verifyEmail,
+      resendVerification,
+      requestPasswordReset,
+      resetPassword,
+      setAuthState,
+      setShouldPromptVerification,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -350,24 +367,3 @@ export function useAuth() {
   }
   return context;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

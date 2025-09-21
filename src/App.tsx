@@ -4,6 +4,8 @@ import TaskieLanding from "./features/landing/TaskieLanding";
 import TaskieLogin from "./features/auth/TaskieLogin";
 import TaskieSignup from "./features/auth/TaskieSignup";
 import VerifyEmail from "./features/auth/VerifyEmail";
+import ForgotPassword from "./features/auth/ForgotPassword";
+import ResetPassword from "./features/auth/ResetPassword";
 import AuthSuccess from "./features/auth/AuthSuccess";
 
 type NavigateFn = (path: string) => void;
@@ -35,7 +37,7 @@ function usePathname() {
       }
       setPathname(nextPath);
     },
-    [pathname]
+    [pathname],
   );
 
   return { pathname, navigate };
@@ -64,6 +66,12 @@ function App() {
     }
     if (pathname === "/signup") {
       return <TaskieSignup onNavigate={navigate} />;
+    }
+    if (pathname === "/forgot-password") {
+      return <ForgotPassword onNavigate={navigate} />;
+    }
+    if (pathname === "/reset-password") {
+      return <ResetPassword onNavigate={navigate} />;
     }
     if (pathname === "/auth/verify-email") {
       return <VerifyEmail onNavigate={navigate} />;

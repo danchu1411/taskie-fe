@@ -35,6 +35,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
   const [formState, setFormState] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [googleHint, setGoogleHint] = useState<string | null>(null);
   const isSubmitting = status === "authenticating";
 
@@ -80,6 +81,20 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
       window.location.replace(target);
     }
   }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, onNavigate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const resetStatus = params.get("reset");
+    if (resetStatus === "success") {
+      setSuccessMessage("Your password has been updated. Please log in with your new password.");
+      params.delete("reset");
+      const query = params.toString();
+      const hash = window.location.hash;
+      const next = `${window.location.pathname}${query ? `?${query}` : ""}${hash}`;
+      window.history.replaceState(null, "", next);
+    }
+  }, []);
 
   const handleGoogleClick = () => {
     setGoogleHint("Google login is coming soon. Please use email & password for now.");
@@ -219,12 +234,18 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                       <span>Remember me</span>
                     </label>
                     <a
-                      href="#forgot"
+                      href="/forgot-password"
+                      onClick={(event) => handleNav(event, "/forgot-password")}
                       className="text-slate-600 underline underline-offset-4 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
                     >
                       Forgot password?
                     </a>
                   </div>
+                  {successMessage && (
+                    <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      {successMessage}
+                    </p>
+                  )}
                   {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
                   <button
                     type="submit"
@@ -282,6 +303,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
 }
 
 export default TaskieLogin;
+
 
 
 
