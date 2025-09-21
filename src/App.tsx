@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./features/auth/AuthContext";
 import TaskieLanding from "./features/landing/TaskieLanding";
 import TaskieLogin from "./features/auth/TaskieLogin";
@@ -8,6 +8,7 @@ import ForgotPassword from "./features/auth/ForgotPassword";
 import ResetPassword from "./features/auth/ResetPassword";
 import AuthSuccess from "./features/auth/AuthSuccess";
 import TodayPage from "./features/schedule/TodayPage";
+import TasksPage from "./features/tasks/TasksPage";
 
 type NavigateFn = (path: string) => void;
 
@@ -62,7 +63,7 @@ function App() {
       return;
     }
 
-    if (pathname !== "/today" && pathname !== "/auth/success") {
+    if (pathname !== "/today" && pathname !== "/tasks" && pathname !== "/auth/success") {
       navigate("/today");
     }
   }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, pathname, navigate]);
@@ -92,6 +93,10 @@ function App() {
 
   if (pathname === "/auth/success") {
     return <AuthSuccess onNavigate={navigate} />;
+  }
+
+  if (pathname === "/tasks") {
+    return <TasksPage onNavigate={navigate} />;
   }
 
   return <TodayPage onNavigate={navigate} />;

@@ -11,6 +11,7 @@ import {
   useSensors,
   closestCenter,
   useDroppable,
+  useDraggable,
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
@@ -852,6 +853,12 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [customDuration, setCustomDuration] = useState(120); // minutes
   const [sessionPlan, setSessionPlan] = useState<Array<{type: "focus" | "short-break" | "long-break", duration: number}>>([]);
   const [isCustomMode, setIsCustomMode] = useState(false);
+  
+  // Fullscreen and floating widget management
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFloating, setIsFloating] = useState(false);
+  const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
@@ -1149,11 +1156,185 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const closeTimer = useCallback(() => {
     setTimerAnimating(false);
+    setIsFullscreen(false);
+    setIsFloating(false);
     // Wait for animation to complete before hiding
     setTimeout(() => {
       setTimerOpen(false);
     }, 300);
   }, []);
+
+  const enterFloatingMode = useCallback(() => {
+    setIsFullscreen(false);
+    setIsFloating(true);
+  }, []);
+
+  const exitFloatingMode = useCallback(() => {
+    setIsFloating(false);
+    setIsFullscreen(true);
+  }, []);
+
+  // Floating Widget Component using @dnd-kit
+  const FloatingWidget = useCallback(() => {
+    const widgetId = 'floating-widget';
+    
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      isDragging: isDndDragging,
+    } = useDraggable({ 
+      id: widgetId,
+      data: {
+        type: 'floating-widget',
+        position: widgetPosition,
+      }
+    });
+
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={{
+          left: widgetPosition.x,
+          top: widgetPosition.y,
+          position: 'fixed',
+          zIndex: 50,
+          transform: isDndDragging 
+            ? `translate3d(${transform?.x || 0}px, ${transform?.y || 0}px, 0) scale(1.05) rotate(1deg)` 
+            : 'scale(1) rotate(0deg)',
+          transition: isDndDragging ? 'none' : 'all 200ms ease-out',
+        }}
+        className={`floating-widget select-none shadow-lg`}
+      >
+        <div className={`rounded-lg p-3 min-w-[200px] border ${
+          isDarkTheme 
+            ? 'bg-gray-800 border-gray-700' 
+            : 'bg-white border-gray-200'
+        }`}>
+          {/* Drag Handle */}
+          <div 
+            className={`widget-header flex items-center justify-between mb-2 cursor-move p-1 -m-1 rounded transition-all duration-200 ${
+              isDndDragging 
+                ? (isDarkTheme ? 'bg-gray-700 shadow-inner' : 'bg-gray-100 shadow-inner') 
+                : (isDarkTheme ? 'hover:bg-gray-700/50 hover:shadow-md' : 'hover:bg-gray-50 hover:shadow-md')
+            }`}
+            {...listeners}
+            {...attributes}
+          >
+            <div className="flex items-center gap-2">
+              {/* Drag Handle Icon */}
+              <div className={`drag-handle flex flex-col gap-0.5 cursor-move p-1 rounded transition-all duration-200 ${
+                isDndDragging 
+                  ? (isDarkTheme ? 'bg-gray-600' : 'bg-gray-200') 
+                  : (isDarkTheme ? 'hover:bg-gray-600' : 'hover:bg-gray-200')
+              }`}>
+                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+                  isDndDragging 
+                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
+                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
+                }`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+                  isDndDragging 
+                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
+                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
+                }`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+                  isDndDragging 
+                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
+                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
+                }`}></div>
+              </div>
+              <div className={`text-xs font-medium transition-colors duration-200 ${
+                isDndDragging 
+                  ? (isDarkTheme ? 'text-gray-200' : 'text-gray-700')
+                  : (isDarkTheme ? 'text-gray-300' : 'text-gray-600')
+              }`}>
+                Focus Timer
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  exitFloatingMode();
+                }}
+                className={`p-1 rounded transition ${
+                  isDarkTheme 
+                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
+                    : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                }`}
+                title="Fullscreen"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeTimer();
+                }}
+                className={`p-1 rounded transition ${
+                  isDarkTheme 
+                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
+                    : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                }`}
+                title="Close"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="text-center mb-2">
+            <div className={`text-lg font-semibold ${
+              isDarkTheme ? 'text-white' : 'text-gray-900'
+            }`}>
+              {Math.floor(timerRemain / (60 * 1000))} min
+            </div>
+            <div className={`text-xs ${
+              isDarkTheme ? 'text-gray-400' : 'text-gray-500'
+            }`}>
+              Session {currentSession} of {sessionPlan.length}
+            </div>
+          </div>
+          
+          <div className="flex justify-center">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setTimerRunning(!timerRunning);
+              }}
+              className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 transition"
+            >
+              {timerRunning ? (
+                <>
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                  </svg>
+                  Pause
+                </>
+              ) : (
+                <>
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Resume
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [widgetPosition, timerRemain, currentSession, sessionPlan.length, timerRunning, exitFloatingMode, closeTimer, isDarkTheme]);
 
 
   // Generate session plan from custom duration
@@ -1206,6 +1387,10 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     setTimerRemain(duration);
     setTimerRunning(true);
     
+    // Enter fullscreen mode
+    setIsFullscreen(true);
+    setIsFloating(false);
+    
     // Update task status if focus session
     if (firstSession.type === "focus" && timerItem && timerItem.status !== STATUS.IN_PROGRESS) {
       statusMutation.mutate({ item: timerItem, status: STATUS.IN_PROGRESS });
@@ -1249,6 +1434,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     const overId = over.id as string;
 
     console.log('Drag details:', { activeId, overId });
+
 
     // Find the dragged item
     const draggedItem = items.find(item => item.id === activeId);
@@ -1483,7 +1669,26 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         if (editModalOpen) setEditModalOpen(false);
         if (statusModalOpen) setStatusModalOpen(false);
         if (userDropdownOpen) setUserDropdownOpen(false);
-        if (timerOpen) closeTimer();
+        if (isFullscreen) enterFloatingMode();
+        else if (isFloating) closeTimer();
+        else if (timerOpen) closeTimer();
+      }
+
+      // F key to toggle fullscreen/floating
+      if (event.key === 'f' || event.key === 'F') {
+        if (isFullscreen) {
+          enterFloatingMode();
+        } else if (isFloating) {
+          exitFloatingMode();
+        }
+      }
+
+      // Space to pause/resume timer
+      if (event.key === ' ') {
+        if (isFullscreen || isFloating) {
+          event.preventDefault();
+          setTimerRunning(prev => !prev);
+        }
       }
 
       // Number keys for status selection
@@ -1506,7 +1711,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [quickOpen, scheduleModalOpen, checklistModalOpen, editModalOpen, statusModalOpen, userDropdownOpen, timerOpen, statusModalItem, closeTimer]);
+  }, [quickOpen, scheduleModalOpen, checklistModalOpen, editModalOpen, statusModalOpen, userDropdownOpen, timerOpen, isFullscreen, isFloating, statusModalItem, closeTimer, enterFloatingMode, exitFloatingMode]);
 
 
 
@@ -1574,6 +1779,12 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             <button
                 key={nav.id}
               type="button"
+              onClick={() => {
+                if (nav.id === "tasks" && onNavigate) {
+                  onNavigate("/tasks");
+                }
+                // TODO: Add other navigation handlers
+              }}
               className={clsx(
                   "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
                   activeNav === nav.id
@@ -1994,7 +2205,172 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           <span className="text-2xl font-bold">+</span>
         </button>
       </div>
-      {timerOpen && (
+      {/* Floating Widget */}
+      {isFloating && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => {
+            const { active, delta } = event;
+            if (active.id === 'floating-widget') {
+              // Use delta to calculate new position
+              const newX = Math.max(10, Math.min(window.innerWidth - 210, widgetPosition.x + delta.x));
+              const newY = Math.max(10, Math.min(window.innerHeight - 130, widgetPosition.y + delta.y));
+              setWidgetPosition({ x: newX, y: newY });
+            }
+          }}
+        >
+          <FloatingWidget />
+        </DndContext>
+      )}
+
+      {/* Fullscreen Timer - Theme Support */}
+      {isFullscreen && (
+        <div className={`fixed inset-0 z-50 ${isDarkTheme ? 'bg-gray-900' : 'bg-white'}`}>
+          <div className="flex h-full flex-col items-center justify-center">
+            {/* Header */}
+            <div className="mb-8 text-center">
+              <h1 className={`text-xl font-medium ${isDarkTheme ? 'text-white' : 'text-gray-900'}`}>
+                Focus period ({currentSession} of {sessionPlan.length})
+              </h1>
+              </div>
+
+            {/* Circular Timer */}
+            <div className="mb-12 relative">
+              <div className="relative w-80 h-80">
+                {/* Background Circle */}
+                <div className={`absolute inset-0 rounded-full border ${
+                  isDarkTheme 
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-gray-100 border-gray-300'
+                }`}>
+                  {/* Progress Ring */}
+                  <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={isDarkTheme ? 'text-gray-600' : 'text-gray-300'}
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeDasharray={`${2 * Math.PI * 45}`}
+                      strokeDashoffset={`${2 * Math.PI * 45 * (1 - (timerRemain / timerDuration))}`}
+                      className="text-blue-500 transition-all duration-1000 ease-linear"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  
+                  {/* Time Display */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div className={`text-5xl font-light mb-1 ${
+                      isDarkTheme ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {Math.floor(timerRemain / (60 * 1000))}
+                    </div>
+                    <div className={`text-lg ${
+                      isDarkTheme ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      min
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-6">
+              {/* Pause/Resume Button */}
+              <button
+                onClick={() => setTimerRunning(!timerRunning)}
+                className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center text-white transition hover:bg-blue-600"
+              >
+                {timerRunning ? (
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+              
+              {/* More Options Button */}
+              <button
+                onClick={enterFloatingMode}
+                className={`w-16 h-16 rounded-full flex items-center justify-center transition ${
+                  isDarkTheme 
+                    ? 'bg-gray-800 text-white hover:bg-gray-700' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Next Session Info */}
+            <div className="mt-8 text-center">
+              <div className={isDarkTheme ? 'text-white' : 'text-gray-900'}>
+                Up next: <span className="font-semibold">
+                  {currentSession < sessionPlan.length ? 
+                    `${sessionPlan[currentSession]?.duration || 5} min break` : 
+                    'Session complete'
+                  }
+                </span>
+              </div>
+            </div>
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => setIsDarkTheme(!isDarkTheme)}
+              className={`absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition ${
+                isDarkTheme 
+                  ? 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' 
+                  : 'bg-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-300'
+              }`}
+              title={isDarkTheme ? 'Switch to Light' : 'Switch to Dark'}
+            >
+              {isDarkTheme ? (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={closeTimer}
+              className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition ${
+                isDarkTheme 
+                  ? 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' 
+                  : 'bg-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Timer (Setup Mode) */}
+      {timerOpen && !isFullscreen && !isFloating && (
         <div className="fixed inset-x-0 bottom-0 z-50">
           {/* Backdrop */}
           <div 
@@ -2036,8 +2412,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                   <div className="text-center mb-6">
                     <label className="text-sm font-medium text-gray-700">Total Duration</label>
                     <div className="mt-3 flex items-center justify-center gap-4">
-                      <button
-                        type="button"
+              <button
+                type="button"
                         onClick={() => setCustomDuration(prev => Math.max(30, prev - 30))}
                         className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
                       >
@@ -2098,13 +2474,13 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                   type="button"
                   onClick={closeTimer}
                   className="text-sm text-gray-500 hover:text-gray-700 transition"
-                >
-                  Close
-                </button>
-              </div>
+              >
+                Close
+              </button>
             </div>
-          </div>
-        </div>
+                    </div>
+                  </div>
+                </div>
       )}
 
       {/* Schedule Modal */}
@@ -2114,9 +2490,9 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Schedule Task</h3>
               <p className="text-sm text-slate-600">{selectedItem.title}</p>
-            </div>
+              </div>
             
-            <div className="space-y-4">
+              <div className="space-y-4">
               <div>
                 <label htmlFor="schedule-start" className="block text-sm font-medium text-slate-700 mb-1">
                   Start Time
@@ -2151,15 +2527,15 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             </div>
             
              <div className="mt-6 flex gap-3">
-               <button
-                 type="button"
+                  <button
+                    type="button"
                  onClick={() => setScheduleModalOpen(false)}
                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-               >
+                  >
                  Cancel
-               </button>
-               <button
-                 type="button"
+                  </button>
+                  <button
+                    type="button"
                  onClick={createSchedule}
                  disabled={scheduleMutation.isPending}
                  className={clsx(
@@ -2229,8 +2605,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             </div>
             
             <div className="mt-4">
-              <button
-                type="button"
+                    <button
+                      type="button"
                 onClick={addChecklistItem}
                 className="w-full rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
               >
@@ -2404,9 +2780,9 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                       </div>
                     )}
                   </div>
-                </button>
-              ))}
-            </div>
+                    </button>
+                  ))}
+                </div>
             
             <div className="mt-6 flex gap-3">
               <button
@@ -2416,11 +2792,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
               >
                 Cancel
               </button>
+              </div>
             </div>
           </div>
-        </div>
       )}
-      </div>
+        </div>
       
       {/* Drag Overlay */}
       <DragOverlay>
