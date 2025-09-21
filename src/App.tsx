@@ -7,6 +7,7 @@ import VerifyEmail from "./features/auth/VerifyEmail";
 import ForgotPassword from "./features/auth/ForgotPassword";
 import ResetPassword from "./features/auth/ResetPassword";
 import AuthSuccess from "./features/auth/AuthSuccess";
+import TodayPage from "./features/schedule/TodayPage";
 
 type NavigateFn = (path: string) => void;
 
@@ -55,8 +56,14 @@ function App() {
       }
       return;
     }
-    if (pathname !== "/auth/success") {
-      navigate("/auth/success");
+
+    if (pathname === "/auth/verify-email") {
+      navigate("/today");
+      return;
+    }
+
+    if (pathname !== "/today" && pathname !== "/auth/success") {
+      navigate("/today");
     }
   }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, pathname, navigate]);
 
@@ -83,7 +90,11 @@ function App() {
     return <VerifyEmail onNavigate={navigate} />;
   }
 
-  return <AuthSuccess onNavigate={navigate} />;
+  if (pathname === "/auth/success") {
+    return <AuthSuccess onNavigate={navigate} />;
+  }
+
+  return <TodayPage onNavigate={navigate} />;
 }
 
 export type { NavigateFn };
