@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import AuthLoadingOverlay from "./AuthLoadingOverlay";
 
 type NavigateHandler = (path: string) => void;
 
@@ -58,6 +59,7 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
 
   return (
     <div className="min-h-screen bg-neutral-50 px-6 py-10 text-slate-900">
+      <AuthLoadingOverlay show={status === "submitting"} label="Sending reset email..." />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between pb-10">
         <a
           href="/"
@@ -127,7 +129,7 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
 
           <div className="mt-6 text-sm text-slate-500">
             <p>
-              Having trouble? <a href="mailto:support@taskie.dev" className="text-slate-700 underline underline-offset-4">Contact support</a> and weÅfll help restore access to your account.
+              Having trouble? <a href="mailto:support@taskie.dev" className="text-slate-700 underline underline-offset-4">Contact support</a> and we'll help restore access to your account.
             </p>
           </div>
         </div>
@@ -135,3 +137,4 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
     </div>
   );
 }
+

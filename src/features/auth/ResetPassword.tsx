@@ -1,6 +1,7 @@
-﻿import { isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import AuthLoadingOverlay from "./AuthLoadingOverlay";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -85,6 +86,7 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
 
   return (
     <div className="min-h-screen bg-neutral-50 px-6 py-10 text-slate-900">
+      <AuthLoadingOverlay show={status === "submitting"} label="Updating your password..." />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between pb-10">
         <a
           href="/"

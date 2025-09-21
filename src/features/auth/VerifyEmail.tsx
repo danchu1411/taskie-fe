@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useAuth } from "./AuthContext";
+import AuthLoadingOverlay from "./AuthLoadingOverlay";
 
 type NavigateHandler = (path: string) => void;
 
@@ -104,8 +105,12 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
     ? "You're all set. Enjoy Taskie!"
     : `We sent a verification email to ${user?.email ?? "your inbox"}. Open it and click the button to activate your account.`;
 
+  const showOverlay = checkState === "verifying" || resendLoading;
+  const overlayMessage = checkState === "verifying" ? "Verifying your email..." : "Sending verification email...";
+
   return (
     <div className="min-h-screen bg-neutral-50 px-6 py-10 text-slate-900">
+      <AuthLoadingOverlay show={showOverlay} label={overlayMessage} />
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between pb-10">
         <a
           href="/"

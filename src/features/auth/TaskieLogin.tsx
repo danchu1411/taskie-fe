@@ -5,6 +5,7 @@ import CalendarIcon from "../../components/icons/CalendarIcon";
 import TimerIcon from "../../components/icons/TimerIcon";
 import ChartIcon from "../../components/icons/ChartIcon";
 import { useAuth } from "./AuthContext";
+import AuthLoadingOverlay from "./AuthLoadingOverlay";
 
 type NavigateHandler = (path: string) => void;
 
@@ -105,6 +106,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
 
   return (
     <div className="relative min-h-screen bg-neutral-50 text-slate-900 selection:bg-indigo-200/70 selection:text-slate-900">
+      <AuthLoadingOverlay show={isSubmitting} label="Signing you in..." />
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 md:px-10">
         <a
           href="/"
