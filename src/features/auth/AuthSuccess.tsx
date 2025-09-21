@@ -6,17 +6,17 @@ type AuthSuccessProps = {
 };
 
 export default function AuthSuccess({ onNavigate }: AuthSuccessProps) {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, shouldPromptVerification } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (user?.emailVerified) return;
+    if (!shouldPromptVerification || user?.emailVerified) return;
     if (onNavigate) {
       onNavigate("/auth/verify-email");
     } else if (typeof window !== "undefined") {
       window.location.replace("/auth/verify-email");
     }
-  }, [isAuthenticated, user?.emailVerified, onNavigate]);
+  }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, onNavigate]);
 
   useEffect(() => {
     if (isAuthenticated) return;
@@ -73,3 +73,5 @@ export default function AuthSuccess({ onNavigate }: AuthSuccessProps) {
     </div>
   );
 }
+
+

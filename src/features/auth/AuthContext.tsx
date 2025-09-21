@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import {
   createContext,
   useCallback,
@@ -64,13 +65,16 @@ type AuthContextValue = {
   tokens: AuthTokens | null;
   status: AuthStatus;
   isAuthenticated: boolean;
+  shouldPromptVerification: boolean;
   verification: VerificationInfo | null;
   login: (payload: LoginArgs) => Promise<void>;
   signUp: (payload: SignUpArgs) => Promise<void>;
   logout: (payload?: LogoutArgs) => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
   resendVerification: (email?: string) => Promise<VerificationInfo>;
+  requestPasswordReset: (email: string) => Promise<void>;
   setAuthState: (state: StoredAuthState | null, options?: { remember?: boolean }) => void;
+  setPromptVerification: (flag: boolean) => void;
 };
 
 type AuthResponsePayload = {
@@ -116,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [verification, setVerification] = useState<VerificationInfo | null>(
     initialState ? normalizeVerification(null, initialState.user) : null
   );
+  const [shouldPromptVerification, setShouldPromptVerification] = useState<boolean>(false);
   const shouldPersistRef = useRef<boolean>(Boolean(initialState));
 
   useEffect(() => {
@@ -129,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthStateInternal(null);
         shouldPersistRef.current = false;
         setVerification(null);
+        setShouldPromptVerification(false);
         clearAuthState();
         return;
       }
@@ -153,7 +159,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const hydrateState = useCallback(
-    (payload: AuthResponsePayload, remember?: boolean) => {
+    (
+      payload: AuthResponsePayload,
+      remember?: boolean,
+      options?: { promptVerification?: boolean }
+    ) => {
       const snapshot: StoredAuthState = {
         user: {
           ...payload.user,
@@ -163,9 +173,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setAuthState(snapshot, { remember });
       setVerification(normalizeVerification(payload.verification, snapshot.user));
+      setShouldPromptVerification(Boolean(options?.promptVerification && !snapshot.user.emailVerified));
       setStatus("authenticated");
     },
-    [setAuthState]
+    [setAuthState, setShouldPromptVerification]
   );
 
   const handleAuthFailure = useCallback(
@@ -178,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticating");
       try {
         const response = await api.post<AuthResponsePayload>("/auth/login", { email, password });
-        hydrateState(response.data, remember);
+        hydrateState(response.data, remember, { promptVerification: false });
       } catch (error) {
         handleAuthFailure();
         throw error;
@@ -196,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
         });
-        hydrateState(response.data, remember);
+        hydrateState(response.data, remember, { promptVerification: !response.data.user.emailVerified });
       } catch (error) {
         handleAuthFailure();
         throw error;
@@ -237,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: Boolean(response.data.emailVerified ?? response.data.user?.emailVerified ?? true),
       };
       setVerification({ status: "verified", expiresAt: null, lastRequestedAt: new Date().toISOString() });
+      setShouldPromptVerification(false);
       if (authState) {
         setAuthState({
           user: effectiveUser,
@@ -265,6 +277,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastRequestedAt: new Date().toISOString(),
       };
       setVerification(info);
+      setShouldPromptVerification(true);
+      return info;
+    },
+    [authState?.user?.email]
+  );
+
+  const requestPasswordReset = useCallback(
+    async (email: string) => {
+      const trimmed = email.trim();
+      if (!trimmed) {
+        throw new Error("Email is required");
+      }
+      try {
+        await api.post<ForgotPasswordResponse>("/auth/password/forgot", { email: trimmed });
+      } catch (error) {
+        if (isAxiosError(error)) {
+          const data = error.response?.data as { message?: string; error?: string } | undefined;
+          throw new Error(data?.message ?? data?.error ?? "Unable to send password reset email");
+        }
+        throw error;
+      }
+    },
+    []
+  );
+}
+      const response = await api.post<ResendVerificationResponse>("/auth/verify-email/resend", {
+        email: payloadEmail,
+      });
+      const info: VerificationInfo = {
+        status: response.data.status ?? "sent",
+        expiresAt: response.data.expiresAt ?? null,
+        lastRequestedAt: new Date().toISOString(),
+      };
+      setVerification(info);
+      setShouldPromptVerification(true);
       return info;
     },
     [authState?.user?.email]
@@ -276,15 +323,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokens: authState?.tokens ?? null,
       status,
       isAuthenticated: Boolean(authState?.tokens?.accessToken),
+      shouldPromptVerification,
       verification,
       login,
       signUp,
-      logout,
-      verifyEmail,
-      resendVerification,
-      setAuthState,
+      logout,\n      verifyEmail,\n      resendVerification,\n      requestPasswordReset,\n      setAuthState,\n      setPromptVerification: setShouldPromptVerification,
     }),
-    [authState, status, verification, login, signUp, logout, verifyEmail, resendVerification, setAuthState]
+    [
+      authState,
+      status,
+      shouldPromptVerification,
+      verification,
+      login,
+      signUp,
+      logout,\n      verifyEmail,\n      resendVerification,\n      requestPasswordReset,\n      setAuthState,\n      setShouldPromptVerification
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -297,3 +350,24 @@ export function useAuth() {
   }
   return context;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

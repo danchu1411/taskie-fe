@@ -43,43 +43,40 @@ function usePathname() {
 
 function App() {
   const { pathname, navigate } = usePathname();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, shouldPromptVerification } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (user?.emailVerified) {
-      if (pathname !== "/auth/success") {
-        navigate("/auth/success");
+    if (shouldPromptVerification && !user?.emailVerified) {
+      if (pathname !== "/auth/verify-email") {
+        navigate("/auth/verify-email");
       }
       return;
     }
-    if (pathname !== "/auth/verify-email") {
-      navigate("/auth/verify-email");
+    if (pathname !== "/auth/success") {
+      navigate("/auth/success");
     }
-  }, [isAuthenticated, user?.emailVerified, pathname, navigate]);
+  }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, pathname, navigate]);
 
-  if (!isAuthenticated && pathname === "/login") {
-    return <TaskieLogin onNavigate={navigate} />;
+  if (!isAuthenticated) {
+    if (pathname === "/login") {
+      return <TaskieLogin onNavigate={navigate} />;
+    }
+    if (pathname === "/signup") {
+      return <TaskieSignup onNavigate={navigate} />;
+    }
+    if (pathname === "/auth/verify-email") {
+      return <VerifyEmail onNavigate={navigate} />;
+    }
+    return <TaskieLanding onNavigate={navigate} />;
   }
 
-  if (!isAuthenticated && pathname === "/signup") {
-    return <TaskieSignup onNavigate={navigate} />;
-  }
-
-  if (pathname === "/auth/verify-email" || (isAuthenticated && !user?.emailVerified)) {
+  if (shouldPromptVerification && !user?.emailVerified) {
     return <VerifyEmail onNavigate={navigate} />;
   }
 
-  if ((isAuthenticated && user?.emailVerified) || pathname === "/auth/success") {
-    return <AuthSuccess onNavigate={navigate} />;
-  }
-
-  return <TaskieLanding onNavigate={navigate} />;
+  return <AuthSuccess onNavigate={navigate} />;
 }
 
 export type { NavigateFn };
 export default App;
-
-
-
-

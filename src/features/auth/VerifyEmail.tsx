@@ -17,7 +17,7 @@ function readTokenFromLocation(): string {
 }
 
 export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
-  const { user, verification, resendVerification, verifyEmail, isAuthenticated } = useAuth();
+  const { user, verification, resendVerification, verifyEmail } = useAuth();
   const [checkState, setCheckState] = useState<SubmissionState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +126,9 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
 
       <main className="mx-auto w-full max-w-3xl">
         <div className="rounded-[32px] border border-slate-200/80 bg-white/90 p-10 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.35)] backdrop-blur">
+          <span className="inline-flex items-center rounded-full border border-indigo-200/70 bg-indigo-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-indigo-600">
+            Verify email
+          </span>
           <h1 className="mt-4 text-3xl font-semibold text-slate-900">{heading}</h1>
           <p className="mt-2 max-w-xl text-sm text-slate-500">{subheading}</p>
 
@@ -164,7 +167,7 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
               <button
                 type="button"
                 onClick={openMailClient}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+                className="inline-flex h-11 flex-1 min-w-[160px] items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
               >
                 Open Gmail
               </button>
@@ -174,7 +177,7 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
                 type="button"
                 onClick={() => void handleResend()}
                 disabled={resendLoading || disabled}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 flex-1 min-w-[160px] items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {resendLoading ? "Sending..." : "Resend email"}
               </button>
@@ -208,3 +211,4 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
     </div>
   );
 }
+

@@ -31,7 +31,7 @@ const signupHighlights = [
 ] as const;
 
 export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
-  const { signUp, status, isAuthenticated, user } = useAuth();
+  const { signUp, status, isAuthenticated, user, shouldPromptVerification } = useAuth();
   const [formState, setFormState] = useState({ name: "", email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,13 +74,13 @@ export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const target = user?.emailVerified ? "/auth/success" : "/auth/verify-email";
+    const target = shouldPromptVerification && !user?.emailVerified ? "/auth/verify-email" : "/auth/success";
     if (onNavigate) {
       onNavigate(target);
     } else if (typeof window !== "undefined") {
       window.location.replace(target);
     }
-  }, [isAuthenticated, user?.emailVerified, onNavigate]);
+  }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, onNavigate]);
 
   const handleGoogleClick = () => {
     setGoogleHint("Google signup is coming soon. Please use email & password for now.");
@@ -294,5 +294,6 @@ export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
     </div>
   );
 }
+
 
 
