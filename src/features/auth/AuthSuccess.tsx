@@ -9,6 +9,16 @@ export default function AuthSuccess({ onNavigate }: AuthSuccessProps) {
   const { user, logout, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    if (user?.emailVerified) return;
+    if (onNavigate) {
+      onNavigate("/auth/verify-email");
+    } else if (typeof window !== "undefined") {
+      window.location.replace("/auth/verify-email");
+    }
+  }, [isAuthenticated, user?.emailVerified, onNavigate]);
+
+  useEffect(() => {
     if (isAuthenticated) return;
     const fallback = () => {
       if (onNavigate) onNavigate("/login");

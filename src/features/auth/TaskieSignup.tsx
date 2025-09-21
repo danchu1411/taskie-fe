@@ -8,31 +8,31 @@ import { useAuth } from "./AuthContext";
 
 type NavigateHandler = (path: string) => void;
 
-type TaskieLoginProps = {
+type TaskieSignupProps = {
   onNavigate?: NavigateHandler;
 };
 
-const loginHighlights = [
+const signupHighlights = [
   {
-    title: "Weekly rituals",
-    description: "Auto-plan blocks that align with your study targets.",
+    title: "Intentional planning",
+    description: "Structure daily focus blocks that fit your energy levels.",
     icon: CalendarIcon,
   },
   {
-    title: "Focus timers",
-    description: "Mindful sessions with gentle breaks to avoid burnout.",
+    title: "Kind reminders",
+    description: "Timers and breaks that protect concentration instead of exhausting you.",
     icon: TimerIcon,
   },
   {
-    title: "Progress pulses",
-    description: "Lightweight stats that celebrate momentum instead of pressure.",
+    title: "Progress that encourages",
+    description: "Celebrate momentum with simple, uplifting insights.",
     icon: ChartIcon,
   },
 ] as const;
 
-function TaskieLogin({ onNavigate }: TaskieLoginProps) {
-  const { login, status, isAuthenticated, user } = useAuth();
-  const [formState, setFormState] = useState({ email: "", password: "" });
+export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
+  const { signUp, status, isAuthenticated, user } = useAuth();
+  const [formState, setFormState] = useState({ name: "", email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [googleHint, setGoogleHint] = useState<string | null>(null);
@@ -41,21 +41,22 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    const name = formState.name.trim();
     const email = formState.email.trim();
     const password = formState.password;
     if (!email || !password) {
-      setError("Please enter email and password.");
+      setError("Please fill in email and password.");
       return;
     }
 
     try {
-      await login({ email, password, remember: rememberMe });
+      await signUp({ name: name || undefined, email, password, remember: rememberMe });
     } catch (err) {
       if (isAxiosError(err)) {
         const data = err.response?.data as { message?: string; error?: string } | undefined;
-        setError(data?.message ?? data?.error ?? "Unable to log in. Please try again.");
+        setError(data?.message ?? data?.error ?? "Unable to sign up. Please try again.");
       } else {
-        setError("Unable to log in. Please try again.");
+        setError("Unable to sign up. Please try again.");
       }
     }
   };
@@ -76,13 +77,13 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
     const target = user?.emailVerified ? "/auth/success" : "/auth/verify-email";
     if (onNavigate) {
       onNavigate(target);
-    } else if (typeof window !== "undefined" && window.location.pathname === "/login") {
+    } else if (typeof window !== "undefined") {
       window.location.replace(target);
     }
   }, [isAuthenticated, user?.emailVerified, onNavigate]);
 
   const handleGoogleClick = () => {
-    setGoogleHint("Google login is coming soon. Please use email & password for now.");
+    setGoogleHint("Google signup is coming soon. Please use email & password for now.");
     setTimeout(() => setGoogleHint(null), 5000);
   };
 
@@ -101,21 +102,21 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
           </span>
         </a>
         <a
-          href="/"
-          onClick={(event) => handleNav(event, "/")}
+          href="/login"
+          onClick={(event) => handleNav(event, "/login")}
           className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600 transition hover:-translate-y-[1px] hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
         >
-          <span>Back to welcome</span>
+          <span>?a co tai kho?n?</span>
         </a>
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-16 md:px-10">
         <div className="mx-auto w-full max-w-md text-center md:hidden">
           <span className="inline-flex items-center justify-center rounded-full border border-indigo-200/60 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-600">
-            Welcome back
+            Create your ritual
           </span>
-          <h1 className="mt-4 text-3xl font-semibold text-slate-900">Log in to Taskie</h1>
-          <p className="mt-2 text-sm text-slate-500">Pick up where you left off and keep your routine in rhythm.</p>
+          <h1 className="mt-4 text-3xl font-semibold text-slate-900">Sign up for Taskie</h1>
+          <p className="mt-2 text-sm text-slate-500">Start building daily study momentum with rituals that feel good.</p>
         </div>
 
         <section className="mt-10 flex flex-1 flex-col justify-center">
@@ -123,17 +124,17 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
             <div className="relative hidden overflow-hidden rounded-[36px] border border-slate-200/70 bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-10 text-left text-slate-100 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] md:flex md:flex-col">
               <div className="relative">
                 <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-indigo-100">
-                  Taskie rituals
+                  What you'll unlock
                 </span>
                 <h2 className="mt-6 text-3xl font-semibold leading-snug text-white">
-                  Plan with intention, focus with calm, finish with clarity.
+                  Make consistent progress without burning out.
                 </h2>
                 <p className="mt-3 max-w-sm text-sm text-indigo-100/80">
-                  Taskie gently guides your study rhythm with adaptive schedules, mindful breaks, and progress pulses that celebrate consistency.
+                  Taskie gives you a gentle operating system for study: clear rituals, calm focus, and progress that builds confidence.
                 </p>
               </div>
               <ul className="mt-10 grid gap-4 text-sm text-indigo-50/90">
-                {loginHighlights.map((item) => {
+                {signupHighlights.map((item) => {
                   const Icon = item.icon;
                   return (
                     <li
@@ -152,7 +153,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                 })}
               </ul>
               <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs uppercase tracking-[0.32em] text-indigo-100/70">
-                Trusted by learners building daily rituals
+                Join learners building mindful habits every day
               </div>
             </div>
 
@@ -161,17 +162,35 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
               <div className="relative rounded-[32px] border border-slate-200 bg-white/95 p-6 pt-9 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.45)] backdrop-blur-sm sm:p-9">
                 <span className="absolute left-7 right-7 top-0 h-[3px] rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" aria-hidden />
                 <header className="mb-6 text-left">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Log in</p>
-                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Welcome back</h1>
-                  <p className="mt-1 text-sm text-slate-500">Pick up right where you left off.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">Create account</p>
+                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Hello there</h1>
+                  <p className="mt-1 text-sm text-slate-500">Finish setting up your study OS in a minute.</p>
                 </header>
                 <form className="grid gap-4 text-left" onSubmit={handleSubmit}>
                   <div className="grid gap-2">
-                    <label htmlFor="login-email" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <label htmlFor="signup-name" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Name (optional)
+                    </label>
+                    <input
+                      id="signup-name"
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      value={formState.name}
+                      disabled={formDisabled}
+                      onChange={(event) => {
+                        setFormState((prev) => ({ ...prev, name: event.target.value }));
+                        if (error) setError(null);
+                      }}
+                      className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label htmlFor="signup-email" className="text-xs font-medium uppercase tracking-wide text-slate-500">
                       Email
                     </label>
                     <input
-                      id="login-email"
+                      id="signup-email"
                       name="email"
                       type="email"
                       required
@@ -186,15 +205,15 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <label htmlFor="login-password" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    <label htmlFor="signup-password" className="text-xs font-medium uppercase tracking-wide text-slate-500">
                       Password
                     </label>
                     <input
-                      id="login-password"
+                      id="signup-password"
                       name="password"
                       type="password"
                       required
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       value={formState.password}
                       disabled={formDisabled}
                       onChange={(event) => {
@@ -219,10 +238,11 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                       <span>Remember me</span>
                     </label>
                     <a
-                      href="#forgot"
+                      href="/login"
+                      onClick={(event) => handleNav(event, "/login")}
                       className="text-slate-600 underline underline-offset-4 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
                     >
-                      Forgot password?
+                      Already have an account?
                     </a>
                   </div>
                   {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
@@ -231,7 +251,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                     disabled={formDisabled}
                     className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isSubmitting ? "Signing in..." : "Log in"}
+                    {isSubmitting ? "Signing up..." : "Create account"}
                   </button>
                   <div className="relative py-2 text-center text-[11px] uppercase tracking-[0.28em] text-slate-400">
                     <span className="relative z-[1] bg-white px-3">Or</span>
@@ -250,13 +270,7 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                   {googleHint && <p className="text-center text-xs text-slate-500">{googleHint}</p>}
                 </form>
                 <p className="mt-6 text-center text-sm text-slate-500">
-                  No account?{' '}
-                  <a
-                    href="/signup"
-                    onClick={(event) => handleNav(event, "/signup")}
-                  >
-                    Create one
-                  </a>
+                  Khi t?o tai kho?n, b?n ??ng y v?i ?i?u kho?n va chinh sach c?a Taskie.
                 </p>
               </div>
             </div>
@@ -280,9 +294,5 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
     </div>
   );
 }
-
-export default TaskieLogin;
-
-
 
 

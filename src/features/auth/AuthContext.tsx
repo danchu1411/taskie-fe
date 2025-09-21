@@ -26,8 +26,37 @@ type LoginArgs = {
   remember?: boolean;
 };
 
+type SignUpArgs = {
+  name?: string;
+  email: string;
+  password: string;
+  remember?: boolean;
+};
+
 type LogoutArgs = {
   revokeAll?: boolean;
+};
+
+type VerificationStatus =
+  | "verified"
+  | "sent"
+  | "logged"
+  | "failed"
+  | "already_verified"
+  | "pending"
+  | "unknown"
+  | string;
+
+type VerificationInfo = {
+  status: VerificationStatus;
+  expiresAt?: string | null;
+  lastRequestedAt?: string | null;
+  error?: string | null;
+};
+
+type VerificationResponsePayload = {
+  status?: string;
+  expiresAt?: string | null;
 };
 
 type AuthContextValue = {
@@ -35,22 +64,58 @@ type AuthContextValue = {
   tokens: AuthTokens | null;
   status: AuthStatus;
   isAuthenticated: boolean;
+  verification: VerificationInfo | null;
   login: (payload: LoginArgs) => Promise<void>;
+  signUp: (payload: SignUpArgs) => Promise<void>;
   logout: (payload?: LogoutArgs) => Promise<void>;
+  verifyEmail: (token: string) => Promise<void>;
+  resendVerification: (email?: string) => Promise<VerificationInfo>;
   setAuthState: (state: StoredAuthState | null, options?: { remember?: boolean }) => void;
 };
 
-type LoginResponse = {
+type AuthResponsePayload = {
   user: AuthUser;
   tokens: AuthTokens;
+  verification?: VerificationResponsePayload | null;
+};
+
+type VerifyEmailResponse = {
+  emailVerified: boolean;
+  user: AuthUser;
+};
+
+type ResendVerificationResponse = {
+  status?: string;
+  expiresAt?: string | null;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function normalizeVerification(
+  payload: VerificationResponsePayload | null | undefined,
+  user: AuthUser | null | undefined
+): VerificationInfo | null {
+  if (payload?.status) {
+    return {
+      status: payload.status,
+      expiresAt: payload.expiresAt ?? null,
+      lastRequestedAt: new Date().toISOString(),
+    };
+  }
+  if (!user) return null;
+  return {
+    status: user.emailVerified ? "verified" : "pending",
+    expiresAt: null,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const initialState = loadAuthState();
   const [authState, setAuthStateInternal] = useState<StoredAuthState | null>(initialState);
   const [status, setStatus] = useState<AuthStatus>(initialState ? "authenticated" : "idle");
+  const [verification, setVerification] = useState<VerificationInfo | null>(
+    initialState ? normalizeVerification(null, initialState.user) : null
+  );
   const shouldPersistRef = useRef<boolean>(Boolean(initialState));
 
   useEffect(() => {
@@ -63,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRuntimeAccessToken(null);
         setAuthStateInternal(null);
         shouldPersistRef.current = false;
+        setVerification(null);
         clearAuthState();
         return;
       }
@@ -71,6 +137,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shouldPersistRef.current = remember;
       setRuntimeAccessToken(state.tokens.accessToken);
       setAuthStateInternal(state);
+      setVerification((prev) => {
+        if (state.user.emailVerified) {
+          return { status: "verified", expiresAt: null };
+        }
+        return prev ?? { status: "pending", expiresAt: null };
+      });
       if (remember) {
         saveAuthState(state);
       } else {
@@ -80,23 +152,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const hydrateState = useCallback(
+    (payload: AuthResponsePayload, remember?: boolean) => {
+      const snapshot: StoredAuthState = {
+        user: {
+          ...payload.user,
+          emailVerified: Boolean(payload.user.emailVerified),
+        },
+        tokens: payload.tokens,
+      };
+      setAuthState(snapshot, { remember });
+      setVerification(normalizeVerification(payload.verification, snapshot.user));
+      setStatus("authenticated");
+    },
+    [setAuthState]
+  );
+
+  const handleAuthFailure = useCallback(
+    () => setStatus(authState ? "authenticated" : "idle"),
+    [authState]
+  );
+
   const login = useCallback(
     async ({ email, password, remember }: LoginArgs) => {
       setStatus("authenticating");
       try {
-        const response = await api.post<LoginResponse>("/auth/login", { email, password });
-        const snapshot: StoredAuthState = {
-          user: response.data.user,
-          tokens: response.data.tokens,
-        };
-        setAuthState(snapshot, { remember });
-        setStatus("authenticated");
+        const response = await api.post<AuthResponsePayload>("/auth/login", { email, password });
+        hydrateState(response.data, remember);
       } catch (error) {
-        setStatus(authState ? "authenticated" : "idle");
+        handleAuthFailure();
         throw error;
       }
     },
-    [authState, setAuthState]
+    [hydrateState, handleAuthFailure]
+  );
+
+  const signUp = useCallback(
+    async ({ name, email, password, remember }: SignUpArgs) => {
+      setStatus("authenticating");
+      try {
+        const response = await api.post<AuthResponsePayload>("/auth/signup", {
+          name: name?.trim() || undefined,
+          email,
+          password,
+        });
+        hydrateState(response.data, remember);
+      } catch (error) {
+        handleAuthFailure();
+        throw error;
+      }
+    },
+    [hydrateState, handleAuthFailure]
   );
 
   const logout = useCallback(
@@ -118,17 +224,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authState, setAuthState]
   );
 
+  const verifyEmail = useCallback(
+    async (token: string) => {
+      const trimmed = token.trim();
+      if (!trimmed) {
+        throw new Error("Verification token is required");
+      }
+      const response = await api.post<VerifyEmailResponse>("/auth/verify-email", { token: trimmed });
+      const effectiveUser: AuthUser = {
+        ...(authState?.user ?? response.data.user),
+        ...response.data.user,
+        emailVerified: Boolean(response.data.emailVerified ?? response.data.user?.emailVerified ?? true),
+      };
+      setVerification({ status: "verified", expiresAt: null, lastRequestedAt: new Date().toISOString() });
+      if (authState) {
+        setAuthState({
+          user: effectiveUser,
+          tokens: authState.tokens,
+        });
+        setStatus("authenticated");
+      } else {
+        setStatus("idle");
+      }
+    },
+    [authState, setAuthState]
+  );
+
+  const resendVerification = useCallback(
+    async (email?: string) => {
+      const payloadEmail = email?.trim() || authState?.user?.email;
+      if (!payloadEmail) {
+        throw new Error("Email is required to resend verification");
+      }
+      const response = await api.post<ResendVerificationResponse>("/auth/verify-email/resend", {
+        email: payloadEmail,
+      });
+      const info: VerificationInfo = {
+        status: response.data.status ?? "sent",
+        expiresAt: response.data.expiresAt ?? null,
+        lastRequestedAt: new Date().toISOString(),
+      };
+      setVerification(info);
+      return info;
+    },
+    [authState?.user?.email]
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user: authState?.user ?? null,
       tokens: authState?.tokens ?? null,
       status,
       isAuthenticated: Boolean(authState?.tokens?.accessToken),
+      verification,
       login,
+      signUp,
       logout,
+      verifyEmail,
+      resendVerification,
       setAuthState,
     }),
-    [authState, status, login, logout, setAuthState]
+    [authState, status, verification, login, signUp, logout, verifyEmail, resendVerification, setAuthState]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
