@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import api, { setRuntimeAccessToken } from "../../lib/api";
+import { setUnauthorizedHandler } from "../../lib/auth-events";
 import {
   clearAuthState,
   loadAuthState,
@@ -136,6 +137,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setRuntimeAccessToken(authState?.tokens.accessToken ?? null);
   }, [authState?.tokens.accessToken]);
+
+  useEffect(() => {
+    // When unauthorized globally, clear auth and navigate to login
+    setUnauthorizedHandler(() => {
+      setAuthState(null);
+      setStatus("idle");
+      try {
+        window.history.pushState({}, "", "/login");
+        // Force rerender of App routing
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } catch {}
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [setAuthState]);
 
   const setAuthState = useCallback(
     (state: StoredAuthState | null, options?: { remember?: boolean }) => {

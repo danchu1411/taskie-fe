@@ -1,4 +1,5 @@
 import axios from "axios";
+import { notifyUnauthorized } from "./auth-events";
 
 type MaybeString = string | null | undefined;
 
@@ -54,5 +55,16 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Normalize 401 to a consistent shape and allow upper layers to handle
+    if (error && error.response && error.response.status === 401) {
+      notifyUnauthorized(error);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;
