@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { DndContext, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ function TaskCard({
   onEditChecklistItem,
   onDeleteChecklistItem,
   onChecklistItemStatusChange,
+  onChecklistItemReorder,
   isUpdating = false
 }: { 
   task: TaskRecord;
@@ -49,6 +51,7 @@ function TaskCard({
   onEditChecklistItem?: (item: ChecklistItemRecord) => void;
   onDeleteChecklistItem?: (itemId: string) => void;
   onChecklistItemStatusChange?: (itemId: string, newStatus: StatusValue) => void;
+  onChecklistItemReorder?: (itemId: string, targetOrder: number) => void;
   isUpdating?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -91,6 +94,145 @@ function TaskCard({
 
   // Check if task status needs to be updated
   const needsStatusUpdate = derivedTaskStatus !== task.status;
+
+  // DnD for checklist
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
+
+  const orderedChecklist = useMemo(() => {
+    return (task.checklist ?? []).slice().sort((a, b) => a.order_index - b.order_index);
+  }, [task.checklist]);
+
+  const handleChecklistDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const fromIndex = orderedChecklist.findIndex(i => i.checklist_item_id === String(active.id));
+    const toIndex = orderedChecklist.findIndex(i => i.checklist_item_id === String(over.id));
+    if (fromIndex === -1 || toIndex === -1) return;
+    onChecklistItemReorder?.(String(active.id), toIndex + 1);
+  }, [orderedChecklist, onChecklistItemReorder]);
+
+  function ChecklistItemRow({ item }: { item: ChecklistItemRecord }) {
+    const effectivePriority = item.priority ?? task.priority;
+    const effectiveDeadline = item.deadline ?? task.deadline;
+    const hasDeadlineConflict = Boolean(item.deadline && task.deadline && new Date(item.deadline) > new Date(task.deadline));
+
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.checklist_item_id });
+    const style: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} key={item.checklist_item_id} className={clsx(
+        "group p-3 rounded-lg border transition-all duration-200",
+        item.status === STATUS.DONE 
+          ? "bg-green-50 border-green-200" 
+          : item.status === STATUS.IN_PROGRESS
+          ? "bg-amber-50 border-amber-200"
+          : item.status === STATUS.SKIPPED
+          ? "bg-slate-50 border-slate-200"
+          : "bg-white border-slate-200 hover:border-slate-300"
+      )}>
+        <div className="flex items-start gap-3">
+          {/* Drag Handle */}
+          <div className="flex flex-col items-center gap-1 mt-1" {...listeners} {...attributes}>
+            <div className="w-4 h-4 text-slate-400 cursor-move hover:text-slate-600">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+              </svg>
+            </div>
+            <span className="text-xs text-slate-400 font-mono">#{item.order_index}</span>
+          </div>
+
+          {/* Checkbox */}
+          <input 
+            type="checkbox"
+            checked={item.status === STATUS.DONE}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const newStatus = e.target.checked ? STATUS.DONE : STATUS.PLANNED;
+              onChecklistItemStatusChange?.(item.checklist_item_id, newStatus);
+            }}
+            className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h5 className={clsx(
+                  "text-sm font-medium leading-tight",
+                  item.status === STATUS.DONE 
+                    ? "line-through text-slate-500" 
+                    : "text-slate-900"
+                )}>
+                  {item.title}
+                </h5>
+                {/* Effective values with inheritance indicators */}
+                <div className="flex items-center gap-2 mt-2">
+                  {effectivePriority && (
+                    <div className="flex items-center gap-1">
+                      <PriorityBadge priority={effectivePriority} />
+                      {!item.priority && (
+                        <span className="text-xs text-slate-400" title="Inherited from task">
+                          (inherited)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {effectiveDeadline && (
+                    <div className="flex items-center gap-1">
+                      <DueDateBadge deadline={effectiveDeadline} />
+                      {!item.deadline && (
+                        <span className="text-xs text-slate-400" title="Inherited from task">
+                          (inherited)
+                        </span>
+                      )}
+                      {hasDeadlineConflict && (
+                        <span className="text-xs text-red-500" title="Deadline conflict with task">
+                          ⚠️ conflict
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status and Actions */}
+              <div className="flex items-center gap-2">
+                <StatusBadge status={item.status} />
+                {/* Actions */}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => onEditChecklistItem?.(item)}
+                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                    title="Edit"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteChecklistItem?.(item.checklist_item_id)}
+                    className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                    title="Delete"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -244,128 +386,15 @@ function TaskCard({
             </div>
           </div>
           
+          <DndContext sensors={sensors} onDragEnd={handleChecklistDragEnd}>
+            <SortableContext items={orderedChecklist.map(i => i.checklist_item_id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
-            {task.checklist!.map((item) => {
-              // Determine effective values (inherited from task if null)
-              const effectivePriority = item.priority ?? task.priority;
-              const effectiveDeadline = item.deadline ?? task.deadline;
-              
-              // Check for conflicts
-              const hasDeadlineConflict = item.deadline && task.deadline && 
-                new Date(item.deadline) > new Date(task.deadline);
-              
-              return (
-                <div key={item.checklist_item_id} className={clsx(
-                  "group p-3 rounded-lg border transition-all duration-200",
-                  item.status === STATUS.DONE 
-                    ? "bg-green-50 border-green-200" 
-                    : item.status === STATUS.IN_PROGRESS
-                    ? "bg-amber-50 border-amber-200"
-                    : item.status === STATUS.SKIPPED
-                    ? "bg-slate-50 border-slate-200"
-                    : "bg-white border-slate-200 hover:border-slate-300"
-                )}>
-                  <div className="flex items-start gap-3">
-                    {/* Drag Handle */}
-                    <div className="flex flex-col items-center gap-1 mt-1">
-                      <div className="w-4 h-4 text-slate-400 cursor-move hover:text-slate-600">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
-                        </svg>
+                {orderedChecklist.map((item) => (
+                  <ChecklistItemRow key={item.checklist_item_id} item={item} />
+                ))}
                       </div>
-                      <span className="text-xs text-slate-400 font-mono">#{item.order_index}</span>
-                    </div>
-
-                    {/* Checkbox */}
-                    <input 
-                      type="checkbox"
-                      checked={item.status === STATUS.DONE}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const newStatus = e.target.checked ? STATUS.DONE : STATUS.PLANNED;
-                        onChecklistItemStatusChange?.(item.checklist_item_id, newStatus);
-                      }}
-                      className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h5 className={clsx(
-                            "text-sm font-medium leading-tight",
-                            item.status === STATUS.DONE 
-                              ? "line-through text-slate-500" 
-                              : "text-slate-900"
-                          )}>
-                            {item.title}
-                          </h5>
-                          
-                          {/* Effective values with inheritance indicators */}
-                          <div className="flex items-center gap-2 mt-2">
-                            {effectivePriority && (
-                              <div className="flex items-center gap-1">
-                                <PriorityBadge priority={effectivePriority} />
-                                {!item.priority && (
-                                  <span className="text-xs text-slate-400" title="Inherited from task">
-                                    (inherited)
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            
-                            {effectiveDeadline && (
-                              <div className="flex items-center gap-1">
-                                <DueDateBadge deadline={effectiveDeadline} />
-                                {!item.deadline && (
-                                  <span className="text-xs text-slate-400" title="Inherited from task">
-                                    (inherited)
-                                  </span>
-                                )}
-                                {hasDeadlineConflict && (
-                                  <span className="text-xs text-red-500" title="Deadline conflict with task">
-                                    ⚠️ conflict
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                          </div>
-                        </div>
-
-                        {/* Status and Actions */}
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={item.status} />
-                          
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => onEditChecklistItem?.(item)}
-                              className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
-                              title="Edit"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            
-                            <button
-                              onClick={() => onDeleteChecklistItem?.(item.checklist_item_id)}
-                              className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            </SortableContext>
+          </DndContext>
           
           {/* Add new checklist item */}
           <div className="mt-3 pt-3 border-t border-slate-200">
@@ -455,7 +484,7 @@ function useUpdateTask(userId: string | null, setPendingStatusId: (id: string | 
       if (!taskId) {
         throw new Error('Task ID is required for update');
       }
-
+      
       const response = await api.patch<TaskRecord>(`/tasks/${taskId}`, taskData);
       return response.data;
     },
@@ -794,6 +823,13 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     setStatusModalTask(null);
   }, [statusModalTask, handleUpdateTask]);
 
+  // Direct status change used by BoardView DnD (no modal)
+  const handleBoardDropStatusChange = useCallback((taskWithNewStatus: TaskRecord) => {
+    const taskId = (taskWithNewStatus as any).id || taskWithNewStatus.task_id;
+    if (!taskId) return;
+    updateTaskMutation.mutate({ taskId, taskData: { status: taskWithNewStatus.status } });
+  }, [updateTaskMutation]);
+
   const handleEditTask = useCallback((task: TaskRecord) => {
     setEditingTask(task);
     setModalOpen(true);
@@ -815,7 +851,8 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   }, []);
 
   const handleAddChecklist = useCallback((task: TaskRecord) => {
-    setChecklistModalTaskId(task.task_id);
+    const tid = ((task as any).id || task.task_id) as string;
+    setChecklistModalTaskId(tid);
     setEditingChecklistItem(null);
     setChecklistModalOpen(true);
   }, []);
@@ -834,24 +871,68 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     }
   }, [deleteChecklistItemMutation]);
 
+  const queryClient = useQueryClient();
+  const createChecklistItemMutation = useMutation({
+    mutationFn: async ({ taskId, payload }: { taskId: string; payload: Partial<ChecklistItemRecord> }) => {
+      // API expects bulk payload under "checklist" per docs
+      const response = await api.post(`/checklist-items/${taskId}/checklist`, {
+        checklist: [
+          {
+            title: payload.title,
+            deadline: payload.deadline ?? null,
+            priority: payload.priority ?? null,
+            status: payload.status ?? STATUS.PLANNED,
+          },
+        ],
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      // Refresh task data and Today
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id || null] });
+    },
+  });
+
+  const updateChecklistItemMutation = useMutation({
+    mutationFn: async ({ itemId, payload }: { itemId: string; payload: Partial<ChecklistItemRecord> }) => {
+      const body: Record<string, unknown> = {};
+      if (payload.title !== undefined) body.title = payload.title;
+      if (payload.deadline !== undefined) body.deadline = payload.deadline ?? null;
+      if (payload.priority !== undefined) body.priority = payload.priority ?? null;
+      if (payload.status !== undefined) body.status = payload.status;
+      return api.patch(`/checklist-items/${itemId}`, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id || null] });
+    },
+  });
+
   const handleChecklistItemSubmit = useCallback((data: Partial<ChecklistItemRecord>) => {
     if (editingChecklistItem) {
-      // TODO: Implement update checklist item API call
-      console.log('Update checklist item:', editingChecklistItem.checklist_item_id, data);
+      updateChecklistItemMutation.mutate({ itemId: editingChecklistItem.checklist_item_id, payload: data });
+    } else if (checklistModalTaskId) {
+      createChecklistItemMutation.mutate({ taskId: checklistModalTaskId, payload: data });
     } else {
-      // TODO: Implement create checklist item API call
-      console.log('Create checklist item for task:', checklistModalTaskId, data);
+      console.error('No taskId for creating checklist item');
     }
     // Close modal immediately for better UX
     setChecklistModalOpen(false);
     setEditingChecklistItem(null);
     setChecklistModalTaskId(null);
-  }, [editingChecklistItem, checklistModalTaskId]);
+  }, [editingChecklistItem, checklistModalTaskId, createChecklistItemMutation, updateChecklistItemMutation]);
 
   const handleChecklistItemStatusChange = useCallback((itemId: string, newStatus: StatusValue) => {
-    // TODO: Implement update checklist item status API call
-    console.log('Update checklist item status:', itemId, newStatus);
-  }, []);
+    if (!itemId) return;
+    updateChecklistItemMutation.mutate({ itemId, payload: { status: newStatus } });
+  }, [updateChecklistItemMutation]);
+
+  const reorderChecklistItemMutation = useReorderChecklistItem(user?.id || null);
+  const handleChecklistItemReorder = useCallback((itemId: string, targetOrder: number) => {
+    if (!itemId) return;
+    reorderChecklistItemMutation.mutate({ itemId, targetOrder });
+  }, [reorderChecklistItemMutation]);
 
   const handleCloseModal = useCallback(() => {
     setModalOpen(false);
@@ -1099,6 +1180,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
               onEditChecklistItem={handleEditChecklistItem}
               onDeleteChecklistItem={handleDeleteChecklistItem}
               onChecklistItemStatusChange={handleChecklistItemStatusChange}
+              onChecklistItemReorder={handleChecklistItemReorder}
             />
           ))}
           {(!tasksData?.items || tasksData.items.length === 0) && (
@@ -1128,7 +1210,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           tasksByStatus={tasksByStatus}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
-          onStatusChange={openStatusModal}
+          onStatusChange={handleBoardDropStatusChange}
           onChecklist={handleChecklist}
           onSchedule={handleSchedule}
           onStart={handleStart}

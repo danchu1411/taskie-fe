@@ -139,8 +139,17 @@ function normalizeWorkItem(
   const taskId =
     readField<string>(workItemRecord, ["taskId", "task_id"]) ??
     readField<string>(taskRecord, ["taskId", "task_id"]);
-  const checklistItemId = readField<string>(workItemRecord, ["checklistItemId", "checklist_item_id"]);
-  const workItemId = readField<string>(workItemRecord, ["workItemId", "work_item_id"]);
+  const checklistItemId = readField<string>(workItemRecord, [
+    "checklistItemId",
+    "checklist_item_id",
+    "checklistId",
+    "checklist_id",
+  ]);
+  const workItemId = readField<string>(workItemRecord, [
+    "workItemId",
+    "work_item_id",
+    "id",
+  ]);
 
   if (!taskId && !checklistItemId && !workItemId) return null;
 
@@ -195,8 +204,12 @@ function normalizeChecklist(
   taskRecord: TaskRecord,
   checklistRecord: ChecklistItemRecord,
 ): TodayItem | null {
-  const checklistItemId =
-    readField<string>(checklistRecord, ["checklistItemId", "checklist_item_id", "itemId", "id"]);
+  const checklistItemId = readField<string>(checklistRecord, [
+    "checklistItemId",
+    "checklist_item_id",
+    "itemId",
+    "id",
+  ]);
   if (!checklistItemId) return null;
 
   const taskId = readField<string>(taskRecord, ["taskId", "task_id"]) ?? null;
@@ -269,41 +282,168 @@ function normalizeTask(taskRecord: TaskRecord): TodayItem | null {
 function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[] {
   if (!payload?.items?.length) return [];
   const result: TodayItem[] = [];
+  // Global guards to prevent duplicates across entire payload
+  const globalSeenChecklistIds = new Set<string>(); // normalized (lowercase) checklist ids
+  const globalSeenKeys = new Set<string>(); // composite keys: work:<id>, check:<id>, task:<id>
 
   for (const task of payload.items) {
     const taskRecord = task ?? {};
-    const seen = new Set<string>();
+
+    // Read checklist first to build title->id map
+    const checklistForTitleMap =
+      readField<ChecklistItemRecord[]>(taskRecord, ["checklist"], []) ?? [];
+    const checklistTitleMap = new Map<string, string>();
+    for (const checklistItem of checklistForTitleMap) {
+      const cidRaw = readField<string>(checklistItem, [
+        "checklistItemId",
+        "checklist_item_id",
+        "itemId",
+        "id",
+      ]);
+      const title = (readField<string>(checklistItem, ["title"]) ?? "").trim().toLowerCase();
+      if (cidRaw && title) {
+        checklistTitleMap.set(title, cidRaw);
+      }
+    }
 
     const workItems =
       readField<WorkItemRecord[]>(taskRecord, ["workItems"], []) ?? [];
+    // Track checklist items that already have scheduled work items to avoid duplicates
+    const scheduledChecklistIds = new Set<string>(); // normalized (lowercase)
+    const uniqueChecklistWork = new Map<string, TodayItem>();
+    const seenWorkIds = new Set<string>();
+
+    function shouldPreferWorkItem(a: TodayItem, b: TodayItem): boolean {
+      // Prefer IN_PROGRESS > PLANNED > DONE > SKIPPED
+      const score = (s: StatusValue) => (s === STATUS.IN_PROGRESS ? 3 : s === STATUS.PLANNED ? 2 : s === STATUS.DONE ? 1 : 0);
+      const sa = score(a.status);
+      const sb = score(b.status);
+      if (sa !== sb) return sa > sb;
+      // If both planned: earlier startAt first
+      const aStart = a.startAt ? Date.parse(a.startAt) : Number.POSITIVE_INFINITY;
+      const bStart = b.startAt ? Date.parse(b.startAt) : Number.POSITIVE_INFINITY;
+      if (aStart !== bStart) return aStart < bStart;
+      // Fallback: newer updatedAt first
+      const au = a.updatedAt ?? 0;
+      const bu = b.updatedAt ?? 0;
+      return au > bu;
+    }
+
     for (const workItem of workItems) {
-      const normalized = normalizeWorkItem(taskRecord, workItem);
-      if (normalized && !seen.has(normalized.id)) {
+      // If work item misses checklistItemId but matches a checklist title, synthesize the id
+      let synthesized: WorkItemRecord | null = null;
+      const rawChecklistId = readField<string>(workItem, [
+        "checklistItemId",
+        "checklist_item_id",
+        "checklistId",
+        "checklist_id",
+      ]);
+      if (!rawChecklistId) {
+        const wTitle = (readField<string>(workItem, ["title"]) ?? "").trim().toLowerCase();
+        const matchId = wTitle ? checklistTitleMap.get(wTitle) : undefined;
+        if (matchId) {
+          synthesized = { ...(workItem as any), checklist_item_id: matchId } as any;
+        }
+      }
+
+      const normalized = normalizeWorkItem(taskRecord, (synthesized ?? workItem) as any);
+      if (!normalized) continue;
+      const wid = (readField<string>(workItem, ["workItemId", "work_item_id"]) ?? normalized.id ?? "").toLowerCase();
+      const checklistId = (normalized.checklistItemId ?? "").toLowerCase();
+
+      if (normalized.source === "checklist" && checklistId) {
+        const prev = uniqueChecklistWork.get(checklistId);
+        if (!prev || shouldPreferWorkItem(normalized, prev)) {
+          uniqueChecklistWork.set(checklistId, normalized);
+        }
+        scheduledChecklistIds.add(checklistId);
+        continue;
+      }
+
+      // Non-checklist work items: keep unique per workItemId
+      const dedupeKey = wid ? `work:${wid}` : `work:${normalized.id.toLowerCase?.() ?? String(normalized.id)}`;
+      if (!globalSeenKeys.has(dedupeKey) && !seenWorkIds.has(dedupeKey)) {
         result.push(normalized);
-        seen.add(normalized.id);
+        globalSeenKeys.add(dedupeKey);
+        seenWorkIds.add(dedupeKey);
+      }
+    }
+
+    // Push unique checklist work items
+    for (const [, item] of uniqueChecklistWork) {
+      const dedupeKey = `check:${(item.checklistItemId ?? item.id).toLowerCase?.() ?? String(item.id)}`;
+      if (!globalSeenKeys.has(dedupeKey)) {
+        result.push(item);
+        globalSeenKeys.add(dedupeKey);
       }
     }
 
     const checklist =
       readField<ChecklistItemRecord[]>(taskRecord, ["checklist"], []) ?? [];
     for (const checklistItem of checklist) {
+      // Skip raw checklist item if it already has a scheduled work item
+      const checklistIdRaw = readField<string>(checklistItem, [
+        "checklistItemId",
+        "checklist_item_id",
+        "itemId",
+        "id",
+      ]);
+      const checklistId = checklistIdRaw ? checklistIdRaw.toLowerCase() : null;
+      if (checklistId && scheduledChecklistIds.has(checklistId)) {
+        continue;
+      }
+      // Also skip if we have already emitted this checklist id (defensive against backend duplicates)
+      if (checklistId && globalSeenChecklistIds.has(checklistId)) {
+        continue;
+      }
       const normalized = normalizeChecklist(taskRecord, checklistItem);
-      if (normalized && !seen.has(normalized.id)) {
+      if (normalized) {
+        if (checklistId) {
+          const dedupeKey = `check:${checklistId}`;
+          if (globalSeenKeys.has(dedupeKey)) {
+            continue;
+          }
+          globalSeenKeys.add(dedupeKey);
+          globalSeenChecklistIds.add(checklistId);
+        }
         result.push(normalized);
-        seen.add(normalized.id);
       }
     }
 
-    if (!workItems.length) {
+    if (!workItems.length && !checklist.length) {
       const normalized = normalizeTask(taskRecord);
-      if (normalized && !seen.has(normalized.id)) {
-        result.push(normalized);
-        seen.add(normalized.id);
+      if (normalized) {
+        const tidRaw = readField<string>(taskRecord, ["taskId", "task_id"]) ?? normalized.id;
+        const tid = tidRaw ? String(tidRaw).toLowerCase() : "";
+        const dedupeKey = `task:${tid}`;
+        if (!globalSeenKeys.has(dedupeKey)) {
+          result.push(normalized);
+          globalSeenKeys.add(dedupeKey);
+        }
       }
     }
   }
 
-  return result;
+  // Final defensive dedupe across all items to ensure no visual duplicates remain
+  const final: TodayItem[] = [];
+  const score = (s: StatusValue) => (s === STATUS.IN_PROGRESS ? 3 : s === STATUS.PLANNED ? 2 : s === STATUS.DONE ? 1 : 0);
+
+  // Keep the highest-priority item per logical entity key
+  const bestByKey = new Map<string, TodayItem>();
+  for (const it of result) {
+    const baseId = (it.source === "checklist" ? (it.checklistItemId ?? it.id) : it.source === "task" ? (it.taskId ?? it.id) : it.id) ?? it.id;
+    const key = `${it.source === "checklist" ? "check" : it.source === "task" ? "task" : "work"}:${String(baseId).toLowerCase()}`;
+    const prev = bestByKey.get(key);
+    if (!prev || score(it.status) > score(prev.status)) {
+      bestByKey.set(key, it);
+    }
+  }
+
+  for (const [, it] of bestByKey) {
+    final.push(it);
+  }
+
+  return final;
 }
 function formatDateTime(value: string | null | undefined, options?: Intl.DateTimeFormatOptions) {
   if (!value) return null;
@@ -526,7 +666,12 @@ const DraggableTaskCard = memo(function DraggableTaskCard({
       <div className="space-y-2">
         <h3 className="font-medium text-slate-900">{item.title}</h3>
         {item.parentTitle && (
-          <p className="text-xs text-slate-500">Part of: {item.parentTitle}</p>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+            </svg>
+            {item.parentTitle}
+          </span>
         )}
         
         <div className="flex items-center gap-4 text-xs text-slate-500">
@@ -2603,7 +2748,12 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                 <div className="space-y-2">
                   <h3 className="font-medium text-slate-900">{activeItem.title}</h3>
                   {activeItem.parentTitle && (
-                    <p className="text-xs text-slate-500">Part of: {activeItem.parentTitle}</p>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                      </svg>
+                      {activeItem.parentTitle}
+                    </span>
                   )}
                 </div>
               </div>

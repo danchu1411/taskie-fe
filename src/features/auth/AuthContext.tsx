@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // When unauthorized globally, clear auth and navigate to login
     setUnauthorizedHandler(() => {
-      setAuthState(null);
+      setAuthStateInternal(null);
       setStatus("idle");
       try {
         window.history.pushState({}, "", "/login");
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {}
     });
     return () => setUnauthorizedHandler(null);
-  }, [setAuthState]);
+  }, []);
 
   const setAuthState = useCallback(
     (state: StoredAuthState | null, options?: { remember?: boolean }) => {

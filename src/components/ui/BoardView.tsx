@@ -1,4 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
+import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "../../lib";
 import type { TaskRecord, StatusValue } from "../../lib";
 import { STATUS } from "../../lib";
@@ -43,9 +47,10 @@ interface BoardTaskCardProps {
   onSchedule?: (task: TaskRecord) => void;
   onStart?: (task: TaskRecord) => void;
   isUpdating?: boolean;
+  isDragging?: boolean;
 }
 
-function BoardTaskCard({
+function BoardTaskCardInner({
   task,
   onEdit,
   onDelete,
@@ -53,14 +58,17 @@ function BoardTaskCard({
   onChecklist,
   onSchedule,
   onStart,
-  isUpdating = false
+  isUpdating = false,
+  isDragging = false
 }: BoardTaskCardProps) {
   const hasChecklist = task.checklist && task.checklist.length > 0;
   const completedChecklist = task.checklist?.filter(item => item.status === STATUS.DONE).length || 0;
   const totalChecklist = task.checklist?.length || 0;
 
   return (
-    <div className="group bg-white rounded-lg border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+    <div className={clsx("group bg-white rounded-lg border border-slate-200 p-3 shadow-sm transition-all duration-200",
+      isDragging ? "opacity-50" : "hover:shadow-md"
+    )}>
       <div className="space-y-2">
         {/* Title */}
         <h4 className="font-medium text-slate-900 text-sm leading-tight line-clamp-2">
@@ -155,6 +163,20 @@ function BoardTaskCard({
   );
 }
 
+function DraggableTaskCard(props: BoardTaskCardProps) {
+  const { task } = props;
+  const { setNodeRef, listeners, attributes, isDragging, transform } = useDraggable({ id: (task as any).id || task.task_id, data: { task } });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    touchAction: 'none',
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing">
+      <BoardTaskCardInner {...props} isDragging={isDragging} />
+    </div>
+  );
+}
+
 function BoardColumn({
   status,
   label,
@@ -168,6 +190,7 @@ function BoardColumn({
   isUpdating,
   pendingStatusId
 }: BoardColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: `col-${status}`, data: { status } });
   const getStatusColor = (status: StatusValue) => {
     switch (status) {
       case STATUS.PLANNED:
@@ -214,9 +237,10 @@ function BoardColumn({
   };
 
   return (
-    <div className={clsx(
+    <div ref={setNodeRef} className={clsx(
       "rounded-xl border-2 min-h-[600px] flex flex-col",
-      getStatusColor(status)
+      getStatusColor(status),
+      isOver && "outline outline-2 outline-indigo-300"
     )}>
       {/* Column Header */}
       <div className="p-4 border-b border-slate-200">
@@ -239,7 +263,7 @@ function BoardColumn({
       {/* Tasks */}
       <div className="flex-1 p-3 space-y-3 overflow-y-auto">
         {tasks.map((task) => (
-          <BoardTaskCard
+          <DraggableTaskCard
             key={(task as any).id || task.task_id}
             task={task}
             onEdit={onEdit}
@@ -277,6 +301,23 @@ export default function BoardView({
   isUpdating,
   pendingStatusId
 }: BoardViewProps) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [activeTask, setActiveTask] = useState<TaskRecord | null>(null);
+  const handleDragStart = (event: any) => {
+    const task: TaskRecord | undefined = event.active?.data?.current?.task;
+    if (task) setActiveTask(task);
+  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const task: TaskRecord | undefined = active.data?.current?.task;
+    const overStatus = (over.data?.current?.status as StatusValue) ?? null;
+    if (!task || overStatus == null) return;
+    if (task.status === overStatus) return;
+    onStatusChange({ ...task, status: overStatus });
+    setActiveTask(null);
+  };
+  const handleDragCancel = () => setActiveTask(null);
   const columns = [
     { status: STATUS.PLANNED, label: "Planned", tasks: tasksByStatus.planned },
     { status: STATUS.IN_PROGRESS, label: "In Progress", tasks: tasksByStatus.inProgress },
@@ -285,7 +326,8 @@ export default function BoardView({
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {columns.map(({ status, label, tasks }) => (
         <BoardColumn
           key={status}
@@ -302,6 +344,20 @@ export default function BoardView({
           pendingStatusId={pendingStatusId}
         />
       ))}
-    </div>
+      </div>
+      <DragOverlay>
+        {activeTask ? (
+          <div className="pointer-events-none">
+            <DraggableTaskCard
+              task={activeTask}
+              onEdit={() => {}}
+              onDelete={() => {}}
+              onStatusChange={() => {}}
+              isUpdating={false}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
