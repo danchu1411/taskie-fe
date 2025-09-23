@@ -12,12 +12,14 @@ import {
   NavigationBar, 
   TaskModal, 
   ChecklistItemModal,
-  SystemError,
+  SystemError
+} from "../../components/ui";
+import {
   TaskToolbar,
   TaskStatusModal,
   TaskListView,
   TaskBoardView
-} from "../../components/ui";
+} from "./components";
 
 // Main Tasks Page Component
 export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
