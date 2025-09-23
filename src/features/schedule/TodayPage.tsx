@@ -20,10 +20,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import api from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
-import { NavigationBar, Button, Input, SystemError } from "../../components/ui";
+import { NavigationBar, SystemError } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
 import useTodayTimer from "./useTodayTimer";
+import { QuickAddPanel } from "./components/QuickAddPanel";
 import type { TaskRecord, ChecklistItemRecord } from "../../lib/types";
 
 
@@ -1242,59 +1243,16 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       </div>
       {/* Calm Quick Add */}
       <div className="fixed bottom-6 right-6 z-40">
-        {quickOpen && (
-          <div className="mb-4 w-80 rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                <span className="text-sm font-bold">+</span>
-              </div>
-              <h3 className="font-semibold text-slate-800">Quick Add Task</h3>
-            </div>
-            <div className="space-y-3">
-              <Input
-                ref={quickRef}
-                value={quickTitle}
-                onChange={(event) => setQuickTitle(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addQuickItem(quickTitle);
-                  }
-                }}
-                placeholder="What needs to be done?"
-                size="lg"
-                className="bg-slate-50 focus:bg-white"
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  onClick={() => setQuickOpen(false)}
-                  variant="secondary"
-                  size="md"
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              <Button
-                type="button"
-                onClick={() => addQuickItem(quickTitle)}
-                disabled={quickAddMutation.isPending}
-                variant="primary"
-                size="md"
-                loading={quickAddMutation.isPending}
-                className="flex-1"
-              >
-                Add Task
-              </Button>
-            </div>
-              {quickError && (
-                <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
-                  {quickError}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <QuickAddPanel
+          open={quickOpen}
+          title={quickTitle}
+          onTitleChange={setQuickTitle}
+          onAdd={addQuickItem}
+          onCancel={() => setQuickOpen(false)}
+          error={quickError}
+          loading={quickAddMutation.isPending}
+          inputRef={quickRef}
+        />
         <button
           type="button"
           onClick={() => {
