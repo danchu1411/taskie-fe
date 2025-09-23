@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { COMPONENT_STYLES, COLORS, TYPOGRAPHY, RADIUS, SHADOWS, TRANSITIONS } from '../../lib/design-tokens';
+import { COMPONENT_STYLES, TYPOGRAPHY, SHADOWS, TRANSITIONS } from '../../lib/design-tokens';
 import { clsx } from '../../lib/utils';
 
 // ============================================================================

@@ -60,8 +60,6 @@ function Ring({ value }: { value: number }) {
   );
 }
 
-
-
 interface ApiErrorResponse {
   message?: string;
   error?: string;
@@ -900,7 +898,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             items={planned}
             isLoading={isLoading}
             onStart={openTimer}
-            onOpenTimer={openTimer}
             onSchedule={openScheduleModal}
             onChecklist={openChecklistModal}
             onEdit={openEditModal}
@@ -921,7 +918,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             items={inProgress}
             isLoading={isLoading}
             onStart={openTimer}
-            onOpenTimer={openTimer}
             onSchedule={openScheduleModal}
             onChecklist={openChecklistModal}
             onEdit={openEditModal}
@@ -942,7 +938,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             items={completed}
             isLoading={isLoading}
             onStart={openTimer}
-            onOpenTimer={openTimer}
             onSchedule={openScheduleModal}
             onChecklist={openChecklistModal}
             onEdit={openEditModal}

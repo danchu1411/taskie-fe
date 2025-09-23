@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { memo } from "react";
-import type { TodayItem, StatusValue } from "../hooks/useTodayData";
+import type { TodayItem } from "../hooks/useTodayData";
 import { TodayTaskCard } from "./TodayTaskCard";
 
 interface TodaySectionProps {
@@ -17,7 +17,6 @@ interface TodaySectionProps {
   items: TodayItem[];
   isLoading: boolean;
   onStart: (item: TodayItem) => void;
-  onOpenTimer: (item: TodayItem) => void;
   onSchedule: (item: TodayItem) => void;
   onChecklist: (item: TodayItem) => void;
   onEdit: (item: TodayItem) => void;
@@ -80,7 +79,6 @@ export const TodaySection = memo(function TodaySection({
   items,
   isLoading,
   onStart,
-  onOpenTimer,
   onSchedule,
   onChecklist,
   onEdit,
