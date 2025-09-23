@@ -20,7 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import api from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
-import { NavigationBar, Button, Input } from "../../components/ui";
+import { NavigationBar, Button, Input, SystemError } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import useTodayTimer from "./useTodayTimer";
 import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
@@ -801,27 +801,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-600">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">Something went wrong</h2>
-            </div>
-            <p className="text-sm text-slate-600 mb-4">
-              We encountered an unexpected error. Please try refreshing the page.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              Refresh Page
-            </button>
-          </div>
-        </div>
+        <SystemError
+          fullScreen
+          title="Something went wrong"
+          message="We encountered an unexpected error. Please try refreshing the page."
+          actions={[
+            {
+              label: 'Refresh Page',
+              onClick: () => window.location.reload(),
+              variant: 'primary'
+            }
+          ]}
+        />
       );
     }
 
@@ -1488,45 +1479,36 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         </section>
 
         {errorMessage && (
-          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-              <span>Unable to load today schedule: {errorMessage}</span>
-                {errorMessage.includes("400") && (
-                  <div className="mt-2 text-xs text-rose-500">
-                    This might be due to validation errors (e.g., pageSize too large) or user doesn't exist in the database.
-                    <br />
-                    <span className="text-slate-500">
-                      Solutions:
-                      <br />
-                      1. Check if pageSize parameter is within backend limits (max 100)
-                      <br />
-                      2. Run this SQL to seed the user: 
-                      <code className="ml-1 bg-slate-100 px-1 rounded text-xs">
-                        INSERT INTO dbo.Users (id, email, name) VALUES ('11111111-1111-1111-1111-111111111111','dev@example.com','Dev User');
-                      </code>
-                      <br />
-                      3. Or use the "Create User" button above to create a new user
-                      <br />
-                      4. Check the console for detailed error information
-                    </span>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-medium text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
-              >
-                Retry
-              </button>
-            </div>
+          <div className="mb-6">
+            <SystemError
+              variant="error"
+              title="Unable to load today schedule"
+              message={errorMessage}
+              actions={[
+                {
+                  label: 'Retry',
+                  onClick: handleRetry,
+                  variant: 'primary'
+                }
+              ]}
+            />
           </div>
         )}
 
         {statusError && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            {statusError}
+          <div className="mb-6">
+            <SystemError
+              variant="warning"
+              title="Operation failed"
+              message={statusError}
+              actions={[
+                {
+                  label: 'Dismiss',
+                  onClick: () => setStatusError(null),
+                  variant: 'secondary'
+                }
+              ]}
+            />
           </div>
         )}
 

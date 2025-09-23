@@ -1,5 +1,6 @@
 import axios from "axios";
 import { notifyUnauthorized } from "./auth-events";
+import { notifyNetworkError, isNetworkError } from "./network-events";
 
 type MaybeString = string | null | undefined;
 
@@ -59,8 +60,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors (no response)
+    if (isNetworkError(error)) {
+      notifyNetworkError(error);
+    }
     // Normalize 401 to a consistent shape and allow upper layers to handle
-    if (error && error.response && error.response.status === 401) {
+    else if (error && error.response && error.response.status === 401) {
       notifyUnauthorized(error);
     }
     return Promise.reject(error);

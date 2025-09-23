@@ -1,6 +1,7 @@
-import { useCallback, type ReactElement } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, type ReactElement } from "react";
+import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./features/auth/AuthContext";
+import { SystemError } from "./components/ui";
 import TaskieLanding from "./features/landing/TaskieLanding";
 import TaskieLogin from "./features/auth/TaskieLogin";
 import TaskieSignup from "./features/auth/TaskieSignup";
@@ -162,6 +163,75 @@ function PlannerRoute() {
   );
 }
 
+function ErrorRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  // If there's no error, redirect appropriately
+  if (!auth.authError && !auth.networkError) {
+    if (auth.isAuthenticated) {
+      return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
+
+  // Determine error type and message
+  const isNetworkError = Boolean(auth.networkError);
+  const errorTitle = isNetworkError ? "Network Error" : "Authentication Error";
+  const errorMessage = auth.networkError || auth.authError || "An unexpected error occurred";
+
+  const handleRetry = () => {
+    if (isNetworkError) {
+      auth.clearNetworkError();
+    } else {
+      auth.clearAuthError();
+    }
+    // Try to refresh the current page or go to a safe default
+    if (auth.isAuthenticated) {
+      navigate('/today');
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleLogin = () => {
+    if (isNetworkError) {
+      auth.clearNetworkError();
+    } else {
+      auth.clearAuthError();
+    }
+    navigate('/login');
+  };
+
+  return (
+    <SystemError
+      fullScreen
+      variant="error"
+      title={errorTitle}
+      message={errorMessage}
+      actions={[
+        {
+          label: isNetworkError ? 'Retry' : 'Log in again',
+          onClick: isNetworkError ? handleRetry : handleLogin,
+          variant: 'primary'
+        },
+        {
+          label: 'Go Home',
+          onClick: () => {
+            if (isNetworkError) {
+              auth.clearNetworkError();
+            } else {
+              auth.clearAuthError();
+            }
+            navigate('/');
+          },
+          variant: 'secondary'
+        }
+      ]}
+    />
+  );
+}
+
 function NotFoundRoute() {
   const auth = useAuth();
 
@@ -173,6 +243,17 @@ function NotFoundRoute() {
 }
 
 function App() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect to error route when auth or network error occurs
+  useEffect(() => {
+    if ((auth.authError || auth.networkError) && location.pathname !== '/error') {
+      navigate('/error', { replace: true });
+    }
+  }, [auth.authError, auth.networkError, navigate, location.pathname]);
+
   return (
     <Routes>
       <Route path="/" element={<LandingRoute />} />
@@ -182,6 +263,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPasswordRoute />} />
       <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
       <Route path="/auth/success" element={<AuthSuccessRoute />} />
+      <Route path="/error" element={<ErrorRoute />} />
       <Route path="/today" element={<TodayRoute />} />
       <Route path="/tasks" element={<TasksRoute />} />
       <Route path="/planner" element={<PlannerRoute />} />

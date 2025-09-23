@@ -24,7 +24,8 @@ import {
   ChecklistItemModal,
   BoardView,
   Button,
-  Input
+  Input,
+  SystemError
 } from "../../components/ui";
 
 
@@ -730,7 +731,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const [checklistModalTaskId, setChecklistModalTaskId] = useState<string | null>(null);
 
   // Data fetching
-  const { data: tasksData, isLoading, error } = useTasksData(user?.id || null, filters);
+  const { data: tasksData, isLoading, error, refetch } = useTasksData(user?.id || null, filters);
   
   // Mutations
   const createTaskMutation = useCreateTask(user?.id || null);
@@ -964,22 +965,19 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
       <div className="min-h-screen bg-slate-50">
         <NavigationBar onNavigate={onNavigate} activeNav="tasks" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <div className="w-8 h-8 bg-red-500 rounded-full"></div>
-            </div>
-            <h2 className="text-2xl font-bold text-red-600 mb-3">Error Loading Tasks</h2>
-            <p className="text-slate-600 mb-8 max-w-md mx-auto">
-              {error instanceof Error ? error.message : "An unexpected error occurred while loading your tasks."}
-            </p>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="primary"
-              size="lg"
-            >
-              Try Again
-            </Button>
-          </div>
+          <SystemError
+            fullScreen
+            variant="error"
+            title="Error Loading Tasks"
+            message={error instanceof Error ? error.message : "An unexpected error occurred while loading your tasks."}
+            actions={[
+              {
+                label: 'Retry',
+                onClick: () => refetch(),
+                variant: 'primary'
+              }
+            ]}
+          />
         </div>
       </div>
     );

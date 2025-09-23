@@ -11,6 +11,7 @@ import {
 } from "react";
 import api, { setRuntimeAccessToken } from "../../lib/api";
 import { setUnauthorizedHandler } from "../../lib/auth-events";
+import { setNetworkErrorHandler } from "../../lib/network-events";
 import {
   clearAuthState,
   loadAuthState,
@@ -77,6 +78,8 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   shouldPromptVerification: boolean;
   verification: VerificationInfo | null;
+  authError: string | null;
+  networkError: string | null;
   login: (payload: LoginArgs) => Promise<void>;
   signUp: (payload: SignUpArgs) => Promise<void>;
   logout: (payload?: LogoutArgs) => Promise<void>;
@@ -86,6 +89,9 @@ type AuthContextValue = {
   resetPassword: (payload: { token: string; password: string }) => Promise<ResetPasswordResponse>;
   setAuthState: (state: StoredAuthState | null, options?: { remember?: boolean }) => void;
   setPromptVerification: (flag: boolean) => void;
+  clearAuthError: () => void;
+  setAuthError: (error: string | null) => void;
+  clearNetworkError: () => void;
 };
 
 type AuthResponsePayload = {
@@ -132,6 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initialState ? normalizeVerification(null, initialState.user) : null,
   );
   const [shouldPromptVerification, setShouldPromptVerification] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const shouldPersistRef = useRef<boolean>(Boolean(initialState));
 
   useEffect(() => {
@@ -139,17 +147,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authState?.tokens.accessToken]);
 
   useEffect(() => {
-    // When unauthorized globally, clear auth and navigate to login
-    setUnauthorizedHandler(() => {
+    // When unauthorized globally, clear auth and set error flag
+    setUnauthorizedHandler((error: unknown) => {
       setAuthStateInternal(null);
       setStatus("idle");
-      try {
-        window.history.pushState({}, "", "/login");
-        // Force rerender of App routing
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      } catch {}
+      setAuthError("Your session has expired. Please log in again.");
+      console.warn("Unauthorized access detected:", error);
     });
-    return () => setUnauthorizedHandler(null);
+
+    // When network error occurs globally, set network error flag
+    setNetworkErrorHandler(({ message }: { message: string; originalError: unknown }) => {
+      setNetworkError(message);
+      console.warn("Network error detected:", message);
+    });
+
+    return () => {
+      setUnauthorizedHandler(null);
+      setNetworkErrorHandler(null);
+    };
   }, []);
 
   const setAuthState = useCallback(
@@ -160,6 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         shouldPersistRef.current = false;
         setVerification(null);
         setShouldPromptVerification(false);
+        setAuthError(null); // Clear auth error when setting new auth state
+        setNetworkError(null); // Clear network error when setting new auth state
         clearAuthState();
         return;
       }
@@ -168,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shouldPersistRef.current = remember;
       setRuntimeAccessToken(state.tokens.accessToken);
       setAuthStateInternal(state);
+      setAuthError(null); // Clear auth error when setting new auth state
+      setNetworkError(null); // Clear network error when setting new auth state
       if (remember) {
         saveAuthState(state);
       } else {
@@ -337,6 +356,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const clearAuthError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
+  const setAuthErrorManually = useCallback((error: string | null) => {
+    setAuthError(error);
+  }, []);
+
+  const clearNetworkError = useCallback(() => {
+    setNetworkError(null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user: authState?.user ?? null,
@@ -345,6 +376,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(authState?.tokens?.accessToken),
       shouldPromptVerification,
       verification,
+      authError,
+      networkError,
       login,
       signUp,
       logout,
@@ -354,12 +387,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       setAuthState,
       setPromptVerification: setShouldPromptVerification,
+      clearAuthError,
+      setAuthError: setAuthErrorManually,
+      clearNetworkError,
     }),
     [
       authState,
       status,
       shouldPromptVerification,
       verification,
+      authError,
+      networkError,
       login,
       signUp,
       logout,
@@ -369,6 +407,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetPassword,
       setAuthState,
       setShouldPromptVerification,
+      clearAuthError,
+      setAuthErrorManually,
+      clearNetworkError,
     ],
   );
 

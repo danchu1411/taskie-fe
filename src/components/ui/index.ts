@@ -9,3 +9,4 @@ export { default as BoardView } from './BoardView';
 export { default as Button } from './Button';
 export { default as Input } from './Input';
 export { default as CalendarView } from './CalendarView';
+export { default as SystemError, NetworkError, NotFoundError, ServerError, GenericError } from './SystemError';
