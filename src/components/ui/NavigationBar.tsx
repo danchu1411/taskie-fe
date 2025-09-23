@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../features/auth/AuthContext";
 
 // Utility function
@@ -88,7 +88,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
         onNavigate("/tasks");
         break;
       case "planner":
-        // TODO: Add planner route
+        onNavigate("/planner");
         break;
       case "stats":
         // TODO: Add stats route

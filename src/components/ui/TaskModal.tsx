@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Button, Input } from "./";
 import type { TaskRecord, StatusValue, PriorityValue } from "../../lib";
 import { STATUS, PRIORITY } from "../../lib";
@@ -68,7 +68,7 @@ export default function TaskModal({
     onSubmit(submitData);
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -83,11 +83,13 @@ export default function TaskModal({
               {task ? "Edit Task" : "Create New Task"}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 transition-colors"
               disabled={isLoading}
+              aria-label="Close"
             >
-              <span className="text-2xl">×</span>
+              <span className="text-2xl" aria-hidden>&times;</span>
             </button>
           </div>
 
@@ -227,3 +229,5 @@ export default function TaskModal({
     </div>
   );
 }
+
+

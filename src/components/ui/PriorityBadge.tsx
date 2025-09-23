@@ -1,4 +1,3 @@
-import React from "react";
 import type { PriorityValue } from "../../lib/types";
 import { PRIORITY } from "../../lib/types";
 import { COLORS, COMPONENT_STYLES } from "../../lib/design-tokens";

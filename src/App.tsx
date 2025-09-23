@@ -1,4 +1,5 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, type ReactElement } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useAuth } from "./features/auth/AuthContext";
 import TaskieLanding from "./features/landing/TaskieLanding";
 import TaskieLogin from "./features/auth/TaskieLogin";
@@ -8,99 +9,185 @@ import ForgotPassword from "./features/auth/ForgotPassword";
 import ResetPassword from "./features/auth/ResetPassword";
 import AuthSuccess from "./features/auth/AuthSuccess";
 import TodayPage from "./features/schedule/TodayPage";
+import PlannerPage from "./features/schedule/PlannerPage";
 import TasksPage from "./features/tasks/TasksPage";
 
-type NavigateFn = (path: string) => void;
+type NavigateHandler = (path: string) => void;
 
-const DEFAULT_ROUTE = "/";
+type AuthSnapshot = ReturnType<typeof useAuth>;
 
-function getCurrentPath() {
-  if (typeof window !== "undefined" && window.location?.pathname) {
-    return window.location.pathname;
-  }
-  return DEFAULT_ROUTE;
-}
-
-function usePathname() {
-  const [pathname, setPathname] = useState<string>(getCurrentPath);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handlePopState = () => setPathname(getCurrentPath());
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  const navigate = useCallback<NavigateFn>(
-    (nextPath) => {
-      if (!nextPath || nextPath === pathname) return;
-      if (typeof window !== "undefined") {
-        window.history.pushState(null, "", nextPath);
-      }
-      setPathname(nextPath);
+function useNavigationHandler(): NavigateHandler {
+  const navigate = useNavigate();
+  return useCallback(
+    (path: string) => {
+      if (!path) return;
+      navigate(path);
     },
-    [pathname],
+    [navigate],
   );
-
-  return { pathname, navigate };
 }
 
-function App() {
-  const { pathname, navigate } = usePathname();
-  const { isAuthenticated, user, shouldPromptVerification } = useAuth();
+function resolveAuthenticatedDestination(auth: AuthSnapshot) {
+  if (auth.shouldPromptVerification && !auth.user?.emailVerified) {
+    return "/auth/verify-email";
+  }
+  return "/today";
+}
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (shouldPromptVerification && !user?.emailVerified) {
-      if (pathname !== "/auth/verify-email") {
-        navigate("/auth/verify-email");
-      }
-      return;
-    }
+function RequireAuthRoute({
+  children,
+  allowUnverified = false,
+}: {
+  children: ReactElement;
+  allowUnverified?: boolean;
+}) {
+  const auth = useAuth();
+  const needsVerification = auth.shouldPromptVerification && !auth.user?.emailVerified;
 
-    if (pathname === "/auth/verify-email") {
-      navigate("/today");
-      return;
-    }
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-    if (pathname !== "/today" && pathname !== "/tasks" && pathname !== "/auth/success") {
-      navigate("/today");
-    }
-  }, [isAuthenticated, shouldPromptVerification, user?.emailVerified, pathname, navigate]);
+  if (!allowUnverified && needsVerification) {
+    return <Navigate to="/auth/verify-email" replace />;
+  }
 
-  if (!isAuthenticated) {
-    if (pathname === "/login") {
+  return children;
+}
+
+function LandingRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+  }
+
+  return <TaskieLanding onNavigate={navigate} />;
+}
+
+function LoginRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+  }
+
       return <TaskieLogin onNavigate={navigate} />;
     }
-    if (pathname === "/signup") {
-      return <TaskieSignup onNavigate={navigate} />;
-    }
-    if (pathname === "/forgot-password") {
-      return <ForgotPassword onNavigate={navigate} />;
-    }
-    if (pathname === "/reset-password") {
-      return <ResetPassword onNavigate={navigate} />;
-    }
-    if (pathname === "/auth/verify-email") {
-      return <VerifyEmail onNavigate={navigate} />;
-    }
-    return <TaskieLanding onNavigate={navigate} />;
+
+function SignupRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
   }
 
-  if (shouldPromptVerification && !user?.emailVerified) {
+      return <TaskieSignup onNavigate={navigate} />;
+    }
+
+function ForgotPasswordRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+  }
+
+      return <ForgotPassword onNavigate={navigate} />;
+    }
+
+function ResetPasswordRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+  }
+
+      return <ResetPassword onNavigate={navigate} />;
+    }
+
+function VerifyEmailRoute() {
+  const auth = useAuth();
+  const navigate = useNavigationHandler();
+  const needsVerification = auth.shouldPromptVerification && !auth.user?.emailVerified;
+
+  if (auth.isAuthenticated && !needsVerification) {
+    return <Navigate to="/today" replace />;
+  }
+
     return <VerifyEmail onNavigate={navigate} />;
   }
 
-  if (pathname === "/auth/success") {
-    return <AuthSuccess onNavigate={navigate} />;
-  }
+function AuthSuccessRoute() {
+  const navigate = useNavigationHandler();
 
-  if (pathname === "/tasks") {
-    return <TasksPage onNavigate={navigate} />;
-  }
-
-  return <TodayPage onNavigate={navigate} />;
+  return (
+    <RequireAuthRoute>
+      <AuthSuccess onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
 }
 
-export type { NavigateFn };
+function TodayRoute() {
+  const navigate = useNavigationHandler();
+
+  return (
+    <RequireAuthRoute>
+      <TodayPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
+function TasksRoute() {
+  const navigate = useNavigationHandler();
+
+  return (
+    <RequireAuthRoute>
+      <TasksPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
+function PlannerRoute() {
+  const navigate = useNavigationHandler();
+
+  return (
+    <RequireAuthRoute>
+      <PlannerPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
+function NotFoundRoute() {
+  const auth = useAuth();
+
+  if (auth.isAuthenticated) {
+    return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
+  }
+
+  return <Navigate to="/" replace />;
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingRoute />} />
+      <Route path="/login" element={<LoginRoute />} />
+      <Route path="/signup" element={<SignupRoute />} />
+      <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
+      <Route path="/reset-password" element={<ResetPasswordRoute />} />
+      <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
+      <Route path="/auth/success" element={<AuthSuccessRoute />} />
+      <Route path="/today" element={<TodayRoute />} />
+      <Route path="/tasks" element={<TasksRoute />} />
+      <Route path="/planner" element={<PlannerRoute />} />
+      <Route path="*" element={<NotFoundRoute />} />
+    </Routes>
+  );
+}
+
 export default App;

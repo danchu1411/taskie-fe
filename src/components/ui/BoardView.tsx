@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
@@ -54,11 +54,11 @@ function BoardTaskCardInner({
   task,
   onEdit,
   onDelete,
-  onStatusChange,
-  onChecklist,
-  onSchedule,
+  onStatusChange: _onStatusChange,
+  onChecklist: _onChecklist,
+  onSchedule: _onSchedule,
   onStart,
-  isUpdating = false,
+  isUpdating: _isUpdating = false,
   isDragging = false
 }: BoardTaskCardProps) {
   const hasChecklist = task.checklist && task.checklist.length > 0;
@@ -361,3 +361,7 @@ export default function BoardView({
     </DndContext>
   );
 }
+
+
+
+

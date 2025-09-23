@@ -1,4 +1,4 @@
-import React from "react";
+// No default React import needed
 
 // Utility function
 function clsx(...parts: Array<string | false | null | undefined>) {

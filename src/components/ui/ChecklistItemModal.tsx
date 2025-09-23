@@ -29,7 +29,9 @@ export default function ChecklistItemModal({
     priority: null as PriorityValue | null,
     status: STATUS.PLANNED as StatusValue,
     useTaskDeadline: true,
-    useTaskPriority: true
+    useTaskPriority: true,
+    startAt: '',
+    plannedMinutes: '' as any
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,7 +45,9 @@ export default function ChecklistItemModal({
         priority: item.priority ?? null,
         status: item.status,
         useTaskDeadline: !item.deadline,
-        useTaskPriority: !item.priority
+        useTaskPriority: !item.priority,
+        startAt: '',
+        plannedMinutes: ''
       });
     } else {
       setFormData({
@@ -53,7 +57,9 @@ export default function ChecklistItemModal({
         priority: null,
         status: STATUS.PLANNED,
         useTaskDeadline: true,
-        useTaskPriority: true
+        useTaskPriority: true,
+        startAt: '',
+        plannedMinutes: ''
       });
     }
     setErrors({});
@@ -83,6 +89,9 @@ export default function ChecklistItemModal({
       deadline: formData.useTaskDeadline ? undefined : formData.deadline || undefined,
       priority: formData.useTaskPriority ? null : formData.priority,
       status: formData.status,
+      // Optional scheduling fields for checklist item
+      startAt: formData.startAt || undefined,
+      plannedMinutes: formData.plannedMinutes ? Number(formData.plannedMinutes) : undefined,
     };
     
     onSubmit(submitData);
@@ -218,6 +227,35 @@ export default function ChecklistItemModal({
                 {errors.deadline && (
                   <p className="mt-1 text-sm text-red-600">{errors.deadline}</p>
                 )}
+              </div>
+            </div>
+
+            {/* Scheduling (optional) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Start time (optional)
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={formData.startAt}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('startAt', e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Planned minutes (optional)
+                </label>
+                <Input
+                  type="number"
+                  min={5}
+                  max={240}
+                  step={5}
+                  value={formData.plannedMinutes}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('plannedMinutes', e.target.value)}
+                  disabled={isLoading}
+                />
               </div>
             </div>
 

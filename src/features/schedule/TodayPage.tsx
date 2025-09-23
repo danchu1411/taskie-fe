@@ -1,5 +1,5 @@
 ﻿import { isAxiosError } from "axios";
-import { useCallback, useEffect, useMemo, useRef, useState, memo, Component } from "react";
+import { useCallback, useMemo, useRef, useState, memo, Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,7 +10,6 @@ import {
   useSensors,
   closestCenter,
   useDroppable,
-  useDraggable,
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
@@ -22,6 +21,8 @@ import { CSS } from "@dnd-kit/utilities";
 import api from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, Button, Input } from "../../components/ui";
+import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
+import useTodayTimer from "./useTodayTimer";
 import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
 
 type StatusValue = 0 | 1 | 2 | 3;
@@ -417,7 +418,7 @@ function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[] {
         const tid = tidRaw ? String(tidRaw).toLowerCase() : "";
         const dedupeKey = `task:${tid}`;
         if (!globalSeenKeys.has(dedupeKey)) {
-          result.push(normalized);
+        result.push(normalized);
           globalSeenKeys.add(dedupeKey);
         }
       }
@@ -940,27 +941,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
-  const [timerOpen, setTimerOpen] = useState(false);
-  const [timerAnimating, setTimerAnimating] = useState(false);
-  const [timerMode, setTimerMode] = useState<"focus" | "break">("focus");
-  const [timerDuration, setTimerDuration] = useState(25 * 60 * 1000);
-  const [timerRemain, setTimerRemain] = useState(timerDuration);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerItemId, setTimerItemId] = useState<string | null>(null);
-  
-  // Pomodoro session management
-  const [currentSession, setCurrentSession] = useState(1);
-  
-  // Custom duration management
   const [customDuration, setCustomDuration] = useState(120); // minutes
-  const [sessionPlan, setSessionPlan] = useState<Array<{type: "focus" | "short-break" | "long-break", duration: number}>>([]);
-  const [isCustomMode, setIsCustomMode] = useState(false);
-  
-  // Fullscreen and floating widget management
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isFloating, setIsFloating] = useState(false);
-  const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
@@ -991,28 +972,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     error,
     refetch,
   } = useTasksData(userId);
-  useEffect(() => {
-    setTimerRemain(timerDuration);
-  }, [timerDuration]);
-
-  useEffect(() => {
-    if (!timerRunning) return;
-    const id = window.setInterval(() => {
-      setTimerRemain((prev) => {
-        if (prev <= 1_000) {
-          window.clearInterval(id);
-          setTimerRunning(false);
-          const nextMode = timerMode === "focus" ? "break" : "focus";
-          const nextDuration = nextMode === "focus" ? 25 * 60 * 1000 : 5 * 60 * 1000;
-          setTimerMode(nextMode);
-          setTimerDuration(nextDuration);
-          return nextDuration;
-        }
-        return prev - 1_000;
-      });
-    }, 1_000);
-    return () => window.clearInterval(id);
-  }, [timerRunning, timerMode]);
+  // Timer logic moved into useTodayTimer hook
 
   const items = useMemo(() => {
     if (!tasksData) return [];
@@ -1021,10 +981,33 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const { inProgress, planned, completed, doneCount, progressValue } = useTaskCategories(items);
 
-  const timerItem = useMemo(
-    () => items.find((item) => item.id === timerItemId) ?? null,
-    [items, timerItemId],
-  );
+  const timer = useTodayTimer({
+    items,
+    onStartFocus: (item) => {
+      if (item.status !== STATUS.IN_PROGRESS) {
+        statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
+      }
+    }
+  });
+  const timerItem = timer.timerItem;
+  const {
+    timerOpen,
+    timerAnimating,
+    timerDuration,
+    timerRemain,
+    timerRunning,
+    isFullscreen,
+    isFloating,
+    currentSession,
+    sessionPlan,
+    isDarkTheme,
+    FloatingWidget,
+    startCustomDuration,
+    closeTimer,
+    enterFloatingMode,
+    exitFloatingMode,
+    setTimerRunning,
+  } = timer;
   const statusMutation = useMutation<void, unknown, StatusMutationPayload, StatusMutationContext>({
     mutationFn: async ({ item, status }) => {
       if (item.source === "task" && item.taskId) {
@@ -1254,279 +1237,12 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   );
 
 
-  const openTimer = useCallback(
-    (item: TodayItem) => {
-      // Initialize timer
-      setCurrentSession(1);
-      setIsCustomMode(false);
-      
-      setTimerItemId(item.id);
-      
-      // Open modal (animation will be triggered by useEffect)
-      setTimerOpen(true);
-    },
-    [],
-  );
+  const openTimer = useCallback((item: TodayItem) => { timer.openTimer(item); }, [timer]);
 
-  const closeTimer = useCallback(() => {
-    setTimerAnimating(false);
-    setIsFullscreen(false);
-    setIsFloating(false);
-    // Wait for animation to complete before hiding
-    setTimeout(() => {
-      setTimerOpen(false);
-    }, 300);
-  }, []);
+  // timer controls are provided by hook via destructuring above
 
-  const enterFloatingMode = useCallback(() => {
-    setIsFullscreen(false);
-    setIsFloating(true);
-  }, []);
+  // Floating Widget handled by useTodayTimer
 
-  const exitFloatingMode = useCallback(() => {
-    setIsFloating(false);
-    setIsFullscreen(true);
-  }, []);
-
-  // Floating Widget Component using @dnd-kit
-  const FloatingWidget = useCallback(() => {
-    const widgetId = 'floating-widget';
-    
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      isDragging: isDndDragging,
-    } = useDraggable({ 
-      id: widgetId,
-      data: {
-        type: 'floating-widget',
-        position: widgetPosition,
-      }
-    });
-
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={{
-          left: widgetPosition.x,
-          top: widgetPosition.y,
-          position: 'fixed',
-          zIndex: 50,
-          transform: isDndDragging 
-            ? `translate3d(${transform?.x || 0}px, ${transform?.y || 0}px, 0) scale(1.05) rotate(1deg)` 
-            : 'scale(1) rotate(0deg)',
-          transition: isDndDragging ? 'none' : 'all 200ms ease-out',
-        }}
-        className={`floating-widget select-none shadow-lg`}
-      >
-        <div className={`rounded-lg p-3 min-w-[200px] border ${
-          isDarkTheme 
-            ? 'bg-gray-800 border-gray-700' 
-            : 'bg-white border-gray-200'
-        }`}>
-          {/* Drag Handle */}
-          <div 
-            className={`widget-header flex items-center justify-between mb-2 cursor-move p-1 -m-1 rounded transition-all duration-200 ${
-              isDndDragging 
-                ? (isDarkTheme ? 'bg-gray-700 shadow-inner' : 'bg-gray-100 shadow-inner') 
-                : (isDarkTheme ? 'hover:bg-gray-700/50 hover:shadow-md' : 'hover:bg-gray-50 hover:shadow-md')
-            }`}
-            {...listeners}
-            {...attributes}
-          >
-            <div className="flex items-center gap-2">
-              {/* Drag Handle Icon */}
-              <div className={`drag-handle flex flex-col gap-0.5 cursor-move p-1 rounded transition-all duration-200 ${
-                isDndDragging 
-                  ? (isDarkTheme ? 'bg-gray-600' : 'bg-gray-200') 
-                  : (isDarkTheme ? 'hover:bg-gray-600' : 'hover:bg-gray-200')
-              }`}>
-                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
-                  isDndDragging 
-                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
-                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
-                }`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
-                  isDndDragging 
-                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
-                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
-                }`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors duration-200 ${
-                  isDndDragging 
-                    ? (isDarkTheme ? 'bg-gray-300' : 'bg-gray-600')
-                    : (isDarkTheme ? 'bg-gray-400' : 'bg-gray-500')
-                }`}></div>
-              </div>
-              <div className={`text-xs font-medium transition-colors duration-200 ${
-                isDndDragging 
-                  ? (isDarkTheme ? 'text-gray-200' : 'text-gray-700')
-                  : (isDarkTheme ? 'text-gray-300' : 'text-gray-600')
-              }`}>
-                Focus Timer
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  exitFloatingMode();
-                }}
-                className={`p-1 rounded transition ${
-                  isDarkTheme 
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
-                    : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-                }`}
-                title="Fullscreen"
-              >
-                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  closeTimer();
-                }}
-                className={`p-1 rounded transition ${
-                  isDarkTheme 
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
-                    : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-                }`}
-                title="Close"
-              >
-                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <div className="text-center mb-2">
-            <div className={`text-lg font-semibold ${
-              isDarkTheme ? 'text-white' : 'text-gray-900'
-            }`}>
-              {Math.floor(timerRemain / (60 * 1000))} min
-            </div>
-            <div className={`text-xs ${
-              isDarkTheme ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-              Session {currentSession} of {sessionPlan.length}
-            </div>
-          </div>
-          
-          <div className="flex justify-center">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setTimerRunning(!timerRunning);
-              }}
-              className="flex items-center gap-1 px-3 py-1 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 transition"
-            >
-              {timerRunning ? (
-                <>
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                  Pause
-                </>
-              ) : (
-                <>
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Resume
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }, [widgetPosition, timerRemain, currentSession, sessionPlan.length, timerRunning, exitFloatingMode, closeTimer, isDarkTheme]);
-
-
-  // Generate session plan from custom duration
-  const generateSessionPlan = useCallback((totalMinutes: number) => {
-    const plan: Array<{type: "focus" | "short-break" | "long-break", duration: number}> = [];
-    let remainingMinutes = totalMinutes;
-    let focusCount = 0;
-    
-    while (remainingMinutes > 0) {
-      // Add focus session (25 minutes)
-      if (remainingMinutes >= 25) {
-        plan.push({ type: "focus", duration: 25 });
-        remainingMinutes -= 25;
-        focusCount++;
-        
-        // Add break after focus session
-        if (remainingMinutes > 0) {
-          if (focusCount % 4 === 0 && remainingMinutes >= 15) {
-            // Long break after 4 focus sessions
-            plan.push({ type: "long-break", duration: 15 });
-            remainingMinutes -= 15;
-          } else if (remainingMinutes >= 5) {
-            // Short break
-            plan.push({ type: "short-break", duration: 5 });
-            remainingMinutes -= 5;
-          }
-        }
-      } else {
-        // If less than 25 minutes left, add a shorter focus session
-        if (remainingMinutes > 0) {
-          plan.push({ type: "focus", duration: remainingMinutes });
-          remainingMinutes = 0;
-        }
-      }
-    }
-    
-    return plan;
-  }, []);
-
-  const startCustomDuration = useCallback((minutes: number) => {
-    const plan = generateSessionPlan(minutes);
-    setSessionPlan(plan);
-    setCurrentSession(1);
-    setIsCustomMode(true);
-    
-    // Start with first session and auto-start timer
-    const firstSession = plan[0];
-    const duration = firstSession.duration * 60 * 1000;
-    setTimerDuration(duration);
-    setTimerRemain(duration);
-    setTimerRunning(true);
-    
-    // Enter fullscreen mode
-    setIsFullscreen(true);
-    setIsFloating(false);
-    
-    // Update task status if focus session
-    if (firstSession.type === "focus" && timerItem && timerItem.status !== STATUS.IN_PROGRESS) {
-      statusMutation.mutate({ item: timerItem, status: STATUS.IN_PROGRESS });
-    }
-  }, [generateSessionPlan, timerItem, statusMutation]);
-
-  const startNextCustomSession = useCallback(() => {
-    const nextSessionIndex = currentSession;
-    if (nextSessionIndex < sessionPlan.length) {
-      const nextSession = sessionPlan[nextSessionIndex];
-      const duration = nextSession.duration * 60 * 1000;
-      setTimerDuration(duration);
-      setTimerRemain(duration);
-      setTimerRunning(true);
-      setCurrentSession(prev => prev + 1);
-      
-      // Update task status if focus session
-      if (nextSession.type === "focus" && timerItem && timerItem.status !== STATUS.IN_PROGRESS) {
-        statusMutation.mutate({ item: timerItem, status: STATUS.IN_PROGRESS });
-      }
-    }
-  }, [currentSession, sessionPlan, timerItem, statusMutation]);
 
   // Drag and Drop handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -1702,107 +1418,30 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
 
 
-  // Timer animation effect
-  useEffect(() => {
-    if (timerOpen) {
-      // Trigger animation after a small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        setTimerAnimating(true);
-      }, 10);
-      return () => clearTimeout(timer);
-    } else {
-      setTimerAnimating(false);
-    }
-  }, [timerOpen]);
-
-  // Timer countdown effect with automatic session transitions
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (timerRunning && timerRemain > 0) {
-      interval = setInterval(() => {
-        setTimerRemain((time) => {
-          if (time <= 1000) {
-            setTimerRunning(false);
-            // Session completed - automatically start next session
-            if (isCustomMode && currentSession < sessionPlan.length) {
-              // Auto start next session in custom mode
-              setTimeout(() => {
-                startNextCustomSession();
-              }, 1000);
-            }
-            return 0;
-          }
-          return time - 1000;
-        });
-      }, 1000);
-    } else if (timerRemain === 0) {
-      setTimerRunning(false);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [timerRunning, timerRemain, isCustomMode, currentSession, sessionPlan.length, startNextCustomSession]);
+  // Timer effects moved to useTodayTimer hook
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl/Cmd + K to open quick add
-      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault();
-        setQuickOpen(true);
-        return;
-      }
-
-      // Escape to close modals
-      if (event.key === 'Escape') {
-        if (quickOpen) setQuickOpen(false);
-        if (scheduleModalOpen) setScheduleModalOpen(false);
-        if (checklistModalOpen) setChecklistModalOpen(false);
-        if (editModalOpen) setEditModalOpen(false);
-        if (statusModalOpen) setStatusModalOpen(false);
-        if (isFullscreen) enterFloatingMode();
-        else if (isFloating) closeTimer();
-        else if (timerOpen) closeTimer();
-      }
-
-      // F key to toggle fullscreen/floating
-      if (event.key === 'f' || event.key === 'F') {
-        if (isFullscreen) {
-          enterFloatingMode();
-        } else if (isFloating) {
-          exitFloatingMode();
-        }
-      }
-
-      // Space to pause/resume timer
-      if (event.key === ' ') {
-        if (isFullscreen || isFloating) {
-          event.preventDefault();
-          setTimerRunning(prev => !prev);
-        }
-      }
-
-      // Number keys for status selection
-      if (statusModalOpen && statusModalItem) {
-        const statusMap: Record<string, StatusValue> = {
-          '1': STATUS.PLANNED,
-          '2': STATUS.IN_PROGRESS,
-          '3': STATUS.DONE,
-          '4': STATUS.SKIPPED,
-        };
-        
-        if (statusMap[event.key]) {
-          event.preventDefault();
-          selectStatus(statusMap[event.key]);
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [quickOpen, scheduleModalOpen, checklistModalOpen, editModalOpen, statusModalOpen, timerOpen, isFullscreen, isFloating, statusModalItem, closeTimer, enterFloatingMode, exitFloatingMode]);
+  useTodayKeyboardShortcuts({
+    quickOpen,
+    setQuickOpen,
+    scheduleModalOpen,
+    setScheduleModalOpen,
+    checklistModalOpen,
+    setChecklistModalOpen,
+    editModalOpen,
+    setEditModalOpen,
+    statusModalOpen,
+    setStatusModalOpen,
+    timerOpen,
+    isFullscreen,
+    isFloating,
+    setTimerRunning,
+    closeTimer,
+    enterFloatingMode,
+    exitFloatingMode,
+    statusModalItem,
+    selectStatus,
+  });
 
 
 
@@ -1836,7 +1475,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             <div className="flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setTimerOpen(true)}
+              onClick={() => timer.openTimer()}
               className="rounded-lg bg-blue-600 px-8 py-4 text-white transition-colors hover:bg-blue-700"
             >
               <div className="flex items-center gap-3">
@@ -2139,23 +1778,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         </button>
       </div>
       {/* Floating Widget */}
-      {isFloating && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(event) => {
-            const { active, delta } = event;
-            if (active.id === 'floating-widget') {
-              // Use delta to calculate new position
-              const newX = Math.max(10, Math.min(window.innerWidth - 210, widgetPosition.x + delta.x));
-              const newY = Math.max(10, Math.min(window.innerHeight - 130, widgetPosition.y + delta.y));
-              setWidgetPosition({ x: newX, y: newY });
-            }
-          }}
-        >
-          <FloatingWidget />
-        </DndContext>
-      )}
+      {isFloating && <FloatingWidget />}
 
       {/* Fullscreen Timer - Theme Support */}
       {isFullscreen && (
@@ -2266,7 +1889,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
             {/* Theme Toggle Button */}
             <button
-              onClick={() => setIsDarkTheme(!isDarkTheme)}
+              onClick={() => timer.setIsDarkTheme(!isDarkTheme)}
               className={`absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition ${
                 isDarkTheme 
                   ? 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' 
@@ -2812,3 +2435,4 @@ export default function TodayPage({ onNavigate }: TodayPageProps) {
     </ErrorBoundary>
   );
 }
+

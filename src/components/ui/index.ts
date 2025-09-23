@@ -8,3 +8,4 @@ export { default as ChecklistItemModal } from './ChecklistItemModal';
 export { default as BoardView } from './BoardView';
 export { default as Button } from './Button';
 export { default as Input } from './Input';
+export { default as CalendarView } from './CalendarView';

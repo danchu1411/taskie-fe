@@ -1,7 +1,7 @@
 // Theme System - Centralized theme management and utilities
 // This file contains theme-related utilities and configurations
 
-import { COLORS, COMPONENT_STYLES } from './design-tokens';
+import { COLORS } from './design-tokens';
 
 // ============================================================================
 // THEME TYPES
@@ -9,12 +9,21 @@ import { COLORS, COMPONENT_STYLES } from './design-tokens';
 
 export type ThemeMode = 'light' | 'dark';
 export type ColorScheme = 'blue' | 'green' | 'purple' | 'orange' | 'red';
+type ModeMap = Record<ThemeMode, string>;
 
 // ============================================================================
 // THEME CONFIGURATIONS
 // ============================================================================
 
-export const THEMES = {
+export type ThemeDefinition = {
+  background: string;
+  surface: string;
+  text: { primary: string; secondary: string; muted: string };
+  border: string;
+  shadow: string;
+};
+
+export const THEMES: Record<ThemeMode, ThemeDefinition> = {
   light: {
     background: 'bg-white',
     surface: 'bg-slate-50',
@@ -37,7 +46,7 @@ export const THEMES = {
     border: 'border-slate-700',
     shadow: 'shadow-lg',
   },
-} as const;
+};
 
 // ============================================================================
 // COLOR SCHEMES
@@ -91,7 +100,15 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
 // COMPONENT THEMES
 // ============================================================================
 
-export const COMPONENT_THEMES = {
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ComponentThemes = {
+  button: Record<ButtonVariant, ModeMap>;
+  input: ModeMap;
+  card: ModeMap;
+  badge: ModeMap;
+};
+
+export const COMPONENT_THEMES: ComponentThemes = {
   // Button Themes
   button: {
     primary: {
@@ -111,31 +128,31 @@ export const COMPONENT_THEMES = {
       dark: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400',
     },
   },
-  
   // Input Themes
   input: {
     light: 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500',
     dark: 'bg-slate-800 border-slate-600 text-white focus:border-blue-400 focus:ring-blue-400',
   },
-  
   // Card Themes
   card: {
     light: 'bg-white border-slate-200 shadow-sm',
     dark: 'bg-slate-800 border-slate-700 shadow-lg',
   },
-  
   // Badge Themes
   badge: {
     light: 'border-slate-200',
     dark: 'border-slate-600',
   },
-} as const;
+};
 
 // ============================================================================
 // STATUS THEMES
 // ============================================================================
 
-export const STATUS_THEMES = {
+export type StatusKey = 'planned' | 'inProgress' | 'done' | 'skipped';
+export type ThemedSwatch = { bg: string; text: string; border: string; dot: string };
+export type StatusTheme = Record<ThemeMode, ThemedSwatch>;
+export const STATUS_THEMES: Record<StatusKey, StatusTheme> = {
   planned: {
     light: {
       bg: COLORS.status.planned.bg,
@@ -192,13 +209,15 @@ export const STATUS_THEMES = {
       dot: 'bg-slate-500',
     },
   },
-} as const;
+};
 
 // ============================================================================
 // PRIORITY THEMES
 // ============================================================================
 
-export const PRIORITY_THEMES = {
+export type PriorityKey = 'must' | 'should' | 'want';
+export type PriorityTheme = Record<ThemeMode, ThemedSwatch>;
+export const PRIORITY_THEMES: Record<PriorityKey, PriorityTheme> = {
   must: {
     light: {
       bg: COLORS.priority.must.bg,
@@ -241,25 +260,29 @@ export const PRIORITY_THEMES = {
       dot: 'bg-slate-400',
     },
   },
-} as const;
+};
 
 // ============================================================================
 // THEME UTILITIES
 // ============================================================================
 
-export function getThemeClasses(mode: ThemeMode, component: keyof typeof COMPONENT_THEMES, variant?: string) {
+// Overloads help ensure safe indexing without TS7053
+export function getThemeClasses(mode: ThemeMode, component: 'button', variant: ButtonVariant): string;
+export function getThemeClasses(mode: ThemeMode, component: 'input' | 'card' | 'badge', variant?: undefined): string;
+export function getThemeClasses(mode: ThemeMode, component: keyof ComponentThemes, variant?: ButtonVariant): string {
   const theme = COMPONENT_THEMES[component];
-  if (variant && variant in theme) {
-    return theme[variant as keyof typeof theme][mode];
+  if (component === 'button') {
+    const v = variant as ButtonVariant;
+    return (theme as ComponentThemes['button'])[v][mode];
   }
-  return theme[mode];
+  return (theme as ModeMap)[mode];
 }
 
-export function getStatusTheme(status: keyof typeof STATUS_THEMES, mode: ThemeMode) {
+export function getStatusTheme(status: StatusKey, mode: ThemeMode): ThemedSwatch {
   return STATUS_THEMES[status][mode];
 }
 
-export function getPriorityTheme(priority: keyof typeof PRIORITY_THEMES, mode: ThemeMode) {
+export function getPriorityTheme(priority: PriorityKey, mode: ThemeMode): ThemedSwatch {
   return PRIORITY_THEMES[priority][mode];
 }
 
