@@ -14,3 +14,5 @@ export { TaskCard } from '../TaskCard';
 export { TaskToolbar } from '../TaskToolbar';
 export { TaskStatusModal } from '../TaskStatusModal';
 export { TaskEmptyState } from '../TaskEmptyState';
+export { TaskListView } from '../TaskListView';
+export { TaskBoardView } from '../TaskBoardView';

@@ -12,12 +12,11 @@ import {
   NavigationBar, 
   TaskModal, 
   ChecklistItemModal,
-  BoardView,
   SystemError,
-  TaskCard,
   TaskToolbar,
   TaskStatusModal,
-  TaskEmptyState
+  TaskListView,
+  TaskBoardView
 } from "../../components/ui";
 
 // Main Tasks Page Component
@@ -284,41 +283,33 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
             ))}
           </div>
       ) : view === 'list' ? (
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <TaskCard
-              key={(task as any).id || task.task_id}
-              task={task}
-              onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
-              onStatusChange={openStatusModal}
-              isUpdating={isUpdating && pendingStatusId === ((task as any).id || task.task_id)}
-              onStart={handleStart}
-              onAddChecklist={handleAddChecklist}
-              onEditChecklistItem={handleEditChecklistItem}
-              onDeleteChecklistItem={handleDeleteChecklistItem}
-              onChecklistItemStatusChange={handleChecklistItemStatusChange}
-              onChecklistItemReorder={handleChecklistItemReorder}
-            />
-          ))}
-          {tasks.length === 0 && (
-            <TaskEmptyState
-              filters={filters}
-              onCreateTask={() => setModalOpen(true)}
-            />
-          )}
-        </div>
+        <TaskListView
+          tasks={tasks}
+          filters={filters}
+          isUpdating={isUpdating}
+          pendingStatusId={pendingStatusId}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+          onStatusChange={openStatusModal}
+          onStart={handleStart}
+          onAddChecklist={handleAddChecklist}
+          onEditChecklistItem={handleEditChecklistItem}
+          onDeleteChecklistItem={handleDeleteChecklistItem}
+          onChecklistItemStatusChange={handleChecklistItemStatusChange}
+          onChecklistItemReorder={handleChecklistItemReorder}
+          onCreateTask={() => setModalOpen(true)}
+        />
       ) : view === 'board' ? (
-        <BoardView
+        <TaskBoardView
           tasksByStatus={tasksByStatus}
+          isUpdating={isUpdating}
+          pendingStatusId={pendingStatusId}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
           onStatusChange={handleBoardDropStatusChange}
           onChecklist={handleChecklist}
           onSchedule={handleSchedule}
           onStart={handleStart}
-          isUpdating={isUpdating}
-          pendingStatusId={pendingStatusId}
         />
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
