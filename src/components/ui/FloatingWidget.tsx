@@ -1,5 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface FloatingWidgetProps {
   isDarkTheme: boolean;
@@ -11,7 +11,7 @@ interface FloatingWidgetProps {
   onExitFloatingMode: () => void;
   onCloseTimer: () => void;
   onToggleTimer: () => void;
-  onDragMove: (delta: { x: number; y: number }) => void;
+  onDragEnd: (delta: { x: number; y: number }) => void;
 }
 
 export function FloatingWidget({
@@ -24,7 +24,7 @@ export function FloatingWidget({
   onExitFloatingMode,
   onCloseTimer,
   onToggleTimer,
-  onDragMove,
+  onDragEnd,
 }: FloatingWidgetProps) {
   const widgetId = 'floating-widget';
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -32,12 +32,28 @@ export function FloatingWidget({
     data: { type: 'floating-widget' } 
   });
 
-  // Call onDragMove with delta when transform changes
+  // Track the initial position when drag starts
+  const dragStartPosition = useRef<{ x: number; y: number } | null>(null);
+
+  // Handle drag end - only update position when drag completes
   useEffect(() => {
-    if (transform) {
-      onDragMove({ x: transform.x, y: transform.y });
+    if (!isDragging && dragStartPosition.current && transform) {
+      // Calculate the delta from start to end
+      const delta = {
+        x: transform.x,
+        y: transform.y
+      };
+      
+      // Call the drag end handler with the delta
+      onDragEnd(delta);
+      
+      // Reset drag start position
+      dragStartPosition.current = null;
+    } else if (isDragging && !dragStartPosition.current) {
+      // Store initial position when drag starts
+      dragStartPosition.current = { x: widgetPosition.x, y: widgetPosition.y };
     }
-  }, [transform, onDragMove]);
+  }, [isDragging, transform, onDragEnd, widgetPosition.x, widgetPosition.y]);
   
   return (
     <div
@@ -47,8 +63,8 @@ export function FloatingWidget({
         top: widgetPosition.y, 
         position: 'fixed', 
         zIndex: 50, 
-        transform: isDragging 
-          ? 'scale(1.05) rotate(1deg)' 
+        transform: isDragging && transform
+          ? `translate(${transform.x}px, ${transform.y}px) scale(1.05) rotate(1deg)`
           : 'scale(1) rotate(0deg)', 
         transition: isDragging ? 'none' : 'all 200ms ease-out' 
       }}

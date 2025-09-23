@@ -47,7 +47,7 @@ export type TodayTimerHook = {
   exitFloatingMode: () => void;
   startCustomDuration: (minutes: number) => void;
   startNextCustomSession: () => void;
-  handleFloatingDrag: (delta: { x: number; y: number }) => void;
+  applyFloatingDelta: (delta: { x: number; y: number }) => void;
 
   // Floating widget component
   FloatingWidget: () => JSX.Element;
@@ -226,11 +226,17 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setIsFullscreen(true);
   }, []);
 
-  const handleFloatingDrag = useCallback((delta: { x: number; y: number }) => {
-    setWidgetPosition(prev => ({ 
-      x: prev.x + delta.x, 
-      y: prev.y + delta.y 
-    }));
+  const applyFloatingDelta = useCallback((delta: { x: number; y: number }) => {
+    setWidgetPosition(prev => {
+      const newX = prev.x + delta.x;
+      const newY = prev.y + delta.y;
+      
+      // Clamp within viewport bounds
+      const clampedX = Math.max(0, Math.min(newX, window.innerWidth - 200)); // 200px widget width
+      const clampedY = Math.max(0, Math.min(newY, window.innerHeight - 150)); // 150px widget height
+      
+      return { x: clampedX, y: clampedY };
+    });
   }, []);
 
   const FloatingWidgetComponent = useCallback(() => {
@@ -244,9 +250,9 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       onExitFloatingMode: exitFloatingMode,
       onCloseTimer: closeTimer,
       onToggleTimer: () => setTimerRunning(!timerRunning),
-      onDragMove: handleFloatingDrag
+      onDragEnd: applyFloatingDelta
     });
-  }, [isDarkTheme, timerRemain, currentSession, sessionPlan.length, timerRunning, widgetPosition, exitFloatingMode, closeTimer, handleFloatingDrag]);
+  }, [isDarkTheme, timerRemain, currentSession, sessionPlan.length, timerRunning, widgetPosition, exitFloatingMode, closeTimer, applyFloatingDelta]);
 
   return {
     // state
@@ -285,7 +291,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     exitFloatingMode,
     startCustomDuration,
     startNextCustomSession,
-    handleFloatingDrag,
+    applyFloatingDelta,
     // components
     FloatingWidget: FloatingWidgetComponent,
   };

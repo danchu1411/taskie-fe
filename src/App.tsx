@@ -75,8 +75,8 @@ function LoginRoute() {
     return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
   }
 
-      return <TaskieLogin onNavigate={navigate} />;
-    }
+  return <TaskieLogin onNavigate={navigate} />;
+}
 
 function SignupRoute() {
   const auth = useAuth();
@@ -86,8 +86,8 @@ function SignupRoute() {
     return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
   }
 
-      return <TaskieSignup onNavigate={navigate} />;
-    }
+  return <TaskieSignup onNavigate={navigate} />;
+}
 
 function ForgotPasswordRoute() {
   const auth = useAuth();
@@ -97,8 +97,8 @@ function ForgotPasswordRoute() {
     return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
   }
 
-      return <ForgotPassword onNavigate={navigate} />;
-    }
+  return <ForgotPassword onNavigate={navigate} />;
+}
 
 function ResetPasswordRoute() {
   const auth = useAuth();
@@ -108,8 +108,8 @@ function ResetPasswordRoute() {
     return <Navigate to={resolveAuthenticatedDestination(auth)} replace />;
   }
 
-      return <ResetPassword onNavigate={navigate} />;
-    }
+  return <ResetPassword onNavigate={navigate} />;
+}
 
 function VerifyEmailRoute() {
   const auth = useAuth();
@@ -120,8 +120,8 @@ function VerifyEmailRoute() {
     return <Navigate to="/today" replace />;
   }
 
-    return <VerifyEmail onNavigate={navigate} />;
-  }
+  return <VerifyEmail onNavigate={navigate} />;
+}
 
 function AuthSuccessRoute() {
   const navigate = useNavigationHandler();
