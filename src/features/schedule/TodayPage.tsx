@@ -9,15 +9,8 @@ import {
   useSensor,
   useSensors,
   closestCenter,
-  useDroppable,
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import api from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, SystemError } from "../../components/ui";
@@ -25,8 +18,12 @@ import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
 import useTodayTimer from "./useTodayTimer";
 import { QuickAddPanel } from "./components/QuickAddPanel";
+import { TodaySection } from "./components/TodaySection";
+import { ScheduleModal } from "./components/ScheduleModal";
+import { ChecklistAssignModal } from "./components/ChecklistAssignModal";
+import { EditTaskModal } from "./components/EditTaskModal";
+import { StatusPickerModal } from "./components/StatusPickerModal";
 import type { TaskRecord, ChecklistItemRecord } from "../../lib/types";
-
 
 function statusLabel(value: StatusValue) {
   if (value === STATUS.IN_PROGRESS) return "In progress";
@@ -38,8 +35,6 @@ function statusLabel(value: StatusValue) {
 function clsx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
-
-
 
 function Ring({ value }: { value: number }) {
   const radius = 42;
@@ -61,12 +56,6 @@ function Ring({ value }: { value: number }) {
       />
     </svg>
   );
-}
-function formatDateTime(value: string | null | undefined, options?: Intl.DateTimeFormatOptions) {
-  if (!value) return null;
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return value;
-  return new Date(timestamp).toLocaleString(undefined, options ?? { dateStyle: "medium", timeStyle: "short" });
 }
 
 
@@ -137,184 +126,10 @@ const StatusChip = memo(function StatusChip({ status, onOpenModal, disabled }: S
 });
 
 // Task Card Component for better performance
-interface TaskCardProps {
-  item: TodayItem;
-  isUpdating: boolean;
-  onStatusChange: () => void;
-  onEdit?: () => void;
-  onChecklist?: () => void;
-  onSchedule?: () => void;
-  onStart?: () => void;
-  onBack?: () => void;
-}
 
 
 // Droppable Column Component
-interface DroppableColumnProps {
-  id: string;
-  children: ReactNode;
-  className?: string;
-}
 
-const DroppableColumn = memo(function DroppableColumn({ id, children, className }: DroppableColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`${className} ${isOver ? 'bg-blue-50 border-blue-200' : ''}`}
-    >
-      {children}
-    </div>
-  );
-});
-
-// Draggable Task Card Component
-interface DraggableTaskCardProps extends TaskCardProps {
-  dragId: string;
-}
-
-const DraggableTaskCard = memo(function DraggableTaskCard({
-  item,
-  isUpdating,
-  onStatusChange,
-  onEdit,
-  onChecklist,
-  onSchedule,
-  onStart,
-  onBack,
-  dragId,
-}: DraggableTaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: dragId });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="group rounded-lg bg-white p-4 shadow-sm border border-slate-200 transition-colors hover:border-slate-300 cursor-grab active:cursor-grabbing"
-    >
-      <div className="mb-3 flex items-start justify-between">
-        <StatusChip
-          status={item.status}
-          onOpenModal={onStatusChange}
-          disabled={isUpdating}
-        />
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Edit"
-              aria-label="Edit task"
-            >
-              Edit
-            </button>
-          )}
-          {onChecklist && (
-            <button
-              type="button"
-              onClick={onChecklist}
-              disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Add Checklist"
-              aria-label="Add checklist items"
-            >
-              Checklist
-            </button>
-          )}
-          {onSchedule && (
-            <button
-              type="button"
-              onClick={onSchedule}
-              disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Schedule"
-              aria-label="Schedule task"
-            >
-              Schedule
-            </button>
-          )}
-          {onStart && (
-            <button
-              type="button"
-              onClick={onStart}
-              disabled={isUpdating}
-              className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-              title="Start Timer"
-              aria-label="Start focus timer"
-            >
-              Start
-            </button>
-          )}
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Back to Planned"
-              aria-label="Move back to planned"
-            >
-              Back
-            </button>
-          )}
-        </div>
-      </div>
-      
-      <div className="space-y-2">
-        <h3 className="font-medium text-slate-900">{item.title}</h3>
-        {item.parentTitle && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-            </svg>
-            {item.parentTitle}
-          </span>
-        )}
-        
-        <div className="flex items-center gap-4 text-xs text-slate-500">
-          {item.priority && (
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              Priority {item.priority}
-            </span>
-          )}
-          {item.deadline && (
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              Due {formatDateTime(item.deadline, { month: "short", day: "numeric" })}
-            </span>
-          )}
-          {item.plannedMinutes && (
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              {item.plannedMinutes}m
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-});
 
 // Progress Overview Component
 interface ProgressOverviewProps {
@@ -1077,167 +892,69 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         )}
         {/* Calm Task Sections */}
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Planned Column */}
-          <DroppableColumn id="planned-column" className="lg:col-span-1">
-            <div className="sticky top-24">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <span className="text-sm">□</span>
-                </div>
-            <div>
-                  <h2 className="text-xl font-bold text-slate-800">Planned</h2>
-                  <p className="text-sm text-slate-500">Ready to start</p>
-            </div>
-                <div className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
-                  {planned.length}
-              </div>
-            </div>
-              
-              <SortableContext id="planned-column" items={planned.map(item => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {isLoading ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <TaskCardSkeleton key={i} />
-                      ))}
-          </div>
-                  ) : planned.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-                        <span className="text-2xl text-slate-400">□</span>
-          </div>
-                      <h3 className="mb-2 font-semibold text-slate-800">No planned tasks</h3>
-                      <p className="text-sm text-slate-500">Use the quick add button to create your first task</p>
-              </div>
-                  ) : (
-                    planned.map((item) => {
-                  const isUpdating = statusMutation.isPending && pendingStatusId === item.id;
-                  return (
-                        <DraggableTaskCard
-                      key={item.id}
-                          dragId={item.id}
-                          item={item}
-                          isUpdating={isUpdating}
-                          onStatusChange={() => openStatusModal(item)}
-                          onEdit={item.source === "task" ? () => openEditModal(item) : undefined}
-                          onChecklist={item.source === "task" ? () => openChecklistModal(item) : undefined}
-                          onSchedule={() => openScheduleModal(item)}
-                          onStart={() => openTimer(item)}
-                        />
-                      );
-                    })
-                            )}
-                          </div>
-              </SortableContext>
-                        </div>
-          </DroppableColumn>
+          <TodaySection
+            id="planned-column"
+            title="Planned"
+            subtitle="Ready to start"
+            icon="□"
+            iconBg="bg-blue-50"
+            iconText="text-blue-600"
+            countBg="bg-blue-50"
+            countText="text-blue-600"
+            items={planned}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onOpenTimer={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
 
-          {/* In Progress Column */}
-          <DroppableColumn id="in-progress-column" className="lg:col-span-1">
-            <div className="sticky top-24">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                  <span className="text-sm">◐</span>
-                      </div>
-              <div>
-                  <h2 className="text-xl font-bold text-slate-800">In Progress</h2>
-                  <p className="text-sm text-slate-500">Currently working on</p>
-              </div>
-                <div className="ml-auto rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-600">
-                  {inProgress.length}
-              </div>
-            </div>
-              
-              <SortableContext id="in-progress-column" items={inProgress.map(item => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-            {isLoading ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 3 }).map((_, i) => (
-                        <TaskCardSkeleton key={i} />
-                      ))}
-                    </div>
-                  ) : inProgress.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-                        <span className="text-2xl text-slate-400">◐</span>
-                      </div>
-                      <h3 className="mb-2 font-semibold text-slate-800">No active tasks</h3>
-                      <p className="text-sm text-slate-500">Pick a task from the planned list to get started</p>
-                    </div>
-                  ) : (
-                    inProgress.map((item) => {
-                  const isUpdating = statusMutation.isPending && pendingStatusId === item.id;
-                  return (
-                        <DraggableTaskCard
-                      key={item.id}
-                          dragId={item.id}
-                          item={item}
-                          isUpdating={isUpdating}
-                          onStatusChange={() => openStatusModal(item)}
-                          onEdit={item.source === "task" ? () => openEditModal(item) : undefined}
-                          onChecklist={item.source === "task" ? () => openChecklistModal(item) : undefined}
-                          onSchedule={() => openScheduleModal(item)}
-                          onStart={() => openTimer(item)}
-                        />
-                      );
-                    })
-                            )}
-                          </div>
-              </SortableContext>
-                        </div>
-          </DroppableColumn>
+          <TodaySection
+            id="in-progress-column"
+            title="In Progress"
+            subtitle="Currently working on"
+            icon="◐"
+            iconBg="bg-amber-50"
+            iconText="text-amber-600"
+            countBg="bg-amber-50"
+            countText="text-amber-600"
+            items={inProgress}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onOpenTimer={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
 
-          {/* Completed Column */}
-          <DroppableColumn id="completed-column" className="lg:col-span-1">
-            <div className="sticky top-24">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50 text-green-600">
-                  <span className="text-sm">●</span>
-                      </div>
-              <div>
-                  <h2 className="text-xl font-bold text-slate-800">Done</h2>
-                <p className="text-sm text-slate-500">Completed tasks</p>
-              </div>
-                <div className="ml-auto rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-600">
-                  {completed.length}
-              </div>
-              </div>
-              
-              <SortableContext id="completed-column" items={completed.map(item => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-            {isLoading ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 2 }).map((_, i) => (
-                        <TaskCardSkeleton key={i} />
-                      ))}
-                    </div>
-            ) : completed.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-                        <span className="text-2xl text-slate-400">●</span>
-                      </div>
-                      <h3 className="mb-2 font-semibold text-slate-800">No completed tasks</h3>
-                      <p className="text-sm text-slate-500">Complete some tasks to see them here</p>
-                    </div>
-                  ) : (
-                    completed.map((item) => {
-                  const isUpdating = statusMutation.isPending && pendingStatusId === item.id;
-                  return (
-                        <DraggableTaskCard
-                      key={item.id}
-                          dragId={item.id}
-                          item={item}
-                          isUpdating={isUpdating}
-                          onStatusChange={() => openStatusModal(item)}
-                          onBack={() => handleStatusChange(item, STATUS.PLANNED)}
-                        />
-                      );
-                    })
-                  )}
-                          </div>
-              </SortableContext>
-                        </div>
-          </DroppableColumn>
+          <TodaySection
+            id="completed-column"
+            title="Done"
+            subtitle="Completed tasks"
+            icon="●"
+            iconBg="bg-green-50"
+            iconText="text-green-600"
+            countBg="bg-green-50"
+            countText="text-green-600"
+            items={completed}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onOpenTimer={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            onBack={(item) => handleStatusChange(item, STATUS.PLANNED)}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
                       </div>
       </main>
       </div>
@@ -1538,319 +1255,53 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                 </div>
       )}
 
-      {/* Schedule Modal */}
-      {scheduleModalOpen && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Schedule Task</h3>
-              <p className="text-sm text-slate-600">{selectedItem.title}</p>
-              </div>
-            
-              <div className="space-y-4">
-              <div>
-                <label htmlFor="schedule-start" className="block text-sm font-medium text-slate-700 mb-1">
-                  Start Time
-                </label>
-                <input
-                  id="schedule-start"
-                  type="datetime-local"
-                  value={scheduleStartAt}
-                  onChange={(e) => setScheduleStartAt(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="schedule-minutes" className="block text-sm font-medium text-slate-700 mb-1">
-                  Duration (minutes)
-                </label>
-                <select
-                  id="schedule-minutes"
-                  value={scheduleMinutes}
-                  onChange={(e) => setScheduleMinutes(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value={15}>15 minutes</option>
-                  <option value={25}>25 minutes</option>
-                  <option value={45}>45 minutes</option>
-                  <option value={60}>1 hour</option>
-                  <option value={90}>1.5 hours</option>
-                  <option value={120}>2 hours</option>
-                </select>
-              </div>
-            </div>
-            
-             <div className="mt-6 flex gap-3">
-                  <button
-                    type="button"
-                 onClick={() => setScheduleModalOpen(false)}
-                 className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  >
-                 Cancel
-                  </button>
-                  <button
-                    type="button"
-                 onClick={createSchedule}
-                 disabled={scheduleMutation.isPending}
-                 className={clsx(
-                   "flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700",
-                   scheduleMutation.isPending && "cursor-not-allowed opacity-60"
-                 )}
-               >
-                 {scheduleMutation.isPending ? "Creating..." : "Create Schedule"}
-               </button>
-             </div>
-          </div>
-        </div>
-      )}
+      <ScheduleModal
+        open={scheduleModalOpen}
+        selectedItem={selectedItem}
+        startAt={scheduleStartAt}
+        minutes={scheduleMinutes}
+        onStartAtChange={setScheduleStartAt}
+        onMinutesChange={setScheduleMinutes}
+        onSave={createSchedule}
+        onCancel={() => setScheduleModalOpen(false)}
+        loading={scheduleMutation.isPending}
+      />
 
-      {/* Checklist Modal */}
-      {checklistModalOpen && selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Add Checklist</h3>
-              <p className="text-sm text-slate-600">{selectedTask.title}</p>
-            </div>
-            
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {checklistItems.map((item, index) => (
-                <div key={index} className="flex gap-2 items-start">
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      placeholder="Checklist item title"
-                      value={item.title}
-                      onChange={(e) => updateChecklistItem(index, "title", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="datetime-local"
-                        placeholder="Deadline (optional)"
-                        value={item.deadline || ""}
-                        onChange={(e) => updateChecklistItem(index, "deadline", e.target.value)}
-                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      />
-                      <select
-                        value={item.priority || ""}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          updateChecklistItem(index, "priority", value ? Number(value) : undefined);
-                        }}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      >
-                        <option value="">Priority</option>
-                        <option value={1}>High</option>
-                        <option value={2}>Medium</option>
-                        <option value={3}>Low</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeChecklistItem(index)}
-                    className="mt-2 rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-4">
-                    <button
-                      type="button"
-                onClick={addChecklistItem}
-                className="w-full rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
-              >
-                + Add another item
-              </button>
-            </div>
-            
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setChecklistModalOpen(false)}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={createChecklist}
-                disabled={checklistMutation.isPending}
-                className={clsx(
-                  "flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700",
-                  checklistMutation.isPending && "cursor-not-allowed opacity-60"
-                )}
-              >
-                {checklistMutation.isPending ? "Creating..." : "Create Checklist"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ChecklistAssignModal
+        open={checklistModalOpen}
+        selectedTask={selectedTask}
+        checklistItems={checklistItems}
+        onItemChange={updateChecklistItem}
+        onAddItem={addChecklistItem}
+        onRemoveItem={removeChecklistItem}
+        onSave={createChecklist}
+        onCancel={() => setChecklistModalOpen(false)}
+        loading={checklistMutation.isPending}
+      />
 
-      {/* Edit Task Modal */}
-      {editModalOpen && editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Edit Task</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="edit-title" className="block text-sm font-medium text-slate-700 mb-1">
-                  Title
-                </label>
-                <input
-                  id="edit-title"
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="edit-description" className="block text-sm font-medium text-slate-700 mb-1">
-                  Description (optional)
-                </label>
-                <textarea
-                  id="edit-description"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="edit-deadline" className="block text-sm font-medium text-slate-700 mb-1">
-                  Deadline (optional)
-                </label>
-                <input
-                  id="edit-deadline"
-                  type="datetime-local"
-                  value={editDeadline}
-                  onChange={(e) => setEditDeadline(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="edit-priority" className="block text-sm font-medium text-slate-700 mb-1">
-                  Priority
-                </label>
-                <select
-                  id="edit-priority"
-                  value={editPriority || ""}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setEditPriority(value ? (Number(value) as 1 | 2 | 3) : null);
-                  }}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="">No priority</option>
-                  <option value={1}>High</option>
-                  <option value={2}>Medium</option>
-                  <option value={3}>Low</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setEditModalOpen(false)}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveTaskEdit}
-                disabled={editTaskMutation.isPending}
-                className={clsx(
-                  "flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700",
-                  editTaskMutation.isPending && "cursor-not-allowed opacity-60"
-                )}
-              >
-                {editTaskMutation.isPending ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditTaskModal
+        open={editModalOpen}
+        editingItem={editingItem}
+        title={editTitle}
+        description={editDescription}
+        deadline={editDeadline}
+        priority={editPriority}
+        onTitleChange={setEditTitle}
+        onDescriptionChange={setEditDescription}
+        onDeadlineChange={setEditDeadline}
+        onPriorityChange={setEditPriority}
+        onSave={saveTaskEdit}
+        onCancel={() => setEditModalOpen(false)}
+        loading={editTaskMutation.isPending}
+      />
 
-      {/* Status Selection Modal */}
-      {statusModalOpen && statusModalItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Change Status</h3>
-              <p className="text-sm text-slate-600">{statusModalItem.title}</p>
-            </div>
-            
-            <div className="space-y-2">
-              {[
-                { value: STATUS.PLANNED, label: "Planned", description: "Task is planned but not started" },
-                { value: STATUS.IN_PROGRESS, label: "In Progress", description: "Currently working on this task" },
-                { value: STATUS.DONE, label: "Done", description: "Task has been completed" },
-                { value: STATUS.SKIPPED, label: "Skipped", description: "Task was skipped or cancelled" },
-              ].map((statusOption) => (
-                <button
-                  key={statusOption.value}
-                  type="button"
-                  onClick={() => selectStatus(statusOption.value)}
-                  disabled={statusMutation.isPending}
-                  className={clsx(
-                    "w-full rounded-lg border p-3 text-left transition hover:bg-slate-50",
-                    statusModalItem.status === statusOption.value
-                      ? "border-indigo-500 bg-indigo-50"
-                      : "border-slate-200",
-                    statusMutation.isPending && "cursor-not-allowed opacity-60"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={clsx(
-                      "h-3 w-3 rounded-full",
-                      statusOption.value === STATUS.PLANNED && "bg-sky-500",
-                      statusOption.value === STATUS.IN_PROGRESS && "bg-amber-500",
-                      statusOption.value === STATUS.DONE && "bg-emerald-500",
-                      statusOption.value === STATUS.SKIPPED && "bg-slate-500"
-                    )} />
-                    <div>
-                      <div className="font-medium text-slate-900">{statusOption.label}</div>
-                      <div className="text-xs text-slate-500">{statusOption.description}</div>
-                    </div>
-                    {statusModalItem.status === statusOption.value && (
-                      <div className="ml-auto text-indigo-600">
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                    </button>
-                  ))}
-                </div>
-            
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStatusModalOpen(false)}
-                className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              </div>
-            </div>
-          </div>
-      )}
+      <StatusPickerModal
+        open={statusModalOpen}
+        selectedItem={statusModalItem}
+        onStatusSelect={selectStatus}
+        onCancel={() => setStatusModalOpen(false)}
+        loading={statusMutation.isPending}
+      />
       {/* Drag Overlay */}
       <DragOverlay>
         {activeId ? (
@@ -1887,27 +1338,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   );
 }
 
-// Loading Skeleton Components
-const TaskCardSkeleton = memo(function TaskCardSkeleton() {
-  return (
-    <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200 animate-pulse">
-      <div className="mb-3 flex items-start justify-between">
-        <div className="h-6 w-20 rounded-lg bg-slate-200"></div>
-        <div className="flex gap-1">
-          <div className="h-6 w-12 rounded-lg bg-slate-200"></div>
-          <div className="h-6 w-16 rounded-lg bg-slate-200"></div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <div className="h-4 w-3/4 rounded bg-slate-200"></div>
-        <div className="flex items-center gap-4">
-          <div className="h-3 w-16 rounded bg-slate-200"></div>
-          <div className="h-3 w-20 rounded bg-slate-200"></div>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 const ProgressOverviewSkeleton = memo(function ProgressOverviewSkeleton() {
   return (
