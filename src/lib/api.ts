@@ -4,6 +4,14 @@ import { notifyNetworkError, isNetworkError } from "./network-events";
 
 type MaybeString = string | null | undefined;
 
+// Extend AxiosRequestConfig to include our custom properties
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    _retry?: boolean;
+    skipAuthRefresh?: boolean;
+  }
+}
+
 const baseURL = (import.meta.env.VITE_API_BASE as MaybeString) ?? "/api";
 
 const api = axios.create({
@@ -14,10 +22,15 @@ const envAccessToken = (import.meta.env.VITE_ACCESS_TOKEN as MaybeString) ?? nul
 const envDevUserId = (import.meta.env.VITE_DEV_USER_ID as MaybeString) ?? null;
 
 let runtimeAccessToken: string | null = null;
+let runtimeRefreshToken: string | null = null;
 let runtimeDevUserId: string | null = null;
 
 export function setRuntimeAccessToken(token: MaybeString) {
   runtimeAccessToken = token ?? null;
+}
+
+export function setRuntimeRefreshToken(token: MaybeString) {
+  runtimeRefreshToken = token ?? null;
 }
 
 export function setRuntimeDevUserId(userId: MaybeString) {
@@ -28,12 +41,17 @@ export function getAccessToken() {
   return runtimeAccessToken ?? envAccessToken ?? null;
 }
 
+export function getRefreshToken() {
+  return runtimeRefreshToken ?? null;
+}
+
 export function getDevUserId() {
   return runtimeDevUserId ?? envDevUserId ?? null;
 }
 
 export function clearRuntimeAuth() {
   runtimeAccessToken = null;
+  runtimeRefreshToken = null;
   runtimeDevUserId = null;
 }
 
@@ -59,15 +77,42 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
     // Handle network errors (no response)
     if (isNetworkError(error)) {
       notifyNetworkError(error);
+      return Promise.reject(error);
     }
-    // Normalize 401 to a consistent shape and allow upper layers to handle
-    else if (error && error.response && error.response.status === 401) {
-      notifyUnauthorized(error);
+
+    // Handle 401 Unauthorized with automatic refresh
+    if (error && error.response && error.response.status === 401) {
+      // Guard against infinite loops
+      if (originalRequest?.skipAuthRefresh || originalRequest?._retry) {
+        notifyUnauthorized(error);
+        return Promise.reject(error);
+      }
+
+      try {
+        // Attempt to refresh the session
+        const recovered = await notifyUnauthorized(error);
+        
+        if (recovered && originalRequest) {
+          // Clone the original request and mark it as retried
+          const retryConfig = {
+            ...originalRequest,
+            _retry: true,
+          };
+          
+          // Retry the request with the updated token
+          return api(retryConfig);
+        }
+      } catch (refreshError) {
+        console.warn('Token refresh failed:', refreshError);
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -1,4 +1,4 @@
-export type UnauthorizedCallback = (error: unknown) => void;
+export type UnauthorizedCallback = (error: unknown) => Promise<boolean> | boolean;
 
 let unauthorizedHandler: UnauthorizedCallback | null = null;
 
@@ -6,12 +6,18 @@ export function setUnauthorizedHandler(callback: UnauthorizedCallback | null) {
   unauthorizedHandler = callback;
 }
 
-export function notifyUnauthorized(error: unknown) {
+export async function notifyUnauthorized(error: unknown): Promise<boolean> {
+  if (!unauthorizedHandler) {
+    return false;
+  }
+
   try {
-    if (unauthorizedHandler) unauthorizedHandler(error);
+    const result = await unauthorizedHandler(error);
+    return Boolean(result);
   } catch (e) {
-    // Swallow errors from the handler to avoid breaking the promise chain
+    // Log errors from the handler but still resolve false
     console.error('Unauthorized handler threw error:', e);
+    return false;
   }
 }
 

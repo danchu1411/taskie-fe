@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import api, { setRuntimeAccessToken } from "../../lib/api";
+import api, { setRuntimeAccessToken, setRuntimeRefreshToken, getRefreshToken, clearRuntimeAuth } from "../../lib/api";
 import { setUnauthorizedHandler } from "../../lib/auth-events";
 import { setNetworkErrorHandler } from "../../lib/network-events";
 import {
@@ -141,18 +141,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const shouldPersistRef = useRef<boolean>(Boolean(initialState));
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     setRuntimeAccessToken(authState?.tokens.accessToken ?? null);
-  }, [authState?.tokens.accessToken]);
+    setRuntimeRefreshToken(authState?.tokens.refreshToken ?? null);
+  }, [authState?.tokens.accessToken, authState?.tokens.refreshToken]);
+
+  const refreshTokens = useCallback(async (): Promise<boolean> => {
+    // If a refresh is already in progress, return that promise
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
+    }
+
+    const refreshToken = authState?.tokens.refreshToken ?? getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+
+    const refreshPromise = (async () => {
+      try {
+        // Create a bare axios instance to avoid interceptor loops
+        const refreshResponse = await api.post('/auth/refresh', { refreshToken }, {
+          skipAuthRefresh: true
+        });
+
+        const newTokens = refreshResponse.data.tokens;
+        if (!newTokens || !newTokens.accessToken || !newTokens.refreshToken) {
+          throw new Error('Invalid refresh response');
+        }
+
+        // Update auth state with new tokens but keep current user
+        if (authState) {
+          const updatedState: StoredAuthState = {
+            user: authState.user,
+            tokens: newTokens
+          };
+          setAuthStateInternal(updatedState);
+          
+          // Persist if we were persisting before
+          if (shouldPersistRef.current) {
+            saveAuthState(updatedState);
+          }
+        }
+
+        return true;
+      } catch (error) {
+        console.warn('Token refresh failed:', error);
+        // Clear auth state on refresh failure
+        setAuthStateInternal(null);
+        clearRuntimeAuth();
+        clearAuthState();
+        setStatus("idle");
+        return false;
+      } finally {
+        // Clear the promise ref when done
+        refreshPromiseRef.current = null;
+      }
+    })();
+
+    refreshPromiseRef.current = refreshPromise;
+    return refreshPromise;
+  }, [authState]);
 
   useEffect(() => {
-    // When unauthorized globally, clear auth and set error flag
-    setUnauthorizedHandler((error: unknown) => {
+    // When unauthorized globally, attempt token refresh first
+    setUnauthorizedHandler(async (error: unknown) => {
+      try {
+        const refreshed = await refreshTokens();
+        if (refreshed) {
+          return true; // Signal success to interceptor for retry
+        }
+      } catch (refreshError) {
+        console.warn("Token refresh failed in unauthorized handler:", refreshError);
+      }
+      
+      // Fall back to clearing state and setting error
       setAuthStateInternal(null);
       setStatus("idle");
       setAuthError("Your session has expired. Please log in again.");
       console.warn("Unauthorized access detected:", error);
+      return false;
     });
 
     // When network error occurs globally, set network error flag
@@ -170,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setAuthState = useCallback(
     (state: StoredAuthState | null, options?: { remember?: boolean }) => {
       if (!state) {
-        setRuntimeAccessToken(null);
+        clearRuntimeAuth();
         setAuthStateInternal(null);
         shouldPersistRef.current = false;
         setVerification(null);
@@ -184,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const remember = options?.remember ?? shouldPersistRef.current ?? false;
       shouldPersistRef.current = remember;
       setRuntimeAccessToken(state.tokens.accessToken);
+      setRuntimeRefreshToken(state.tokens.refreshToken);
       setAuthStateInternal(state);
       setAuthError(null); // Clear auth error when setting new auth state
       setNetworkError(null); // Clear network error when setting new auth state
@@ -265,6 +335,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await api.post("/auth/logout", {
           refreshToken,
           allSessions: payload?.revokeAll ?? false,
+        }, {
+          skipAuthRefresh: true
         });
       } catch (error) {
         console.warn("Failed to revoke refresh token", error);
