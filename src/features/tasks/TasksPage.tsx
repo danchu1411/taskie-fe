@@ -1,20 +1,19 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
-import api from "../../lib/api";
 import type { 
   TaskRecord, 
-  TaskListResponse, 
   TaskFilters, 
   StatusValue, 
   PriorityValue,
   ChecklistItemRecord
 } from "../../lib";
 import { STATUS, clsx } from "../../lib";
+import { useTasksData } from "./hooks/useTasksData";
+import { useTasksMutations } from "./hooks/useTasksMutations";
 import { 
   NavigationBar, 
   StatusBadge, 
@@ -416,296 +415,6 @@ function TaskCard({
 }
 
 
-// Custom hooks
-function useTasksData(userId: string | null, filters: TaskFilters) {
-  return useQuery<TaskListResponse>({
-    queryKey: ["tasks", userId, filters],
-    enabled: Boolean(userId),
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      
-      if (filters.search) params.append("q", filters.search);
-      if (filters.status && filters.status !== 'all') params.append("status", filters.status.toString());
-      if (filters.priority && filters.priority !== 'all') params.append("priority", filters.priority.toString());
-      params.append("page", (filters.page || 1).toString());
-      params.append("pageSize", (filters.pageSize || 20).toString());
-      params.append("includeChecklist", "true");
-      params.append("includeWorkItems", "true");
-
-      const response = await api.get<TaskListResponse>(`/tasks/by-user/${userId}?${params}`);
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-function useCreateTask(userId: string | null) {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (taskData: Partial<TaskRecord>) => {
-      const response = await api.post<TaskRecord>("/tasks/create", taskData);
-      return response.data;
-    },
-    retry: (failureCount, error) => {
-      // Don't retry on 4xx errors
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
-          return false;
-        }
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-    },
-    onError: (error: any) => {
-      console.error("Failed to create task:", error);
-    },
-  });
-}
-
-function useUpdateTask(userId: string | null, setPendingStatusId: (id: string | null) => void) {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ taskId, taskData }: { taskId: string; taskData: Partial<TaskRecord> }) => {
-      console.log('TasksPage updateTask mutation:', { 
-        taskId, 
-        taskIdType: typeof taskId,
-        taskIdLength: taskId?.length,
-        taskData,
-        url: `/tasks/${taskId}`
-      });
-      
-      // Validate taskId exists and has correct format
-      if (!taskId) {
-        throw new Error('Task ID is required for update');
-      }
-      
-      const response = await api.patch<TaskRecord>(`/tasks/${taskId}`, taskData);
-      return response.data;
-    },
-    retry: (failureCount, error) => {
-      // Don't retry on 4xx errors (client errors)
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as any;
-        if (axiosError.response?.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
-          return false;
-        }
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-    onMutate: async ({ taskId, taskData }) => {
-      setPendingStatusId(taskId);
-      
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
-      
-      // Snapshot the previous value
-      const previousTasks = queryClient.getQueryData(["tasks", userId]) as TaskListResponse | undefined;
-      
-      // Optimistically update to the new value
-      queryClient.setQueryData(["tasks", userId], (old: TaskListResponse | undefined) => {
-        if (!old?.items) return old;
-        
-        return {
-          ...old,
-          items: old.items.map((task: TaskRecord) => {
-            // Use same logic as TodayPage to compare taskId - check both id and task_id
-            const taskTaskId = (task as any).id || task.task_id;
-            return taskTaskId === taskId
-              ? { ...task, ...taskData }
-              : task;
-          })
-        };
-      });
-      
-      return { previousTasks };
-    },
-    onError: (error: any, _variables, context) => {
-      console.error('TasksPage updateTask error:', error.response?.data || error);
-      // Revert to previous value on error
-      if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", userId], context.previousTasks);
-      }
-    },
-    onSuccess: () => {
-      // Invalidate to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-    },
-    onSettled: () => {
-      setPendingStatusId(null);
-    },
-  });
-}
-
-function useDeleteTask(userId: string | null) {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (taskId: string) => {
-      // Validate taskId exists and has correct format
-      if (!taskId) {
-        throw new Error('Task ID is required for delete');
-      }
-      // Use official DELETE endpoint per API docs
-      await api.delete(`/tasks/${taskId}`);
-    },
-    onMutate: async (taskId: string) => {
-      // Cancel any outgoing refetches for any variant of tasks queries
-      await queryClient.cancelQueries({ queryKey: ["tasks"] });
-
-      // Snapshot all variants we might touch
-      const snapshots: Array<{ key: any[]; data: TaskListResponse | undefined }> = [];
-      queryClient.getQueriesData<TaskListResponse>({ queryKey: ["tasks"] }).forEach(([key, data]) => {
-        snapshots.push({ key: key as any[], data });
-        // Optimistically update each dataset
-        queryClient.setQueryData(key, (old: TaskListResponse | undefined) => {
-          if (!old?.items) return old;
-          return {
-            ...old,
-            // Remove the task locally for better UX (server marks it skipped)
-            items: old.items.filter((task: TaskRecord) => {
-              const existingId = (task as any).id || task.task_id;
-              return existingId !== taskId;
-            })
-          };
-        });
-      });
-
-      return { snapshots } as const;
-    },
-    onError: (error: any, _taskId, context) => {
-      console.error("Failed to delete task:", error);
-      // Revert all snapshots on error
-      if (context?.snapshots) {
-        for (const snap of context.snapshots) {
-          queryClient.setQueryData(snap.key, snap.data);
-        }
-      }
-    },
-    onSuccess: () => {
-      // Invalidate all task queries to ensure freshness
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-    },
-  });
-}
-
-function useDeleteChecklistItem(userId: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (itemId: string) => {
-      if (!itemId) {
-        throw new Error('Checklist item ID is required for delete');
-      }
-      await api.delete(`/checklist-items/${itemId}`);
-    },
-    onMutate: async (itemId: string) => {
-      // Cancel any outgoing refetches for any variant of tasks queries
-      await queryClient.cancelQueries({ queryKey: ["tasks"] });
-
-      // Snapshot all variants we might touch
-      const snapshots: Array<{ key: any[]; data: TaskListResponse | undefined }> = [];
-      queryClient.getQueriesData<TaskListResponse>({ queryKey: ["tasks"] }).forEach(([key, data]) => {
-        snapshots.push({ key: key as any[], data });
-        // Optimistically remove the checklist item from all tasks
-        queryClient.setQueryData(key, (old: TaskListResponse | undefined) => {
-          if (!old?.items) return old;
-          return {
-            ...old,
-            items: old.items.map((task: TaskRecord) => {
-              if (!task.checklist || task.checklist.length === 0) return task;
-              return {
-                ...task,
-                checklist: task.checklist.filter((ci) => ci.checklist_item_id !== itemId)
-              } as TaskRecord;
-            })
-          };
-        });
-      });
-
-      return { snapshots } as const;
-    },
-    onError: (error: any, _itemId, context) => {
-      console.error("Failed to delete checklist item:", error);
-      // Revert all snapshots on error
-      if (context?.snapshots) {
-        for (const snap of context.snapshots) {
-          queryClient.setQueryData(snap.key, snap.data);
-        }
-      }
-    },
-    onSuccess: () => {
-      // Invalidate all task queries to ensure freshness
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      // Keep Today page in sync as well
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-    },
-  });
-}
-
-function useReorderChecklistItem(userId: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (payload: { itemId: string; targetOrder: number }) => {
-      const { itemId, targetOrder } = payload;
-      if (!itemId || !targetOrder || targetOrder < 1) {
-        throw new Error('Checklist reorder payload is invalid');
-      }
-      await api.patch(`/checklist-items/${itemId}`, { order: targetOrder });
-    },
-    onMutate: async ({ itemId, targetOrder }) => {
-      // Cancel any outgoing refetches for any variant of tasks queries
-      await queryClient.cancelQueries({ queryKey: ["tasks"] });
-
-      // Snapshot all variants we might touch
-      const snapshots: Array<{ key: any[]; data: TaskListResponse | undefined }> = [];
-      queryClient.getQueriesData<TaskListResponse>({ queryKey: ["tasks"] }).forEach(([key, data]) => {
-        snapshots.push({ key: key as any[], data });
-        // Optimistically reorder within the task's checklist
-        queryClient.setQueryData(key, (old: TaskListResponse | undefined) => {
-          if (!old?.items) return old;
-          return {
-            ...old,
-            items: old.items.map((task: TaskRecord) => {
-              if (!task.checklist || task.checklist.length === 0) return task;
-              const fromIndex = task.checklist.findIndex(ci => ci.checklist_item_id === itemId);
-              if (fromIndex === -1) return task;
-              const toIndex = Math.min(Math.max(targetOrder - 1, 0), task.checklist.length - 1);
-              const newChecklist = arrayMove(task.checklist, fromIndex, toIndex).map((ci, idx) => ({
-                ...ci,
-                order_index: idx + 1,
-              }));
-              return { ...task, checklist: newChecklist } as TaskRecord;
-            })
-          };
-        });
-      });
-
-      return { snapshots } as const;
-    },
-    onError: (_error, _vars, context) => {
-      if (context?.snapshots) {
-        for (const snap of context.snapshots) {
-          queryClient.setQueryData(snap.key, snap.data);
-        }
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-    }
-  });
-}
 
 
 // Main Tasks Page Component
@@ -723,7 +432,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusModalTask, setStatusModalTask] = useState<TaskRecord | null>(null);
-  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+  const [pendingStatusId] = useState<string | null>(null);
   
   // Checklist item modal state
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
@@ -731,49 +440,44 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const [checklistModalTaskId, setChecklistModalTaskId] = useState<string | null>(null);
 
   // Data fetching
-  const { data: tasksData, isLoading, error, refetch } = useTasksData(user?.id || null, filters);
+  const { tasksByStatus, tasks, isLoading, error, refetch } = useTasksData(user?.id || null, filters);
   
   // Mutations
-  const createTaskMutation = useCreateTask(user?.id || null);
-  const updateTaskMutation = useUpdateTask(user?.id || null, setPendingStatusId);
-  const deleteTaskMutation = useDeleteTask(user?.id || null);
+  const {
+    createTask,
+    updateTask,
+    deleteTask,
+    createChecklistItem,
+    updateChecklistItem,
+    deleteChecklistItem,
+    reorderChecklistItem,
+    changeTaskStatus,
+    changeChecklistItemStatus,
+    isCreating,
+    isUpdating,
+  } = useTasksMutations(user?.id || null);
 
   // Handlers
   const handleCreateTask = useCallback((taskData: Partial<TaskRecord>) => {
-    createTaskMutation.mutate(taskData, {
-      onSuccess: () => {
-        setModalOpen(false);
-        setEditingTask(null);
-      }
-    });
-  }, [createTaskMutation]);
+    createTask(taskData);
+    setModalOpen(false);
+    setEditingTask(null);
+  }, [createTask]);
 
   const handleUpdateTask = useCallback((taskData: Partial<TaskRecord>, taskId?: string) => {
     const targetTaskId = taskId || (editingTask ? ((editingTask as any).id || editingTask.task_id) : undefined);
     if (targetTaskId) {
-      updateTaskMutation.mutate({ taskId: targetTaskId, taskData }, {
-        onSuccess: () => {
-          setModalOpen(false);
-          setEditingTask(null);
-        }
-      });
+      updateTask(targetTaskId, taskData);
+      setModalOpen(false);
+      setEditingTask(null);
     } else {
       console.error('No task ID provided for update');
     }
-  }, [editingTask, updateTaskMutation]);
+  }, [editingTask, updateTask]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    deleteTaskMutation.mutate(taskId, {
-      onError: (error: any) => {
-        const serverMsg: string | undefined = error?.response?.data?.error || error?.response?.data?.message;
-        const isSqlTriggerIssue = typeof serverMsg === 'string' && serverMsg.includes("OUTPUT clause") && serverMsg.includes("Triggers");
-        if (isSqlTriggerIssue) {
-          // Fallback: mark as skipped instead of hard delete
-          updateTaskMutation.mutate({ taskId, taskData: { status: STATUS.SKIPPED } });
-        }
-      }
-    });
-  }, [deleteTaskMutation, updateTaskMutation]);
+    deleteTask(taskId);
+  }, [deleteTask]);
 
 
   const openStatusModal = useCallback((task: TaskRecord) => {
@@ -826,10 +530,8 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
 
   // Direct status change used by BoardView DnD (no modal)
   const handleBoardDropStatusChange = useCallback((taskWithNewStatus: TaskRecord) => {
-    const taskId = (taskWithNewStatus as any).id || taskWithNewStatus.task_id;
-    if (!taskId) return;
-    updateTaskMutation.mutate({ taskId, taskData: { status: taskWithNewStatus.status } });
-  }, [updateTaskMutation]);
+    changeTaskStatus(taskWithNewStatus, taskWithNewStatus.status);
+  }, [changeTaskStatus]);
 
   const handleEditTask = useCallback((task: TaskRecord) => {
     setEditingTask(task);
@@ -864,57 +566,19 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     setChecklistModalOpen(true);
   }, []);
 
-  const deleteChecklistItemMutation = useDeleteChecklistItem(user?.id || null);
   const handleDeleteChecklistItem = useCallback((itemId: string) => {
     if (!itemId) return;
     if (confirm('Are you sure you want to delete this checklist item?')) {
-      deleteChecklistItemMutation.mutate(itemId);
+      deleteChecklistItem(itemId);
     }
-  }, [deleteChecklistItemMutation]);
+  }, [deleteChecklistItem]);
 
-  const queryClient = useQueryClient();
-  const createChecklistItemMutation = useMutation({
-    mutationFn: async ({ taskId, payload }: { taskId: string; payload: Partial<ChecklistItemRecord> }) => {
-      // API expects bulk payload under "checklist" per docs
-      const response = await api.post(`/checklist-items/${taskId}/checklist`, {
-        checklist: [
-          {
-            title: payload.title,
-            deadline: payload.deadline ?? null,
-            priority: payload.priority ?? null,
-            status: payload.status ?? STATUS.PLANNED,
-          },
-        ],
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      // Refresh task data and Today
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id || null] });
-    },
-  });
-
-  const updateChecklistItemMutation = useMutation({
-    mutationFn: async ({ itemId, payload }: { itemId: string; payload: Partial<ChecklistItemRecord> }) => {
-      const body: Record<string, unknown> = {};
-      if (payload.title !== undefined) body.title = payload.title;
-      if (payload.deadline !== undefined) body.deadline = payload.deadline ?? null;
-      if (payload.priority !== undefined) body.priority = payload.priority ?? null;
-      if (payload.status !== undefined) body.status = payload.status;
-      return api.patch(`/checklist-items/${itemId}`, body);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id || null] });
-    },
-  });
 
   const handleChecklistItemSubmit = useCallback((data: Partial<ChecklistItemRecord>) => {
     if (editingChecklistItem) {
-      updateChecklistItemMutation.mutate({ itemId: editingChecklistItem.checklist_item_id, payload: data });
+      updateChecklistItem(editingChecklistItem.checklist_item_id, data);
     } else if (checklistModalTaskId) {
-      createChecklistItemMutation.mutate({ taskId: checklistModalTaskId, payload: data });
+      createChecklistItem(checklistModalTaskId, data);
     } else {
       console.error('No taskId for creating checklist item');
     }
@@ -922,18 +586,15 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     setChecklistModalOpen(false);
     setEditingChecklistItem(null);
     setChecklistModalTaskId(null);
-  }, [editingChecklistItem, checklistModalTaskId, createChecklistItemMutation, updateChecklistItemMutation]);
+  }, [editingChecklistItem, checklistModalTaskId, createChecklistItem, updateChecklistItem]);
 
   const handleChecklistItemStatusChange = useCallback((itemId: string, newStatus: StatusValue) => {
-    if (!itemId) return;
-    updateChecklistItemMutation.mutate({ itemId, payload: { status: newStatus } });
-  }, [updateChecklistItemMutation]);
+    changeChecklistItemStatus(itemId, newStatus);
+  }, [changeChecklistItemStatus]);
 
-  const reorderChecklistItemMutation = useReorderChecklistItem(user?.id || null);
   const handleChecklistItemReorder = useCallback((itemId: string, targetOrder: number) => {
-    if (!itemId) return;
-    reorderChecklistItemMutation.mutate({ itemId, targetOrder });
-  }, [reorderChecklistItemMutation]);
+    reorderChecklistItem(itemId, targetOrder);
+  }, [reorderChecklistItem]);
 
   const handleCloseModal = useCallback(() => {
     setModalOpen(false);
@@ -948,17 +609,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     }
   }, [editingTask, handleUpdateTask, handleCreateTask]);
 
-  // Filter tasks by status for board view
-  const tasksByStatus = useMemo(() => {
-    if (!tasksData?.items) return { planned: [], inProgress: [], done: [], skipped: [] };
-    
-    return {
-      planned: tasksData.items.filter(task => task.status === STATUS.PLANNED),
-      inProgress: tasksData.items.filter(task => task.status === STATUS.IN_PROGRESS),
-      done: tasksData.items.filter(task => task.status === STATUS.DONE),
-      skipped: tasksData.items.filter(task => task.status === STATUS.SKIPPED),
-    };
-  }, [tasksData?.items]);
 
   if (error) {
     return (
@@ -985,18 +635,16 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
 
   // Calculate task statistics
   const taskStats = useMemo(() => {
-    if (!tasksData?.items) return null;
-    
-    const tasks = tasksData.items;
+    if (!tasks.length) return null;
     
     return {
       total: tasks.length,
-      planned: tasks.filter(t => t.status === STATUS.PLANNED).length,
-      inProgress: tasks.filter(t => t.status === STATUS.IN_PROGRESS).length,
-      done: tasks.filter(t => t.status === STATUS.DONE).length,
-      skipped: tasks.filter(t => t.status === STATUS.SKIPPED).length,
+      planned: tasksByStatus.planned.length,
+      inProgress: tasksByStatus.inProgress.length,
+      done: tasksByStatus.done.length,
+      skipped: tasksByStatus.skipped.length,
     };
-  }, [tasksData]);
+  }, [tasks, tasksByStatus]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1165,14 +813,14 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           </div>
       ) : view === 'list' ? (
         <div className="space-y-4">
-          {tasksData?.items?.map((task) => (
+          {tasks.map((task) => (
             <TaskCard
               key={(task as any).id || task.task_id}
               task={task}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onStatusChange={openStatusModal}
-              isUpdating={updateTaskMutation.isPending && pendingStatusId === ((task as any).id || task.task_id)}
+              isUpdating={isUpdating && pendingStatusId === ((task as any).id || task.task_id)}
               onStart={handleStart}
               onAddChecklist={handleAddChecklist}
               onEditChecklistItem={handleEditChecklistItem}
@@ -1181,7 +829,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
               onChecklistItemReorder={handleChecklistItemReorder}
             />
           ))}
-          {(!tasksData?.items || tasksData.items.length === 0) && (
+          {tasks.length === 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <div className="w-8 h-8 bg-slate-500 rounded-full"></div>
@@ -1212,7 +860,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onChecklist={handleChecklist}
           onSchedule={handleSchedule}
           onStart={handleStart}
-          isUpdating={updateTaskMutation.isPending}
+          isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
         />
       ) : (
@@ -1231,7 +879,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
         onClose={handleCloseModal}
         onSubmit={handleSubmitTask}
         task={editingTask}
-        isLoading={createTaskMutation.isPending || updateTaskMutation.isPending}
+        isLoading={isCreating || isUpdating}
       />
 
       {/* Checklist Item Modal */}
@@ -1244,8 +892,8 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
         }}
         onSubmit={handleChecklistItemSubmit}
         item={editingChecklistItem}
-        taskDeadline={tasksData?.items?.find(t => t.task_id === checklistModalTaskId)?.deadline}
-        taskPriority={tasksData?.items?.find(t => t.task_id === checklistModalTaskId)?.priority}
+        taskDeadline={tasks.find(t => t.task_id === checklistModalTaskId)?.deadline}
+        taskPriority={tasks.find(t => t.task_id === checklistModalTaskId)?.priority}
         isLoading={false} // TODO: Add loading state for checklist operations
       />
 
