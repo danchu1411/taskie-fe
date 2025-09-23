@@ -23,6 +23,8 @@ import { ScheduleModal } from "./components/ScheduleModal";
 import { ChecklistAssignModal } from "./components/ChecklistAssignModal";
 import { EditTaskModal } from "./components/EditTaskModal";
 import { StatusPickerModal } from "./components/StatusPickerModal";
+import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
+import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
 import type { TaskRecord, ChecklistItemRecord } from "../../lib/types";
 
 function statusLabel(value: StatusValue) {
@@ -59,12 +61,6 @@ function Ring({ value }: { value: number }) {
 }
 
 
-function formatTime(ms: number) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
 
 interface ApiErrorResponse {
   message?: string;
@@ -996,263 +992,33 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         </DndContext>
       )}
 
-      {/* Fullscreen Timer - Theme Support */}
       {isFullscreen && (
-        <div className={`fixed inset-0 z-50 ${isDarkTheme ? 'bg-gray-900' : 'bg-white'}`}>
-          <div className="flex h-full flex-col items-center justify-center">
-            {/* Header */}
-            <div className="mb-8 text-center">
-              <h1 className={`text-xl font-medium ${isDarkTheme ? 'text-white' : 'text-gray-900'}`}>
-                Focus period ({currentSession} of {sessionPlan.length})
-              </h1>
-              </div>
-
-            {/* Circular Timer */}
-            <div className="mb-12 relative">
-              <div className="relative w-80 h-80">
-                {/* Background Circle */}
-                <div className={`absolute inset-0 rounded-full border ${
-                  isDarkTheme 
-                    ? 'bg-gray-800 border-gray-700' 
-                    : 'bg-gray-100 border-gray-300'
-                }`}>
-                  {/* Progress Ring */}
-                  <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className={isDarkTheme ? 'text-gray-600' : 'text-gray-300'}
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeDasharray={`${2 * Math.PI * 45}`}
-                      strokeDashoffset={`${2 * Math.PI * 45 * (1 - (timerRemain / timerDuration))}`}
-                      className="text-blue-500 transition-all duration-1000 ease-linear"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  
-                  {/* Time Display */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className={`text-5xl font-light mb-1 ${
-                      isDarkTheme ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      {Math.floor(timerRemain / (60 * 1000))}
-                    </div>
-                    <div className={`text-lg ${
-                      isDarkTheme ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      min
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center gap-6">
-              {/* Pause/Resume Button */}
-              <button
-                onClick={() => setTimerRunning(!timerRunning)}
-                className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center text-white transition hover:bg-blue-600"
-              >
-                {timerRunning ? (
-                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                ) : (
-                  <svg className="h-6 w-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-              
-              {/* More Options Button */}
-              <button
-                onClick={enterFloatingMode}
-                className={`w-16 h-16 rounded-full flex items-center justify-center transition ${
-                  isDarkTheme 
-                    ? 'bg-gray-800 text-white hover:bg-gray-700' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Next Session Info */}
-            <div className="mt-8 text-center">
-              <div className={isDarkTheme ? 'text-white' : 'text-gray-900'}>
-                Up next: <span className="font-semibold">
-                  {currentSession < sessionPlan.length ? 
-                    `${sessionPlan[currentSession]?.duration || 5} min break` : 
-                    'Session complete'
-                  }
-                </span>
-              </div>
-            </div>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={() => timer.setIsDarkTheme(!isDarkTheme)}
-              className={`absolute top-4 left-4 w-8 h-8 rounded-full flex items-center justify-center transition ${
-                isDarkTheme 
-                  ? 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' 
-                  : 'bg-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-300'
-              }`}
-              title={isDarkTheme ? 'Switch to Light' : 'Switch to Dark'}
-            >
-              {isDarkTheme ? (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-
-            {/* Close Button */}
-            <button
-              onClick={closeTimer}
-              className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition ${
-                isDarkTheme 
-                  ? 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700' 
-                  : 'bg-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <FocusTimerFullscreen
+          isDarkTheme={isDarkTheme}
+          currentSession={currentSession}
+          sessionPlan={sessionPlan}
+          timerRemain={timerRemain}
+          timerDuration={timerDuration}
+          timerRunning={timerRunning}
+          onToggleRunning={() => setTimerRunning(!timerRunning)}
+          onEnterFloatingMode={enterFloatingMode}
+          onClose={closeTimer}
+          onToggleTheme={() => timer.setIsDarkTheme(!isDarkTheme)}
+        />
       )}
 
-      {/* Modal Timer (Setup Mode) */}
       {timerOpen && !isFullscreen && !isFloating && (
-        <div className="fixed inset-x-0 bottom-0 z-50">
-          {/* Backdrop */}
-          <div 
-            className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${
-              timerAnimating ? 'opacity-100' : 'opacity-0'
-            }`}
-            onClick={closeTimer}
-          />
-          
-          {/* Windows 11 Style Modal */}
-          <div 
-            className={`relative rounded-t-3xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
-              timerAnimating 
-                ? 'translate-y-0' 
-                : 'translate-y-full'
-            }`}
-          >
-            <div className="mx-auto max-w-md px-8 py-8">
-              {/* Header */}
-              <div className="mb-8 text-center">
-                <h3 className="text-xl font-semibold text-gray-900">Focus Session</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {timerItem ? timerItem.title : "Select a task to focus on"}
-                </p>
-              </div>
-
-              {/* Time Display - Only show when running */}
-              {timerRunning && (
-                <div className="mb-8 text-center">
-                  <div className="text-4xl font-light text-gray-900">
-                    {formatTime(timerRemain)}
-                  </div>
-                </div>
-              )}
-
-              {/* Duration Controls - Only show when not running */}
-              {!timerRunning && (
-                <div className="mb-8">
-                  <div className="text-center mb-6">
-                    <label className="text-sm font-medium text-gray-700">Total Duration</label>
-                    <div className="mt-3 flex items-center justify-center gap-4">
-              <button
-                type="button"
-                        onClick={() => setCustomDuration(prev => Math.max(30, prev - 30))}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                        </svg>
-                      </button>
-                      <div className="text-center">
-                        <div className="text-2xl font-medium text-gray-900">{customDuration}</div>
-                        <div className="text-sm text-gray-600">minutes</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCustomDuration(prev => Math.min(480, prev + 30))}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => startCustomDuration(customDuration)}
-                      className="flex items-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-700"
-                    >
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      <span className="font-medium">Start {customDuration}min Session</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons - Only show when running */}
-              {timerRunning && (
-                <div className="flex justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTimerRunning(false)}
-                    className="flex items-center gap-3 rounded-lg bg-white border border-gray-200 px-6 py-3 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
-                  >
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                    </svg>
-                    <span className="font-medium">Pause</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Close Button */}
-              <div className="mt-6 flex justify-center">
-                <button
-                  type="button"
-                  onClick={closeTimer}
-                  className="text-sm text-gray-500 hover:text-gray-700 transition"
-              >
-                Close
-              </button>
-            </div>
-                    </div>
-                  </div>
-                </div>
+        <FocusTimerBottomSheet
+          timerAnimating={timerAnimating}
+          timerItem={timerItem}
+          timerRunning={timerRunning}
+          timerRemain={timerRemain}
+          customDuration={customDuration}
+          onClose={closeTimer}
+          onSetCustomDuration={setCustomDuration}
+          onStartCustomDuration={startCustomDuration}
+          onSetTimerRunning={setTimerRunning}
+        />
       )}
 
       <ScheduleModal
