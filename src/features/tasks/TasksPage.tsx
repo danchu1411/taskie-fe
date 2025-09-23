@@ -6,7 +6,6 @@ import type {
   StatusValue, 
   ChecklistItemRecord
 } from "../../lib";
-import { STATUS, clsx } from "../../lib";
 import { useTasksData } from "./hooks/useTasksData";
 import { useTasksMutations } from "./hooks/useTasksMutations";
 import { 
@@ -14,10 +13,11 @@ import {
   TaskModal, 
   ChecklistItemModal,
   BoardView,
-  Button,
   SystemError,
   TaskCard,
-  TaskToolbar
+  TaskToolbar,
+  TaskStatusModal,
+  TaskEmptyState
 } from "../../components/ui";
 
 // Main Tasks Page Component
@@ -63,16 +63,16 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   // Handlers
   const handleCreateTask = useCallback((taskData: Partial<TaskRecord>) => {
     createTask(taskData);
-    setModalOpen(false);
-    setEditingTask(null);
+        setModalOpen(false);
+        setEditingTask(null);
   }, [createTask]);
 
   const handleUpdateTask = useCallback((taskData: Partial<TaskRecord>, taskId?: string) => {
     const targetTaskId = taskId || (editingTask ? ((editingTask as any).id || editingTask.task_id) : undefined);
     if (targetTaskId) {
       updateTask(targetTaskId, taskData);
-      setModalOpen(false);
-      setEditingTask(null);
+          setModalOpen(false);
+          setEditingTask(null);
     } else {
       console.error('No task ID provided for update');
     }
@@ -302,25 +302,10 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
             />
           ))}
           {tasks.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="w-8 h-8 bg-slate-500 rounded-full"></div>
-              </div>
-              <h3 className="text-2xl font-semibold text-slate-900 mb-3">No tasks found</h3>
-              <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                {filters.search || filters.status !== 'all' || filters.priority !== 'all'
-                  ? "Try adjusting your filters to see more tasks."
-                  : "Get started by creating your first task to organize your work."
-                }
-              </p>
-              <Button
-                onClick={() => setModalOpen(true)}
-                variant="primary"
-                size="lg"
-              >
-                Create Your First Task
-              </Button>
-            </div>
+            <TaskEmptyState
+              filters={filters}
+              onCreateTask={() => setModalOpen(true)}
+            />
           )}
         </div>
       ) : view === 'board' ? (
@@ -369,61 +354,12 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
         isLoading={false} // TODO: Add loading state for checklist operations
       />
 
-      {/* Status Modal */}
-      {statusModalOpen && statusModalTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Change Status</h3>
-              <p className="text-sm text-slate-600">{statusModalTask.title}</p>
-            </div>
-            
-            <div className="space-y-2">
-              {[
-                { value: STATUS.PLANNED, label: "Planned", description: "Task is planned but not started" },
-                { value: STATUS.IN_PROGRESS, label: "In Progress", description: "Currently working on this task" },
-                { value: STATUS.DONE, label: "Done", description: "Task has been completed" },
-                { value: STATUS.SKIPPED, label: "Skipped", description: "Task was skipped or cancelled" },
-              ].map((statusOption) => (
-                <button
-                  key={statusOption.value}
-                  onClick={() => handleStatusModalChange(statusOption.value)}
-                  className={clsx(
-                    "w-full rounded-lg border p-3 text-left transition hover:bg-slate-50",
-                    statusModalTask.status === statusOption.value
-                      ? "border-indigo-300 bg-indigo-50"
-                      : "border-slate-200",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={clsx(
-                      "h-3 w-3 rounded-full",
-                      statusOption.value === STATUS.PLANNED && "bg-sky-500",
-                      statusOption.value === STATUS.IN_PROGRESS && "bg-amber-500",
-                      statusOption.value === STATUS.DONE && "bg-emerald-500",
-                      statusOption.value === STATUS.SKIPPED && "bg-slate-500"
-                    )} />
-                    <div>
-                      <div className="font-medium text-slate-900">{statusOption.label}</div>
-                      <div className="text-sm text-slate-600">{statusOption.description}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setStatusModalOpen(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TaskStatusModal
+        open={statusModalOpen}
+        task={statusModalTask}
+        onStatusSelect={handleStatusModalChange}
+        onClose={() => setStatusModalOpen(false)}
+      />
       </div>
     </div>
   );

@@ -12,3 +12,5 @@ export { default as CalendarView } from './CalendarView';
 export { default as SystemError, NetworkError, NotFoundError, ServerError, GenericError } from './SystemError';
 export { TaskCard } from '../TaskCard';
 export { TaskToolbar } from '../TaskToolbar';
+export { TaskStatusModal } from '../TaskStatusModal';
+export { TaskEmptyState } from '../TaskEmptyState';
