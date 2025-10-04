@@ -1,7 +1,8 @@
-import { isAxiosError } from "axios";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import AuthLoadingOverlay from "./AuthLoadingOverlay";
+import { AuthShell, AuthCard, AuthFormField, AuthSupportFooter } from "./components";
+import { useAuthNavigation } from "./hooks";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -21,6 +22,7 @@ function useTokenFromQuery() {
 
 export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
   const { resetPassword } = useAuth();
+  const navigate = useAuthNavigation(onNavigate);
   const token = useTokenFromQuery();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,24 +30,14 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const navigateTo = useCallback(
-    (event: MouseEvent<HTMLAnchorElement>, path: string) => {
-      event.preventDefault();
-      if (onNavigate) onNavigate(path);
-      else if (typeof window !== "undefined") window.location.href = path;
-    },
-    [onNavigate],
-  );
-
   useEffect(() => {
     if (status !== "success") return;
     const target = "/login?reset=success";
     const timer = setTimeout(() => {
-      if (onNavigate) onNavigate(target);
-      else if (typeof window !== "undefined") window.location.replace(target);
+      navigate(target);
     }, 2500);
     return () => clearTimeout(timer);
-  }, [status, onNavigate]);
+  }, [status, navigate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,13 +45,15 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
     setMessage(null);
 
     if (!token) {
-      setError("Reset link is missing or invalid. Please request a new email.");
+      setError("Invalid or missing reset token. Please request a new password reset.");
       return;
     }
+
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
       return;
     }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -69,116 +63,140 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
     try {
       await resetPassword({ token, password });
       setStatus("success");
-      setMessage("Your password has been reset. Redirecting you to log in...");
+      setMessage("Your password has been reset successfully. Redirecting to login...");
     } catch (err) {
       setStatus("idle");
-      if (isAxiosError(err)) {
-        const data = err.response?.data as { message?: string; error?: string; code?: string } | undefined;
-        const code = data?.code ? ` (${data.code})` : "";
-        setError(data?.message ?? data?.error ?? `Unable to reset password${code}. Try requesting a new email.`);
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Unable to reset password. Try requesting a new email.");
+        setError("Unable to reset password. Please try again or request a new reset link.");
       }
     }
   };
 
+  const isSubmitting = status === "submitting";
+
+  if (status === "success") {
+    return (
+      <>
+        <AuthLoadingOverlay show={isSubmitting} label="Resetting password..." />
+        <AuthShell ctaLabel="Back to login" ctaHref="/login" onNavigate={navigate}>
+          <AuthCard
+            title="Password reset successful"
+            badge="Success"
+            description="Your password has been updated successfully."
+          >
+            <div className="text-center">
+              <p className="text-sm text-slate-500 mb-4">
+                {message}
+              </p>
+              <p className="text-sm text-slate-500">
+                You can now log in with your new password.
+              </p>
+            </div>
+          </AuthCard>
+        </AuthShell>
+        <AuthSupportFooter />
+      </>
+    );
+  }
+
+  if (!token) {
+    return (
+      <>
+        <AuthShell ctaLabel="Back to login" ctaHref="/login" onNavigate={navigate}>
+          <AuthCard
+            title="Invalid reset link"
+            badge="Error"
+            description="This password reset link is invalid or has expired."
+          >
+            <div className="text-center">
+              <p className="text-sm text-slate-500 mb-4">
+                Please request a new password reset link.
+              </p>
+              <a
+                href="/forgot-password"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/forgot-password");
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99]"
+              >
+                Request new reset link
+              </a>
+            </div>
+          </AuthCard>
+        </AuthShell>
+        <AuthSupportFooter />
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-50 px-6 py-10 text-slate-900">
-      <AuthLoadingOverlay show={status === "submitting"} label="Updating your password..." />
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between pb-10">
-        <a
-          href="/"
-          onClick={(event) => navigateTo(event, "/")}
-          className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-600 transition hover:text-slate-900"
+    <>
+      <AuthLoadingOverlay show={isSubmitting} label="Resetting password..." />
+      <AuthShell ctaLabel="Back to login" ctaHref="/login" onNavigate={navigate}>
+        <AuthCard
+          title="Set new password"
+          badge="Reset password"
+          description="Enter your new password below."
         >
-          Taskie
-        </a>
-        <nav className="flex gap-4 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-          <a href="/login" onClick={(event) => navigateTo(event, "/login")} className="transition hover:text-slate-900">
-            Log in
-          </a>
-          <a href="/signup" onClick={(event) => navigateTo(event, "/signup")} className="transition hover:text-slate-900">
-            Sign up
-          </a>
-        </nav>
-      </header>
-
-      <main className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[32px] border border-slate-200/80 bg-white/90 p-10 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.35)] backdrop-blur">
-          <span className="inline-flex items-center rounded-full border border-indigo-200/70 bg-indigo-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-indigo-600">
-            Reset password
-          </span>
-          <h1 className="mt-4 text-3xl font-semibold text-slate-900">Set your new password</h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-500">
-            Choose a new password for your Taskie account. We'll redirect you to the sign in page once it's updated.
-          </p>
-
-          {!token && (
-            <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-              Reset link is missing or expired. Please request a new email.
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="grid gap-2">
-              <label htmlFor="reset-password" className="text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-                New password
-              </label>
+          <form onSubmit={handleSubmit} className="grid gap-4 text-left">
+            <AuthFormField id="password" label="New password">
               <input
-                id="reset-password"
-                name="password"
+                id="password"
                 type="password"
+                required
                 value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  if (error) setError(null);
-                }}
-                disabled={status === "submitting"}
-                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:bg-slate-100"
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
               />
-            </div>
+            </AuthFormField>
 
-            <div className="grid gap-2">
-              <label htmlFor="reset-password-confirm" className="text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-                Confirm password
-              </label>
+            <AuthFormField id="confirmPassword" label="Confirm password">
               <input
-                id="reset-password-confirm"
-                name="passwordConfirm"
+                id="confirmPassword"
                 type="password"
+                required
                 value={confirmPassword}
-                onChange={(event) => {
-                  setConfirmPassword(event.target.value);
-                  if (error) setError(null);
-                }}
-                disabled={status === "submitting"}
-                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:bg-slate-100"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                placeholder="Confirm your new password"
               />
-            </div>
+            </AuthFormField>
 
-            {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-600">{error}</p>}
-            {message && !error && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{message}</p>
+            {error && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                {error}
+              </p>
             )}
 
             <button
               type="submit"
-              disabled={status === "submitting" || !token}
-              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {status === "submitting" ? "Updating password..." : "Update password"}
+              {isSubmitting ? "Resetting password..." : "Reset password"}
             </button>
           </form>
 
-          <div className="mt-6 text-sm text-slate-500">
-            <p>
-              Need a new email? <a href="/forgot-password" onClick={(event) => navigateTo(event, "/forgot-password")} className="text-slate-700 underline underline-offset-4">Request another reset link</a>.
-            </p>
-          </div>
-        </div>
-      </main>
-    </div>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Remember your password?{' '}
+            <a
+              href="/login"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/login");
+              }}
+              className="text-slate-600 underline underline-offset-4 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+            >
+              Log in
+            </a>
+          </p>
+        </AuthCard>
+      </AuthShell>
+      <AuthSupportFooter />
+    </>
   );
 }

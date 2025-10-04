@@ -1,7 +1,8 @@
-import { isAxiosError } from "axios";
-import { useState, type FormEvent, type MouseEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import AuthLoadingOverlay from "./AuthLoadingOverlay";
+import { AuthShell, AuthCard, AuthFormField, AuthSupportFooter } from "./components";
+import { useAuthNavigation } from "./hooks";
 
 type NavigateHandler = (path: string) => void;
 
@@ -11,6 +12,7 @@ type ForgotPasswordProps = {
 
 export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
   const { requestPasswordReset } = useAuth();
+  const navigate = useAuthNavigation(onNavigate);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +39,7 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
       setMessage(baseMessage);
     } catch (err) {
       setStatus("idle");
-      if (isAxiosError(err)) {
-        const data = err.response?.data as { message?: string; error?: string } | undefined;
-        setError(data?.message ?? data?.error ?? "Unable to send reset email. Please try again later.");
-      } else if (err instanceof Error) {
+      if (err instanceof Error) {
         setError(err.message);
       } else {
         setError("Unable to send reset email. Please try again later.");
@@ -48,93 +47,92 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
     }
   };
 
-  const navigateTo = (event: MouseEvent<HTMLAnchorElement>, path: string) => {
-    event.preventDefault();
-    if (onNavigate) {
-      onNavigate(path);
-    } else if (typeof window !== "undefined") {
-      window.location.href = path;
-    }
-  };
+  const isSubmitting = status === "submitting";
+
+  if (status === "success") {
+    return (
+      <>
+        <AuthLoadingOverlay show={isSubmitting} label="Sending reset email..." />
+        <AuthShell ctaLabel="Back to login" ctaHref="/login" onNavigate={navigate}>
+          <AuthCard
+            title="Check your email"
+            badge="Email sent"
+            description="We've sent a password reset link to your email address."
+          >
+            <div className="text-center">
+              <p className="text-sm text-slate-500 mb-4">
+                {message}
+              </p>
+              <p className="text-sm text-slate-500">
+                Didn't receive the email? Check your spam folder or{' '}
+                <button
+                  onClick={() => setStatus("idle")}
+                  className="text-indigo-600 underline underline-offset-4 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+                >
+                  try again
+                </button>
+              </p>
+            </div>
+          </AuthCard>
+        </AuthShell>
+        <AuthSupportFooter />
+      </>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-neutral-50 px-6 py-10 text-slate-900">
-      <AuthLoadingOverlay show={status === "submitting"} label="Sending reset email..." />
-      <header className="mx-auto flex w-full max-w-3xl items-center justify-between pb-10">
-        <a
-          href="/"
-          onClick={(event) => navigateTo(event, "/")}
-          className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-600 transition hover:text-slate-900"
+    <>
+      <AuthLoadingOverlay show={isSubmitting} label="Sending reset email..." />
+      <AuthShell ctaLabel="Back to login" ctaHref="/login" onNavigate={navigate}>
+        <AuthCard
+          title="Reset your password"
+          badge="Forgot password"
+          description="Enter your email address and we'll send you a link to reset your password."
         >
-          Taskie
-        </a>
-        <nav className="flex gap-4 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-          <a href="/login" onClick={(event) => navigateTo(event, "/login")} className="transition hover:text-slate-900">
-            Log in
-          </a>
-          <a href="/signup" onClick={(event) => navigateTo(event, "/signup")} className="transition hover:text-slate-900">
-            Sign up
-          </a>
-        </nav>
-      </header>
-
-      <main className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[32px] border border-slate-200/80 bg-white/90 p-10 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.35)] backdrop-blur">
-          <span className="inline-flex items-center rounded-full border border-indigo-200/70 bg-indigo-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-indigo-600">
-            Reset password
-          </span>
-          <h1 className="mt-4 text-3xl font-semibold text-slate-900">Forgot your password?</h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-500">
-            Enter the email associated with your Taskie account and we will send you a link to reset your password.
-          </p>
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="grid gap-2">
-              <label htmlFor="forgot-email" className="text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-                Email address
-              </label>
+          <form onSubmit={handleSubmit} className="grid gap-4 text-left">
+            <AuthFormField id="email" label="Email">
               <input
-                id="forgot-email"
-                name="email"
+                id="email"
                 type="email"
-                autoComplete="email"
+                required
                 value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  if (error) setError(null);
-                  if (status === "success") {
-                    setStatus("idle");
-                    setMessage(null);
-                  }
-                }}
-                disabled={status === "submitting"}
-                placeholder="you@example.com"
-                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:bg-slate-100"
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                placeholder="your@email.com"
               />
-            </div>
+            </AuthFormField>
 
-            {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-600">{error}</p>}
-            {message && !error && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{message}</p>
+            {error && (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                {error}
+              </p>
             )}
 
             <button
               type="submit"
-              disabled={status === "submitting"}
-              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+              className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {status === "submitting" ? "Sending..." : "Send reset link"}
+              {isSubmitting ? "Sending reset link..." : "Send reset link"}
             </button>
           </form>
 
-          <div className="mt-6 text-sm text-slate-500">
-            <p>
-              Having trouble? <a href="mailto:support@taskie.dev" className="text-slate-700 underline underline-offset-4">Contact support</a> and we'll help restore access to your account.
-            </p>
-          </div>
-        </div>
-      </main>
-    </div>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Remember your password?{' '}
+            <a
+              href="/login"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/login");
+              }}
+              className="text-slate-600 underline underline-offset-4 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+            >
+              Log in
+            </a>
+          </p>
+        </AuthCard>
+      </AuthShell>
+      <AuthSupportFooter />
+    </>
   );
 }
-

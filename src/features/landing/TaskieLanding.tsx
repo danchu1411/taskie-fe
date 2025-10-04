@@ -1,9 +1,9 @@
 import { Children, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import GoogleIcon from "../../components/icons/GoogleIcon";
 import CalendarIcon from "../../components/icons/CalendarIcon";
 import TimerIcon from "../../components/icons/TimerIcon";
 import ChartIcon from "../../components/icons/ChartIcon";
+import { AuthCTAButtons } from "../auth/components";
 
 type PreviewCardProps = {
   title: string;
@@ -12,9 +12,6 @@ type PreviewCardProps = {
   className?: string;
 };
 
-type AuthButtonsProps = {
-  onEmailClick?: () => void;
-};
 
 type TaskieLandingProps = {
   onNavigate?: (path: string) => void;
@@ -70,28 +67,6 @@ function PreviewCard({ title, children, accent = "slate", className }: PreviewCa
   );
 }
 
-function AuthButtons({ onEmailClick }: AuthButtonsProps = {}) {
-  return (
-    <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-      <button
-        type="button"
-        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] sm:min-w-[220px]"
-        aria-label="Continue with Google"
-      >
-        <GoogleIcon className="h-4 w-4" />
-        Continue with Google
-      </button>
-      <button
-        type="button"
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] sm:min-w-[200px]"
-        aria-label="Continue with email"
-        onClick={onEmailClick}
-      >
-        Continue with email
-      </button>
-    </div>
-  );
-}
 
 export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
   const aboutRef = useRef<HTMLElement | null>(null);
@@ -193,7 +168,7 @@ export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
                 Taskie combines intentional planning, calm timers, and celebration of streaks so you keep moving forward every single day.
               </p>
 
-              <AuthButtons onEmailClick={goToLogin} />
+              <AuthCTAButtons onEmailClick={goToLogin} onNavigate={onNavigate} />
 
               <ul className="mt-8 flex flex-col gap-3 text-left text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:gap-5">
                 <li className="inline-flex items-center gap-2">
