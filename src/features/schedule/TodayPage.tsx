@@ -25,7 +25,7 @@ import { EditTaskModal } from "./components/EditTaskModal";
 import { StatusPickerModal } from "./components/StatusPickerModal";
 import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
 import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
-import type { TaskRecord, ChecklistItemRecord } from "../../lib/types";
+import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
 
 function statusLabel(value: StatusValue) {
   if (value === STATUS.IN_PROGRESS) return "In progress";
@@ -311,6 +311,72 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const quickRef = useRef<HTMLInputElement | null>(null);
 
   const { tasksQuery, items, categories } = useTodayData(userId);
+
+  const resolveWorkItemId = useCallback(
+    (item: TodayItem | null) => {
+      if (!item) return null;
+
+      const normalize = (value: string | null | undefined) =>
+        value ? String(value).toLowerCase() : null;
+
+      const tasks = tasksQuery.data?.items ?? [];
+
+      if (item.source === "checklist") {
+        if (item.id && item.checklistItemId && item.id !== item.checklistItemId) {
+          return item.id;
+        }
+      } else if (item.source === "task") {
+        if (item.id && item.taskId && item.id !== item.taskId) {
+          return item.id;
+        }
+      }
+
+      const targetTaskId = normalize(item.taskId ?? item.id);
+      const targetChecklistId = normalize(item.checklistItemId);
+
+      for (const task of tasks) {
+        const rawTaskId =
+          normalize(task.task_id) ??
+          normalize((task as unknown as { id?: string }).id) ??
+          normalize((task as unknown as { taskId?: string }).taskId);
+
+        if (targetTaskId && rawTaskId && rawTaskId !== targetTaskId) {
+          continue;
+        }
+
+        const workItems =
+          (task.workItems ??
+            (task as unknown as { work_items?: WorkItemRecord[] }).work_items ??
+            []) as Array<WorkItemRecord | Record<string, unknown>>;
+
+        for (const rawWorkItem of workItems) {
+          const workItem = rawWorkItem as WorkItemRecord;
+          const workItemId =
+            workItem.work_item_id ??
+            (rawWorkItem as { workItemId?: string }).workItemId ??
+            null;
+
+          if (!workItemId) continue;
+
+          const workItemChecklistId =
+            normalize(workItem.checklist_item_id) ??
+            normalize((rawWorkItem as { checklistItemId?: string }).checklistItemId);
+
+          if (item.source === "checklist") {
+            if (targetChecklistId && workItemChecklistId === targetChecklistId) {
+              return workItemId;
+            }
+          } else if (!workItemChecklistId) {
+            return workItemId;
+          }
+        }
+      }
+
+      return item.id ?? null;
+    },
+    [tasksQuery.data],
+  );
+
   const { isLoading, isError, error, refetch } = tasksQuery;
   const { inProgress, planned, completed, doneCount, progressValue } = categories;
 
@@ -685,14 +751,25 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const createSchedule = useCallback(() => {
     if (!selectedItem) return;
-    
-    const startAt = new Date(scheduleStartAt).toISOString();
+
+    const workItemId = resolveWorkItemId(selectedItem);
+    if (!workItemId) {
+      setStatusError("Unable to schedule this item right now. Please try again later.");
+      return;
+    }
+
+    const startAtDate = new Date(scheduleStartAt);
+    if (Number.isNaN(startAtDate.getTime())) {
+      setStatusError("Please choose a valid start time.");
+      return;
+    }
+
     scheduleMutation.mutate({
-      workItemId: selectedItem.id,
-      startAt,
+      workItemId,
+      startAt: startAtDate.toISOString(),
       plannedMinutes: scheduleMinutes,
     });
-  }, [selectedItem, scheduleStartAt, scheduleMinutes, scheduleMutation]);
+  }, [selectedItem, scheduleStartAt, scheduleMinutes, scheduleMutation, resolveWorkItemId]);
 
   const openChecklistModal = useCallback((item: TodayItem) => {
     if (item.source !== "task" || !item.taskId) return;

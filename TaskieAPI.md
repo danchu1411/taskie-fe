@@ -55,6 +55,16 @@ src/
   repositories/    # Lam viec truc tiep voi SQL
   validation/      # Schema Zod cho params/query/body
 db/schema.sql      # Bang, view, trigger
+
+## 2.5 AI Suggestions (LLM)
+- Module `ai` exposes `/api/ai/suggestions[...]` for generate/list/accept/dismiss flows.
+- `src/lib/llmAdapter.js` renders prompt templates, enforces timeout/retry, and writes entries to `AIRequestLogs`.
+- Data layer includes tables `AISuggestions`, `AISuggestionItems`, `AIRequestLogs`, service `src/services/aiSuggestions.service.js`, and the schedule free-slot helper.
+- Body validation: `src/validation/ai.js` (Zod) ensures `promptTemplate` and suggestion `:id` are well formed before hitting the controller.
+- Study profile (chronotype/focusStyle/workStyle) duoc lay tu `StudyProfiles` va dua vao prompt/metadata de ca nhan hoa goi y.
+- Requests are logged before and after the LLM call; responses are validated then stored with `origin_type = 'ai'`.
+- Tests: run `npm test` for Jest unit coverage and Supertest integration coverage.
+
 ```
 
 ## 3. Vong doi mot request
@@ -71,6 +81,7 @@ db/schema.sql      # Bang, view, trigger
 - Dev co the bat `AUTH_ALLOW_LEGACY_HEADER=true` de gui `x-user-id` (chi dung khi test).
 - Google login: `/auth/google` nhan `idToken`; dev co the bat `GOOGLE_ALLOW_MOCK=true` va gui body.mock.
 - Email verification:
+- LLM_API_KEY: dat trong secrets manager/.env (khong commit) de LLMAdapter doc key qua process.env.
   - Signup tra them `verification.status`. Neu SMTP cau hinh, backend tu dong gui mail.
   - API moi: `POST /auth/verify-email`, `POST /auth/verify-email/resend`, `GET /auth/verify-email?token=` (HTML don gian).
   - JWT access token chua `email_verified` de front-end biet dang user duoc unlock chua.
@@ -104,6 +115,12 @@ DB_TRUST_SERVER_CERTIFICATE=true
 AUTH_ALLOW_LEGACY_HEADER=true
 JWT_ALG=HS256
 JWT_SECRET=dev-secret-change-me
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+LLM_API_KEY=your-openai-key
+LLM_TIMEOUT_MS=15000
+LLM_MAX_RETRIES=2
+AI_SUGGESTIONS_ENABLED=true
 EMAIL_FROM="Taskie <no-reply@taskie.dev>"
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
@@ -120,12 +137,57 @@ PASSWORD_RESET_WEB_URL=http://localhost:5173/reset-password?token={token}
 # JWT_AUD=taskie_web
 GOOGLE_CLIENT_ID=your-google-client-id
 # GOOGLE_ALLOW_MOCK=true  # dev only: cho phep body.mock khi test Google login
+
+# Frontend Google OAuth Configuration
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+# VITE_GOOGLE_ALLOW_MOCK=true  # dev only: cho phep mock Google login trong frontend
 ```
+- Google login: dat `GOOGLE_CLIENT_ID` = `<client-id>` tu Google Cloud (OAuth client type Web hoac iOS/Android); dev co the set `GOOGLE_ALLOW_MOCK=true` de test khong can Google, va dieu chinh `GOOGLE_AUTO_VERIFY_EMAIL=false` neu muon giu trang thai verify = pending de UI hien thong bao.
 - Neu dung Gmail de test: bat 2FA, tao App Password, su dung `smtp.gmail.com` (`SMTP_PORT=587`, `SMTP_SECURE=false` hoac `SMTP_PORT=465`, `SMTP_SECURE=true`), va bo khoang trang trong mat khau ung dung khi dat vao `.env`.
 - Dat `PASSWORD_RESET_WEB_URL` tro ve trang Reset Password cua front-end (co the dung mau `http://localhost:5173/reset-password?token={token}`); neu khong set se fallback ve `http://localhost:5173/reset-password`.
 - Co the dat `DEFAULT_RESET_PASSWORD_URL` neu muon doi fallback khac (mac dinh la `http://localhost:5173/reset-password`).
 - Len prod: tat `AUTH_ALLOW_LEGACY_HEADER`, doi secret manh hoac chuyen sang RS256 (`JWT_PUBLIC_KEY`).
 
+### 6.1 Moi truong front-end (Vite)
+Neu frontend dung Vite, tao file .env hoac .env.local trong repo FE:
+```
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+VITE_GOOGLE_ALLOW_MOCK=true  # Chi dung cho development
+```
+
+#### 6.1.1 Cấu hình Google OAuth
+1. **Tạo Google Cloud Project:**
+   - Vào [Google Cloud Console](https://console.cloud.google.com/)
+   - Tạo project mới hoặc chọn project hiện có
+   - Bật Google+ API và Google Identity Services
+
+2. **Tạo OAuth 2.0 Client ID:**
+   - Vào "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+   - Application type: "Web application"
+   - Authorized JavaScript origins: `http://localhost:5173` (dev), `https://yourdomain.com` (prod)
+   - Authorized redirect URIs: `http://localhost:5173` (dev), `https://yourdomain.com` (prod)
+
+3. **Cấu hình Environment Variables:**
+   ```bash
+   # .env.local (development)
+   VITE_GOOGLE_CLIENT_ID=your-google-client-id-from-console
+   VITE_GOOGLE_ALLOW_MOCK=true
+   
+   # .env.production (production)
+   VITE_GOOGLE_CLIENT_ID=your-production-google-client-id
+   # Không set VITE_GOOGLE_ALLOW_MOCK hoặc set = false
+   ```
+
+4. **Mock Mode cho Development:**
+   - Khi `VITE_GOOGLE_ALLOW_MOCK=true`, hiển thị hint "Alt+click for mock login"
+   - Alt+click vào "Continue with Google" → mở mock dialog
+   - Nhập email/name → sử dụng `createMockGooglePayload()` helper
+   - Chỉ dùng cho development, không ship production
+
+5. **Troubleshooting:**
+   - Lỗi "Google chưa được cấu hình": Kiểm tra `VITE_GOOGLE_CLIENT_ID`
+   - Lỗi "Google token không hợp lệ": Kiểm tra authorized origins
+   - Lỗi "Xác thực Google thất bại": Kiểm tra client ID permissions
 ## 7. Quy trinh tich hop (goi y)
 1. Dang ky hoac dang nhap de lay `{ accessToken, refreshToken }` va `user`.
 2. Neu `user.emailVerified = false`, hien thi UI nhac xac minh va goi `/auth/verify-email` (token lay tu email) hoac `/auth/verify-email/resend` khi nguoi dung xin gui lai.
@@ -171,6 +233,57 @@ Tat ca endpoint tinh tu goc `/api`.
 ```
 - `verification.status`: `sent`, `logged`, `failed`, `already_verified` hoac `pending` (neu khong gui).
 - `user.emailVerified`: front-end dung de chan tinh nang khi chua xac minh.
+
+**Google Sign-In flow (Frontend)**
+1. Tren FE, dung Google Identity Services (One Tap hoac popup) de lay `idToken` sau khi nguoi dung dong y.
+2. Gui `POST /api/auth/google` (base URL + `/auth/google`) kem header `Content-Type: application/json` va body JSON ben duoi.
+3. Backend se tao/gan user va tra `user`, `tokens`, `verification`. Neu `GOOGLE_AUTO_VERIFY_EMAIL=true` (mac dinh) thi `user.emailVerified` va `verification.status` = `verified`; neu tat auto verify thi front-end can xu ly nhu signup thuong (`pending`).
+
+**Request**
+```json
+POST /api/auth/google
+{
+  "idToken": "<google-id-token>"
+}
+```
+
+**Response mau**
+```json
+{
+  "user": {
+    "id": "<GUID>",
+    "email": "student@example.com",
+    "name": "Student",
+    "emailVerified": true
+  },
+  "tokens": {
+    "accessToken": "<JWT>",
+    "accessTokenExpiresIn": 900,
+    "refreshToken": "<opaque>",
+    "refreshTokenExpiresAt": "2025-10-01T00:00:00.000Z",
+    "refreshTokenId": "<GUID>"
+  },
+  "verification": {
+    "status": "verified"
+  }
+}
+```
+- Loi thuong gap: `400 Google token required` (thieu `idToken`), `401 Google token invalid` (token het han/khong dung client), `500 Google login not configured` (chua dat `GOOGLE_CLIENT_ID`).
+
+**Local dev khong co Google**
+- Dat env `GOOGLE_ALLOW_MOCK=true` de bat che do mock.
+- Gui body dang sau thay cho `idToken`:
+  ```json
+  POST /api/auth/google
+  {
+    "mock": {
+      "sub": "mock-uid-123",
+      "email": "mockuser@example.com",
+      "name": "Mock User"
+    }
+  }
+  ```
+- Backend van tra cau truc `user`/`tokens`/`verification` nhu tren; co the su dung de lien ket voi front-end trong giai doan UI dev.
 
 **Refresh**
 ```json
@@ -338,6 +451,28 @@ GET /api/schedule-entries/upcoming?from=2025-09-10T00:00:00Z&to=2025-09-15T00:00
 - Bo qua `from`/`to` -> mac dinh now..+7d.
 
 ### 8.5 Users (seed/test)
+
+### 8.6 AI Suggestions
+| Method | Path | Ghi chu |
+|--------|------|---------|
+| GET | `/ai/suggestions` | Liet ke suggestions cua user (`statuses`, `limit`, `includeItems`). |
+| POST | `/ai/suggestions` | Goi LLM sinh de xuat moi dua tren context hien tai. |
+| POST | `/ai/suggestions/:id/accept` | Danh dau suggestion da chap nhan (status = 1). |
+| POST | `/ai/suggestions/:id/dismiss` | Danh dau suggestion bi bo qua (status = 2, optional reason). |
+
+**Generate suggestion**
+```json
+POST /api/ai/suggestions
+{
+  "promptTemplate": "Using work items {{workItems}} suggest tasks",
+  "variables": { "timezone": "Asia/Ho_Chi_Minh" },
+  "promptVersion": "v1",
+  "suggestionType": 0
+}
+```
+- Response bao gom `suggestion`, `items`, `freeSlots`, `usage`.
+- Neu tai khoan chua bat AI hoac vuot quota se tra 403/429.
+
 | Method | Path | Ghi chu |
 |--------|------|---------|
 | GET | `/users` | Lay top 50 user (`created_at DESC`).
@@ -384,3 +519,12 @@ Dung GUID nay lam `sub` JWT hoac header `x-user-id` de test nhanh.
 
 ---
 Neu frontend can them API moi, tao issue mo ta payload/response mong doi de backend bo sung controller/route/validation tuong ung.
+
+## 13. AI Auto Suggestion Job
+- File `src/jobs/autoSuggestion.job.js` cung cap `startAutoSuggestionJob` (cron) va `runAutoSuggestionCycle` de sinh suggestions dinh ky.
+- Can truyen `fetchEligibleUsers` (tra ve user bat AI) va `promptBuilder` (chuan bi payload goi dich vu).
+- Mac dinh dung `node-cron` voi `cronExpression='0 * * * *'` va ghi log qua console; co the truyen logger khac neu can.
+- LLM adapter mac dinh tai su dung `LLMAdapter` + repo log, vi vay can dat `LLM_API_KEY` truoc khi chay job.
+- Khi tich hop, import va goi `startAutoSuggestionJob({ fetchEligibleUsers, promptBuilder })` trong bootstrap (vi du `server.js`).
+- Co the truyen logger tuy bien (vd. Winston) hoac ghi thong ke vao bang rieng (processed/succeed/failed, token usage) de theo doi hieu nang job.
+  

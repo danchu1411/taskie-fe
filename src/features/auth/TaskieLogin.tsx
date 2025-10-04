@@ -6,6 +6,7 @@ import TimerIcon from "../../components/icons/TimerIcon";
 import ChartIcon from "../../components/icons/ChartIcon";
 import { useAuth } from "./AuthContext";
 import AuthLoadingOverlay from "./AuthLoadingOverlay";
+import { getGoogleIdToken, detectMockEnabled, createMockGooglePayload } from "../../lib/googleIdentity";
 
 type NavigateHandler = (path: string) => void;
 
@@ -32,12 +33,16 @@ const loginHighlights = [
 ] as const;
 
 function TaskieLogin({ onNavigate }: TaskieLoginProps) {
-  const { login, status, isAuthenticated, user, shouldPromptVerification } = useAuth();
+  const { login, loginWithGoogle, status, isAuthenticated, user, shouldPromptVerification } = useAuth();
   const [formState, setFormState] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [googleHint, setGoogleHint] = useState<string | null>(null);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [showMockDialog, setShowMockDialog] = useState(false);
+  const [mockForm, setMockForm] = useState({ email: "", name: "" });
   const isSubmitting = status === "authenticating";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -97,9 +102,84 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
     }
   }, []);
 
-  const handleGoogleClick = () => {
-    setGoogleHint("Google login is coming soon. Please use email & password for now.");
-    setTimeout(() => setGoogleHint(null), 5000);
+  const handleGoogleClick = async (event: MouseEvent<HTMLButtonElement>) => {
+    // Check for Alt+click to trigger mock mode
+    if (event.altKey && detectMockEnabled()) {
+      setShowMockDialog(true);
+      return;
+    }
+
+    setLoadingGoogle(true);
+    setGoogleError(null);
+    setGoogleHint(null);
+
+    try {
+      // Default behavior: always use real Google OAuth
+      const credential = await getGoogleIdToken();
+      await loginWithGoogle({
+        idToken: credential.credential,
+        remember: rememberMe
+      });
+      setGoogleHint("Google login successful!");
+    } catch (error) {
+      if (isAxiosError(error)) {
+        if (error.response?.status === 400) {
+          setGoogleError("Google token không hợp lệ. Vui lòng thử lại.");
+        } else if (error.response?.status === 401) {
+          setGoogleError("Xác thực Google thất bại. Vui lòng thử lại.");
+        } else if (error.response?.status === 500) {
+          setGoogleError("Lỗi cấu hình Google. Vui lòng kiểm tra VITE_GOOGLE_CLIENT_ID.");
+        } else {
+          setGoogleError("Google login failed. Please try again.");
+        }
+      } else if (error instanceof Error) {
+        if (error.message.includes('cancelled')) {
+          setGoogleHint("Google login was cancelled. Please try again if needed.");
+        } else if (error.message.includes('VITE_GOOGLE_CLIENT_ID')) {
+          setGoogleError("Google chưa được cấu hình. Vui lòng kiểm tra VITE_GOOGLE_CLIENT_ID.");
+        } else {
+          setGoogleError("Google login failed. Please try again.");
+        }
+      } else {
+        setGoogleError("Google login failed. Please try again.");
+      }
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  const handleMockSubmit = async () => {
+    if (!mockForm.email.trim() || !mockForm.name.trim()) {
+      setGoogleError("Please enter both email and name for mock login.");
+      return;
+    }
+
+    setLoadingGoogle(true);
+    setGoogleError(null);
+
+    try {
+      const mockPayload = createMockGooglePayload(mockForm.email.trim(), mockForm.name.trim());
+      await loginWithGoogle({
+        ...mockPayload,
+        remember: rememberMe
+      });
+      setShowMockDialog(false);
+      setGoogleHint("Mock login successful!");
+    } catch (error) {
+      if (isAxiosError(error)) {
+        if (error.response?.status === 400) {
+          setGoogleError("Mock data không hợp lệ. Vui lòng kiểm tra email và tên.");
+        } else if (error.response?.status === 401) {
+          setGoogleError("Xác thực mock thất bại. Vui lòng thử lại.");
+        } else {
+          setGoogleError("Mock login failed. Please try again.");
+        }
+      } else {
+        setGoogleError("Mock login failed. Please try again.");
+      }
+    } finally {
+      setLoadingGoogle(false);
+    }
   };
 
   const formDisabled = isSubmitting;
@@ -263,14 +343,20 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
                   <button
                     type="button"
                     onClick={handleGoogleClick}
-                    disabled={formDisabled}
+                    disabled={formDisabled || loadingGoogle}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                     aria-label="Continue with Google"
                   >
                     <GoogleIcon className="h-4 w-4" />
-                    Continue with Google
+                    {loadingGoogle ? "Signing in with Google..." : "Continue with Google"}
                   </button>
-                  {googleHint && <p className="text-center text-xs text-slate-500">{googleHint}</p>}
+                  {googleHint && <p className="text-center text-xs text-emerald-600">{googleHint}</p>}
+                  {googleError && <p className="text-center text-xs text-rose-600">{googleError}</p>}
+                  {detectMockEnabled() && (
+                    <p className="text-center text-xs text-slate-400">
+                      Alt+click for mock login
+                    </p>
+                  )}
                 </form>
                 <p className="mt-6 text-center text-sm text-slate-500">
                   No account?{' '}
@@ -300,6 +386,67 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
           </div>
         </div>
       </footer>
+
+      {/* Mock Login Dialog */}
+      {showMockDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Mock Google Login</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Enter mock user details for development testing.
+            </p>
+            <form onSubmit={(e) => { e.preventDefault(); handleMockSubmit(); }} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="mock-email" className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Email
+                </label>
+                <input
+                  id="mock-email"
+                  type="email"
+                  required
+                  value={mockForm.email}
+                  onChange={(e) => setMockForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                  placeholder="mockuser@example.com"
+                />
+              </div>
+              <div>
+                <label htmlFor="mock-name" className="block text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Name
+                </label>
+                <input
+                  id="mock-name"
+                  type="text"
+                  required
+                  value={mockForm.name}
+                  onChange={(e) => setMockForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 transition focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+                  placeholder="Mock User"
+                />
+              </div>
+              {googleError && (
+                <p className="text-xs text-rose-600">{googleError}</p>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMockDialog(false)}
+                  className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingGoogle}
+                  className="flex-1 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {loadingGoogle ? "Signing in..." : "Mock Login"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

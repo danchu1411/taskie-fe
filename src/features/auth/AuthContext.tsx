@@ -29,6 +29,18 @@ type LoginArgs = {
   remember?: boolean;
 };
 
+type LoginWithGoogleArgs = {
+  idToken: string;
+  remember?: boolean;
+} | {
+  mock: {
+    sub: string;
+    email: string;
+    name: string;
+  };
+  remember?: boolean;
+};
+
 type SignUpArgs = {
   name?: string;
   email: string;
@@ -81,6 +93,7 @@ type AuthContextValue = {
   authError: string | null;
   networkError: string | null;
   login: (payload: LoginArgs) => Promise<void>;
+  loginWithGoogle: (payload: LoginWithGoogleArgs) => Promise<void>;
   signUp: (payload: SignUpArgs) => Promise<void>;
   logout: (payload?: LogoutArgs) => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
@@ -234,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUnauthorizedHandler(null);
       setNetworkErrorHandler(null);
     };
-  }, []);
+  }, [refreshTokens]);
 
   const setAuthState = useCallback(
     (state: StoredAuthState | null, options?: { remember?: boolean }) => {
@@ -298,6 +311,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await api.post<AuthResponsePayload>("/auth/login", { email, password });
         hydrateState(response.data, remember, { promptVerification: false });
+      } catch (error) {
+        handleAuthFailure();
+        throw error;
+      }
+    },
+    [hydrateState, handleAuthFailure],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (payload: LoginWithGoogleArgs) => {
+      setStatus("authenticating");
+      try {
+        const response = await api.post<AuthResponsePayload>("/auth/google", payload);
+        hydrateState(response.data, payload.remember, { promptVerification: false });
       } catch (error) {
         handleAuthFailure();
         throw error;
@@ -451,6 +478,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       networkError,
       login,
+      loginWithGoogle,
       signUp,
       logout,
       verifyEmail,
@@ -471,6 +499,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authError,
       networkError,
       login,
+      loginWithGoogle,
       signUp,
       logout,
       verifyEmail,

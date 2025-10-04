@@ -90,7 +90,6 @@ api.interceptors.response.use(
     if (error && error.response && error.response.status === 401) {
       // Guard against infinite loops
       if (originalRequest?.skipAuthRefresh || originalRequest?._retry) {
-        notifyUnauthorized(error);
         return Promise.reject(error);
       }
 
