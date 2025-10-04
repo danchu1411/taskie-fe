@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { getNextDuration } from "../constants";
 
 interface FocusTimerBottomSheetProps {
   timerAnimating: boolean;
@@ -30,22 +31,17 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
   onStartCustomDuration,
   onSetTimerRunning,
 }: FocusTimerBottomSheetProps) {
+  const overlayClasses = timerAnimating
+    ? "flex-1 bg-black/20 transition-opacity duration-300 opacity-100"
+    : "flex-1 bg-black/20 transition-opacity duration-300 opacity-0 pointer-events-none";
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50">
-      {/* Backdrop */}
-      <div 
-        className={`absolute inset-0 bg-black/20 transition-opacity duration-300 ${
-          timerAnimating ? 'opacity-100' : 'opacity-0'
-        }`}
-        onClick={onClose}
-      />
-      
-      {/* Windows 11 Style Modal */}
-      <div 
-        className={`relative rounded-t-3xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
-          timerAnimating 
-            ? 'translate-y-0' 
-            : 'translate-y-full'
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className={overlayClasses} onClick={onClose} />
+
+      <div
+        className={`relative rounded-t-3xl bg-white shadow-[0_-18px_40px_-25px_rgba(15,23,42,0.35)] transition-transform duration-300 ease-out ${
+          timerAnimating ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
         <div className="mx-auto max-w-md px-8 py-8">
@@ -74,7 +70,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                 <div className="mt-3 flex items-center justify-center gap-4">
                   <button
                     type="button"
-                    onClick={() => onSetCustomDuration(Math.max(30, customDuration - 30))}
+                    onClick={() => onSetCustomDuration(getNextDuration(customDuration, 'down'))}
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +83,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onSetCustomDuration(Math.min(480, customDuration + 30))}
+                    onClick={() => onSetCustomDuration(getNextDuration(customDuration, 'up'))}
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-700 transition hover:bg-gray-50 hover:border-gray-300"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

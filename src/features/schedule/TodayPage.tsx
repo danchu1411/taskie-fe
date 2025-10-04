@@ -1,4 +1,4 @@
-﻿import { isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { useCallback, useRef, useState, memo, Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,12 +17,14 @@ import { NavigationBar, SystemError } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
 import useTodayTimer from "./useTodayTimer";
+import { getDefaultFocusDuration } from "./constants";
 import { QuickAddPanel } from "./components/QuickAddPanel";
 import { TodaySection } from "./components/TodaySection";
 import { ScheduleModal } from "./components/ScheduleModal";
 import { ChecklistAssignModal } from "./components/ChecklistAssignModal";
 import { EditTaskModal } from "./components/EditTaskModal";
 import { StatusPickerModal } from "./components/StatusPickerModal";
+import { ConfirmStopSessionModal } from "./components/ConfirmStopSessionModal";
 import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
 import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
 import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
@@ -286,12 +288,13 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
-  const [customDuration, setCustomDuration] = useState(120); // minutes
+  const [customDuration, setCustomDuration] = useState(getDefaultFocusDuration()); // minutes
+  const [confirmStopOpen, setConfirmStopOpen] = useState(false);
 
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
   const [scheduleStartAt, setScheduleStartAt] = useState("");
-  const [scheduleMinutes, setScheduleMinutes] = useState(25);
+  const [scheduleMinutes, setScheduleMinutes] = useState(getDefaultFocusDuration());
 
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TodayItem | null>(null);
@@ -639,6 +642,20 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const openTimer = useCallback((item: TodayItem) => { timer.openTimer(item); }, [timer]);
 
+  // Timer close confirmation handlers
+  const handleTimerClose = useCallback(() => {
+    setConfirmStopOpen(true);
+  }, []);
+
+  const handleConfirmStop = useCallback(() => {
+    closeTimer();
+    setConfirmStopOpen(false);
+  }, [closeTimer]);
+
+  const handleCancelStop = useCallback(() => {
+    setConfirmStopOpen(false);
+  }, []);
+
   // timer controls are provided by hook via destructuring above
 
   // Floating Widget handled by useTodayTimer
@@ -908,7 +925,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
               className="rounded-lg bg-blue-600 px-8 py-4 text-white transition-colors hover:bg-blue-700"
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm">◐</span>
+                <span className="text-sm">?</span>
                 <span className="font-medium">Start Focus</span>
               </div>
             </button>
@@ -967,7 +984,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             id="planned-column"
             title="Planned"
             subtitle="Ready to start"
-            icon="□"
+            icon="��"
             iconBg="bg-blue-50"
             iconText="text-blue-600"
             countBg="bg-blue-50"
@@ -987,7 +1004,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             id="in-progress-column"
             title="In Progress"
             subtitle="Currently working on"
-            icon="◐"
+            icon="?"
             iconBg="bg-amber-50"
             iconText="text-amber-600"
             countBg="bg-amber-50"
@@ -1007,7 +1024,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             id="completed-column"
             title="Done"
             subtitle="Completed tasks"
-            icon="●"
+            icon="��"
             iconBg="bg-green-50"
             iconText="text-green-600"
             countBg="bg-green-50"
@@ -1060,7 +1077,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           collisionDetection={closestCenter}
           onDragEnd={handleFloatingDragEnd}
         >
-          <FloatingWidget />
+          <FloatingWidget onRequestClose={handleTimerClose} />
         </DndContext>
       )}
 
@@ -1074,7 +1091,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           timerRunning={timerRunning}
           onToggleRunning={() => setTimerRunning(!timerRunning)}
           onEnterFloatingMode={enterFloatingMode}
-          onClose={closeTimer}
+          onClose={handleTimerClose}
           onToggleTheme={() => timer.setIsDarkTheme(!isDarkTheme)}
         />
       )}
@@ -1086,12 +1103,18 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           timerRunning={timerRunning}
           timerRemain={timerRemain}
           customDuration={customDuration}
-          onClose={closeTimer}
+          onClose={handleTimerClose}
           onSetCustomDuration={setCustomDuration}
           onStartCustomDuration={startCustomDuration}
           onSetTimerRunning={setTimerRunning}
         />
       )}
+
+      <ConfirmStopSessionModal
+        open={confirmStopOpen}
+        onConfirm={handleConfirmStop}
+        onCancel={handleCancelStop}
+      />
 
       <ScheduleModal
         open={scheduleModalOpen}

@@ -50,7 +50,7 @@ export type TodayTimerHook = {
   applyFloatingDelta: (delta: { x: number; y: number }) => void;
 
   // Floating widget component
-  FloatingWidget: (props?: { onRequestClose?: () => void }) => JSX.Element;
+  FloatingWidget: () => JSX.Element;
 };
 
 export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
@@ -209,17 +209,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setTimerOpen(true);
   }, []);
 
-  const closeTimer = useCallback(() => {
-    setTimerRunning(false);
-    setTimerAnimating(false);
-    setIsFullscreen(false);
-    setIsFloating(false);
-    setIsCustomMode(false);
-    setCurrentSession(1);
-    setSessionPlan([]);
-    setTimerRemain(timerDuration);
-    setTimeout(() => setTimerOpen(false), 300);
-  }, [timerDuration]);
+  const closeTimer = useCallback(() => {\n    setTimerRunning(false);\n    setTimerAnimating(false);\n    setIsFullscreen(false);\n    setIsFloating(false);\n    setIsCustomMode(false);\n    setCurrentSession(1);\n    setSessionPlan([]);\n    setTimerRemain(timerDuration);\n    setTimeout(() => setTimerOpen(false), 300);\n  }, [timerDuration]);
 
   const enterFloatingMode = useCallback(() => {
     setIsFullscreen(false);
@@ -244,8 +234,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     });
   }, []);
 
-  const FloatingWidgetComponent = useCallback(({ onRequestClose }: { onRequestClose?: () => void } = {}) => {
-    const handleClose = onRequestClose ?? closeTimer;
+  const FloatingWidgetComponent = useCallback(() => {
     return createElement(FloatingWidget, {
       isDarkTheme: isDarkTheme,
       timerRemain: timerRemain,
@@ -254,7 +243,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       timerRunning: timerRunning,
       widgetPosition: widgetPosition,
       onExitFloatingMode: exitFloatingMode,
-      onCloseTimer: handleClose,
+      onCloseTimer: closeTimer,
       onToggleTimer: () => setTimerRunning(!timerRunning),
       onDragEnd: applyFloatingDelta
     });

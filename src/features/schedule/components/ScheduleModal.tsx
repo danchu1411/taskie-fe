@@ -1,5 +1,6 @@
 import { memo } from "react";
 import type { TodayItem } from "../hooks/useTodayData";
+import { getFocusDurationOptions } from "../constants";
 
 interface ScheduleModalProps {
   open: boolean;
@@ -58,12 +59,11 @@ export const ScheduleModal = memo(function ScheduleModal({
               onChange={(e) => onMinutesChange(Number(e.target.value))}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
-              <option value={15}>15 minutes</option>
-              <option value={25}>25 minutes</option>
-              <option value={45}>45 minutes</option>
-              <option value={60}>1 hour</option>
-              <option value={90}>1.5 hours</option>
-              <option value={120}>2 hours</option>
+              {getFocusDurationOptions().map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

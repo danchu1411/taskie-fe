@@ -41,7 +41,7 @@ export function AuthCTAButtons({
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+      <div className="mt-8 sm:mt-10 flex flex-col gap-3 sm:flex-row sm:gap-4">
         <button
           onClick={handleEmailClick}
           className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-6 text-sm font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] sm:w-auto"

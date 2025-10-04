@@ -16,11 +16,19 @@ export type AuthShellProps = {
 
 /**
  * Standard authentication page layout
- * 
+ *
  * Provides consistent header with CTA link, main content area, and footer
  * for all authentication pages (login, signup, forgot password, etc.)
  */
 export function AuthShell({ ctaLabel, ctaHref, children, highlights, onNavigate }: AuthShellProps) {
+  const hasHighlights = Boolean(highlights && highlights.length > 0);
+  const mainClass = hasHighlights
+    ? "mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-12 md:px-10"
+    : "mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-6 py-12 md:px-10";
+  const gridClass = hasHighlights
+    ? "grid gap-12 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] md:items-center md:justify-items-center"
+    : "grid gap-10 place-items-center";
+
   return (
     <div className="relative min-h-screen bg-neutral-50 text-slate-900 selection:bg-indigo-200/70 selection:text-slate-900">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 md:px-10">
@@ -54,9 +62,9 @@ export function AuthShell({ ctaLabel, ctaHref, children, highlights, onNavigate 
         </button>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-16 md:px-10">
-        <div className="grid gap-12 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] md:items-center">
-          {highlights && highlights.length > 0 && (
+      <main className={mainClass}>
+        <div className={gridClass}>
+          {hasHighlights && highlights && (
             <div className="relative hidden overflow-hidden rounded-[36px] border border-slate-200/70 bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-10 text-left text-slate-100 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.75)] md:flex md:flex-col">
               <div className="relative">
                 <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-indigo-100">
@@ -99,11 +107,11 @@ export function AuthShell({ ctaLabel, ctaHref, children, highlights, onNavigate 
         </div>
       </main>
 
-      <footer className="mt-8 border-t border-slate-200/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 text-[11px] text-slate-500 md:px-10">
+      <footer className="mt-4 border-t border-slate-200/80">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 text-[11px] text-slate-500 md:px-10 md:py-5">
           <div>&copy; {new Date().getFullYear()} Taskie</div>
           <div className="flex gap-6">
-            <button 
+            <button
               onClick={(e) => {
                 e.preventDefault();
                 if (onNavigate) {
@@ -116,7 +124,7 @@ export function AuthShell({ ctaLabel, ctaHref, children, highlights, onNavigate 
             >
               Terms
             </button>
-            <button 
+            <button
               onClick={(e) => {
                 e.preventDefault();
                 if (onNavigate) {

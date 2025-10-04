@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import AuthLoadingOverlay from "./AuthLoadingOverlay";
-import { AuthShell, AuthCard, AuthFormField, AuthSupportFooter } from "./components";
+import { AuthShell, AuthCard, AuthFormField } from "./components";
 import { useAuthNavigation } from "./hooks";
 
 type NavigateHandler = (path: string) => void;
@@ -49,6 +49,12 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
 
   const isSubmitting = status === "submitting";
 
+  const supportNote = (
+    <p className="mt-6 text-center text-xs text-slate-400">
+      Need help? <a href="mailto:support@taskie.dev" className="text-slate-500 underline underline-offset-4 hover:text-slate-700">Contact support</a>
+    </p>
+  );
+
   if (status === "success") {
     return (
       <>
@@ -60,9 +66,7 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
             description="We've sent a password reset link to your email address."
           >
             <div className="text-center">
-              <p className="text-sm text-slate-500 mb-4">
-                {message}
-              </p>
+              <p className="mb-4 text-sm text-slate-500">{message}</p>
               <p className="text-sm text-slate-500">
                 Didn't receive the email? Check your spam folder or{' '}
                 <button
@@ -73,9 +77,9 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
                 </button>
               </p>
             </div>
+            {supportNote}
           </AuthCard>
         </AuthShell>
-        <AuthSupportFooter />
       </>
     );
   }
@@ -117,6 +121,8 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
             </button>
           </form>
 
+          {supportNote}
+
           <p className="mt-6 text-center text-sm text-slate-500">
             Remember your password?{' '}
             <a
@@ -132,7 +138,6 @@ export default function ForgotPassword({ onNavigate }: ForgotPasswordProps) {
           </p>
         </AuthCard>
       </AuthShell>
-      <AuthSupportFooter />
     </>
   );
 }

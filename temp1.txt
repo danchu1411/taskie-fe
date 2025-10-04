@@ -1,0 +1,400 @@
+import { isAxiosError } from "axios";
+import { useCallback, useRef, useState, memo, Component } from "react";
+import type { ErrorInfo, ReactNode } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import api from "../../lib/api";
+import { useAuth } from "../auth/AuthContext";
+import { NavigationBar, SystemError } from "../../components/ui";
+import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
+import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
+import useTodayTimer from "./useTodayTimer";
+import { QuickAddPanel } from "./components/QuickAddPanel";
+import { TodaySection } from "./components/TodaySection";
+import { ScheduleModal } from "./components/ScheduleModal";
+import { ChecklistAssignModal } from "./components/ChecklistAssignModal";
+import { EditTaskModal } from "./components/EditTaskModal";
+import { StatusPickerModal } from "./components/StatusPickerModal";
+import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
+import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
+import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
+
+function statusLabel(value: StatusValue) {
+  if (value === STATUS.IN_PROGRESS) return "In progress";
+  if (value === STATUS.DONE) return "Done";
+  if (value === STATUS.SKIPPED) return "Skipped";
+  return "Planned";
+}
+
+function clsx(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+function Ring({ value }: { value: number }) {
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const bounded = Math.max(0, Math.min(100, value));
+  const offset = circumference - (bounded / 100) * circumference;
+  return (
+    <svg viewBox="0 0 100 100" className="h-24 w-24">
+      <circle cx="50" cy="50" r={radius} className="fill-none stroke-slate-200" strokeWidth={10} />
+      <circle
+        cx="50"
+        cy="50"
+        r={radius}
+        className="fill-none stroke-indigo-500 transition-[stroke-dashoffset]"
+        strokeWidth={10}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+      />
+    </svg>
+  );
+}
+
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  details?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (isAxiosError(error)) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    if (data) {
+      if (typeof data.message === "string") return data.message;
+      if (typeof data.error === "string") return data.error;
+      if (typeof data.details === "string") return data.details;
+    }
+    return `${error.message} (Status: ${error.response?.status})`;
+  }
+  if (error instanceof Error) return error.message;
+  return "Unexpected error. Please try again.";
+}
+type StatusChipProps = {
+  status: StatusValue;
+  onOpenModal: () => void;
+  disabled?: boolean;
+};
+
+const StatusChip = memo(function StatusChip({ status, onOpenModal, disabled }: StatusChipProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (disabled) return;
+        onOpenModal();
+      }}
+      className={clsx(
+        "inline-flex items-center gap-1 rounded-lg border px-3 py-1 text-xs font-medium transition-colors",
+        status === STATUS.PLANNED && "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+        status === STATUS.IN_PROGRESS && "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+        status === STATUS.DONE && "border-green-200 bg-green-50 text-green-700 hover:bg-green-100",
+        status === STATUS.SKIPPED && "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
+        disabled && "cursor-not-allowed opacity-60",
+      )}
+      aria-label={"Change status from " + statusLabel(status)}
+      aria-disabled={disabled ? "true" : undefined}
+      title="Click to select status"
+    >
+      <span className={clsx(
+        "h-2 w-2 rounded-full",
+        status === STATUS.PLANNED && "bg-blue-500",
+        status === STATUS.IN_PROGRESS && "bg-amber-500",
+        status === STATUS.DONE && "bg-green-500",
+        status === STATUS.SKIPPED && "bg-slate-400",
+      )} aria-hidden />
+      {statusLabel(status)}
+    </button>
+  );
+});
+
+// Task Card Component for better performance
+
+
+// Droppable Column Component
+
+
+// Progress Overview Component
+interface ProgressOverviewProps {
+  totalTasks: number;
+  inProgressCount: number;
+  completedCount: number;
+  progressValue: number;
+}
+
+const ProgressOverview = memo(function ProgressOverview({
+  totalTasks,
+  inProgressCount,
+  completedCount,
+  progressValue,
+}: ProgressOverviewProps) {
+  return (
+    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-600">Total Tasks</p>
+            <p className="text-2xl font-bold text-slate-900">{totalTasks}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-600">In Progress</p>
+            <p className="text-2xl font-bold text-slate-900">{inProgressCount}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 text-green-600">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-600">Completed</p>
+            <p className="text-2xl font-bold text-slate-900">{completedCount}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-600">
+            <Ring value={progressValue} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-600">Progress</p>
+            <p className="text-2xl font-bold text-slate-900">{progressValue}%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <SystemError
+          fullScreen
+          title="Something went wrong"
+          message="We encountered an unexpected error. Please try refreshing the page."
+          actions={[
+            {
+              label: 'Refresh Page',
+              onClick: () => window.location.reload(),
+              variant: 'primary'
+            }
+          ]}
+        />
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+
+type TodayPageProps = {
+  onNavigate?: (path: string) => void;
+};
+
+// Proper mutation context types
+interface StatusMutationContext {
+  previousTasks: TaskListResponse | undefined;
+}
+
+interface QuickAddMutationContext {
+  previousTasks: TaskListResponse | undefined;
+  tempId: string;
+}
+
+interface StatusMutationPayload {
+  item: TodayItem;
+  status: StatusValue;
+}
+function TodayPageContent({ onNavigate }: TodayPageProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const queryClient = useQueryClient();
+
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickError, setQuickError] = useState<string | null>(null);
+
+  // Drag and Drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+
+  const [customDuration, setCustomDuration] = useState(120); // minutes
+
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
+  const [scheduleStartAt, setScheduleStartAt] = useState("");
+  const [scheduleMinutes, setScheduleMinutes] = useState(25);
+
+  const [checklistModalOpen, setChecklistModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TodayItem | null>(null);
+  const [checklistItems, setChecklistItems] = useState<Array<{ title: string; deadline?: string; priority?: number }>>([{ title: "" }]);
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<TodayItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editPriority, setEditPriority] = useState<1 | 2 | 3 | null>(null);
+
+
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalItem, setStatusModalItem] = useState<TodayItem | null>(null);
+
+  const quickRef = useRef<HTMLInputElement | null>(null);
+
+  const { tasksQuery, items, categories } = useTodayData(userId);
+
+  const resolveWorkItemId = useCallback(
+    (item: TodayItem | null) => {
+      if (!item) return null;
+
+      const normalize = (value: string | null | undefined) =>
+        value ? String(value).toLowerCase() : null;
+
+      const tasks = tasksQuery.data?.items ?? [];
+
+      if (item.source === "checklist") {
+        if (item.id && item.checklistItemId && item.id !== item.checklistItemId) {
+          return item.id;
+        }
+      } else if (item.source === "task") {
+        if (item.id && item.taskId && item.id !== item.taskId) {
+          return item.id;
+        }
+      }
+
+      const targetTaskId = normalize(item.taskId ?? item.id);
+      const targetChecklistId = normalize(item.checklistItemId);
+
+      for (const task of tasks) {
+        const rawTaskId =
+          normalize(task.task_id) ??
+          normalize((task as unknown as { id?: string }).id) ??
+          normalize((task as unknown as { taskId?: string }).taskId);
+
+        if (targetTaskId && rawTaskId && rawTaskId !== targetTaskId) {
+          continue;
+        }
+
+        const workItems =
+          (task.workItems ??
+            (task as unknown as { work_items?: WorkItemRecord[] }).work_items ??
+            []) as Array<WorkItemRecord | Record<string, unknown>>;
+
+        for (const rawWorkItem of workItems) {
+          const workItem = rawWorkItem as WorkItemRecord;
+          const workItemId =
+            workItem.work_item_id ??
+            (rawWorkItem as { workItemId?: string }).workItemId ??
+            null;
+
+          if (!workItemId) continue;
+
+          const workItemChecklistId =
+            normalize(workItem.checklist_item_id) ??
+            normalize((rawWorkItem as { checklistItemId?: string }).checklistItemId);
+
+          if (item.source === "checklist") {
+            if (targetChecklistId && workItemChecklistId === targetChecklistId) {
+              return workItemId;
+            }
+          } else if (!workItemChecklistId) {
+            return workItemId;
+          }
+        }
+      }
+
+      return item.id ?? null;
+    },
+    [tasksQuery.data],
+  );
+
+  const { isLoading, isError, error, refetch } = tasksQuery;
+  const { inProgress, planned, completed, doneCount, progressValue } = categories;
+
+  const timer = useTodayTimer({
+    items,
+    onStartFocus: (item) => {
+      if (item.status !== STATUS.IN_PROGRESS) {
+        statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
+      }
+    }
+  });
+  const timerItem = timer.timerItem;
+  const {
+    timerOpen,
+    timerAnimating,
+    timerDuration,
+    timerRemain,
+    timerRunning,
+    isFullscreen,
+    isFloating,
+    currentSession,

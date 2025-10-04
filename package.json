@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench:tasks": "node scripts/bench-tasks.js",
+    "bench:fetch": "node scripts/bench-fetch.js",
+    "bench:all": "npm run bench:tasks && npm run bench:fetch"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

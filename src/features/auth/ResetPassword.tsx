@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import AuthLoadingOverlay from "./AuthLoadingOverlay";
-import { AuthShell, AuthCard, AuthFormField, AuthSupportFooter } from "./components";
+import { AuthShell, AuthCard, AuthFormField } from "./components";
 import { useAuthNavigation } from "./hooks";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -38,6 +38,12 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
     }, 2500);
     return () => clearTimeout(timer);
   }, [status, navigate]);
+
+  const supportNote = (
+    <p className="mt-6 text-center text-xs text-slate-400">
+      Need help? <a href="mailto:support@taskie.dev" className="text-slate-500 underline underline-offset-4 hover:text-slate-700">Contact support</a>
+    </p>
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,16 +93,12 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
             description="Your password has been updated successfully."
           >
             <div className="text-center">
-              <p className="text-sm text-slate-500 mb-4">
-                {message}
-              </p>
-              <p className="text-sm text-slate-500">
-                You can now log in with your new password.
-              </p>
+              <p className="mb-4 text-sm text-slate-500">{message}</p>
+              <p className="text-sm text-slate-500">You can now log in with your new password.</p>
             </div>
+            {supportNote}
           </AuthCard>
         </AuthShell>
-        <AuthSupportFooter />
       </>
     );
   }
@@ -111,7 +113,7 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
             description="This password reset link is invalid or has expired."
           >
             <div className="text-center">
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="mb-4 text-sm text-slate-500">
                 Please request a new password reset link.
               </p>
               <a
@@ -125,9 +127,9 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
                 Request new reset link
               </a>
             </div>
+            {supportNote}
           </AuthCard>
         </AuthShell>
-        <AuthSupportFooter />
       </>
     );
   }
@@ -181,6 +183,8 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
             </button>
           </form>
 
+          {supportNote}
+
           <p className="mt-6 text-center text-sm text-slate-500">
             Remember your password?{' '}
             <a
@@ -196,7 +200,6 @@ export default function ResetPassword({ onNavigate }: ResetPasswordProps) {
           </p>
         </AuthCard>
       </AuthShell>
-      <AuthSupportFooter />
     </>
   );
 }

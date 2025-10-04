@@ -37,9 +37,6 @@ type GoogleCredential = {
   credential: string;
 };
 
-type GoogleIdentityOptions = {
-  promptParent?: HTMLElement;
-};
 
 type MockGooglePayload = {
   mock: {
@@ -161,11 +158,10 @@ export function createMockGooglePayload(email: string, name: string): MockGoogle
 
 /**
  * Gets Google ID token through OAuth flow
- * @param options Configuration options
  * @returns Promise that resolves with Google credential
  * @throws Error if user cancels or authentication fails
  */
-export async function getGoogleIdToken(options: GoogleIdentityOptions = {}): Promise<GoogleCredential> {
+export async function getGoogleIdToken(): Promise<GoogleCredential> {
   // Check for mock mode - only log warning, don't return mock token
   if (detectMockEnabled()) {
     console.warn('Google Identity: Mock mode enabled - use createMockGooglePayload() helper instead of getGoogleIdToken()');

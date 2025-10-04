@@ -1,0 +1,400 @@
+
+  const openEditModal = useCallback((item: TodayItem) => {
+    if (item.source !== "task" || !item.taskId) return;
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditDescription(""); // We don't have description in TodayItem, so start empty
+    setEditDeadline(item.deadline ? new Date(item.deadline).toISOString().slice(0, 16) : "");
+    setEditPriority(item.priority);
+    setEditModalOpen(true);
+  }, []);
+
+  const saveTaskEdit = useCallback(() => {
+    if (!editingItem?.taskId) return;
+    
+    editTaskMutation.mutate({
+      taskId: editingItem.taskId,
+      title: editTitle.trim(),
+      description: editDescription.trim() || undefined,
+      deadline: editDeadline ? new Date(editDeadline).toISOString() : undefined,
+      priority: editPriority || undefined,
+    });
+  }, [editingItem, editTitle, editDescription, editDeadline, editPriority, editTaskMutation]);
+
+  const openStatusModal = useCallback((item: TodayItem) => {
+    setStatusModalItem(item);
+    setStatusModalOpen(true);
+  }, []);
+
+  const selectStatus = useCallback((status: StatusValue) => {
+    if (!statusModalItem) return;
+    
+    statusMutation.mutate({ item: statusModalItem, status });
+    setStatusModalOpen(false);
+    setStatusModalItem(null);
+  }, [statusModalItem, statusMutation]);
+
+  const errorMessage = isError ? getErrorMessage(error) : null;
+
+  const handleRetry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+
+
+  // Timer effects moved to useTodayTimer hook
+
+  // Keyboard shortcuts
+  useTodayKeyboardShortcuts({
+    quickOpen,
+    setQuickOpen,
+    scheduleModalOpen,
+    setScheduleModalOpen,
+    checklistModalOpen,
+    setChecklistModalOpen,
+    editModalOpen,
+    setEditModalOpen,
+    statusModalOpen,
+    setStatusModalOpen,
+    timerOpen,
+    isFullscreen,
+    isFloating,
+    setTimerRunning,
+    closeTimer,
+    enterFloatingMode,
+    exitFloatingMode,
+    statusModalItem,
+    selectStatus,
+  });
+
+
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="min-h-screen bg-slate-50">
+      <NavigationBar onNavigate={onNavigate} activeNav="today" />
+          
+      <main className="mx-auto max-w-6xl px-6 py-12">
+        {/* Calm Hero Section */}
+        <section className="mb-16">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-4">
+              <div className="text-sm font-medium tracking-wider text-slate-500 uppercase">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl lg:text-6xl">
+                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0] ?? 'there'}
+              </h1>
+              <div className="h-1 w-24 bg-slate-300"></div>
+              <p className="text-lg font-medium text-slate-600">
+                Let's focus on what matters today.
+              </p>
+        </div>
+            
+            <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => timer.openTimer()}
+              className="rounded-lg bg-blue-600 px-8 py-4 text-white transition-colors hover:bg-blue-700"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm">?</span>
+                <span className="font-medium">Start Focus</span>
+              </div>
+            </button>
+            </div>
+          </div>
+        </section>
+
+        {errorMessage && (
+          <div className="mb-6">
+            <SystemError
+              variant="error"
+              title="Unable to load today schedule"
+              message={errorMessage}
+              actions={[
+                {
+                  label: 'Retry',
+                  onClick: handleRetry,
+                  variant: 'primary'
+                }
+              ]}
+            />
+          </div>
+        )}
+
+        {statusError && (
+          <div className="mb-6">
+            <SystemError
+              variant="warning"
+              title="Operation failed"
+              message={statusError}
+              actions={[
+                {
+                  label: 'Dismiss',
+                  onClick: () => setStatusError(null),
+                  variant: 'secondary'
+                }
+              ]}
+            />
+          </div>
+        )}
+
+        {/* Progress Overview */}
+        {isLoading ? (
+          <ProgressOverviewSkeleton />
+        ) : (
+          <ProgressOverview
+            totalTasks={items.length}
+            inProgressCount={inProgress.length}
+            completedCount={doneCount}
+            progressValue={progressValue}
+          />
+        )}
+        {/* Calm Task Sections */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          <TodaySection
+            id="planned-column"
+            title="Planned"
+            subtitle="Ready to start"
+            icon=" "
+            iconBg="bg-blue-50"
+            iconText="text-blue-600"
+            countBg="bg-blue-50"
+            countText="text-blue-600"
+            items={planned}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
+
+          <TodaySection
+            id="in-progress-column"
+            title="In Progress"
+            subtitle="Currently working on"
+            icon="?"
+            iconBg="bg-amber-50"
+            iconText="text-amber-600"
+            countBg="bg-amber-50"
+            countText="text-amber-600"
+            items={inProgress}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
+
+          <TodaySection
+            id="completed-column"
+            title="Done"
+            subtitle="Completed tasks"
+            icon="œ"
+            iconBg="bg-green-50"
+            iconText="text-green-600"
+            countBg="bg-green-50"
+            countText="text-green-600"
+            items={completed}
+            isLoading={isLoading}
+            onStart={openTimer}
+            onSchedule={openScheduleModal}
+            onChecklist={openChecklistModal}
+            onEdit={openEditModal}
+            onStatusModal={openStatusModal}
+            onBack={(item) => handleStatusChange(item, STATUS.PLANNED)}
+            isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
+            className="lg:col-span-1"
+          />
+                      </div>
+      </main>
+      </div>
+      {/* Calm Quick Add */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <QuickAddPanel
+          open={quickOpen}
+          title={quickTitle}
+          onTitleChange={setQuickTitle}
+          onAdd={addQuickItem}
+          onCancel={() => setQuickOpen(false)}
+          error={quickError}
+          loading={quickAddMutation.isPending}
+          inputRef={quickRef}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setQuickOpen((prev) => !prev);
+            window.setTimeout(() => {
+              if (!quickOpen) {
+                quickRef.current?.focus();
+              }
+            }, 40);
+          }}
+          className="rounded-lg bg-blue-600 p-4 text-white transition-colors hover:bg-blue-700"
+        >
+          <span className="text-2xl font-bold">+</span>
+        </button>
+      </div>
+      {/* Floating Widget */}
+      {isFloating && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleFloatingDragEnd}
+        >
+          <FloatingWidget />
+        </DndContext>
+      )}
+
+      {isFullscreen && (
+        <FocusTimerFullscreen
+          isDarkTheme={isDarkTheme}
+          currentSession={currentSession}
+          sessionPlan={sessionPlan}
+          timerRemain={timerRemain}
+          timerDuration={timerDuration}
+          timerRunning={timerRunning}
+          onToggleRunning={() => setTimerRunning(!timerRunning)}
+          onEnterFloatingMode={enterFloatingMode}
+          onClose={closeTimer}
+          onToggleTheme={() => timer.setIsDarkTheme(!isDarkTheme)}
+        />
+      )}
+
+      {timerOpen && !isFullscreen && !isFloating && (
+        <FocusTimerBottomSheet
+          timerAnimating={timerAnimating}
+          timerItem={timerItem}
+          timerRunning={timerRunning}
+          timerRemain={timerRemain}
+          customDuration={customDuration}
+          onClose={closeTimer}
+          onSetCustomDuration={setCustomDuration}
+          onStartCustomDuration={startCustomDuration}
+          onSetTimerRunning={setTimerRunning}
+        />
+      )}
+
+      <ScheduleModal
+        open={scheduleModalOpen}
+        selectedItem={selectedItem}
+        startAt={scheduleStartAt}
+        minutes={scheduleMinutes}
+        onStartAtChange={setScheduleStartAt}
+        onMinutesChange={setScheduleMinutes}
+        onSave={createSchedule}
+        onCancel={() => setScheduleModalOpen(false)}
+        loading={scheduleMutation.isPending}
+      />
+
+      <ChecklistAssignModal
+        open={checklistModalOpen}
+        selectedTask={selectedTask}
+        checklistItems={checklistItems}
+        onItemChange={updateChecklistItem}
+        onAddItem={addChecklistItem}
+        onRemoveItem={removeChecklistItem}
+        onSave={createChecklist}
+        onCancel={() => setChecklistModalOpen(false)}
+        loading={checklistMutation.isPending}
+      />
+
+      <EditTaskModal
+        open={editModalOpen}
+        editingItem={editingItem}
+        title={editTitle}
+        description={editDescription}
+        deadline={editDeadline}
+        priority={editPriority}
+        onTitleChange={setEditTitle}
+        onDescriptionChange={setEditDescription}
+        onDeadlineChange={setEditDeadline}
+        onPriorityChange={setEditPriority}
+        onSave={saveTaskEdit}
+        onCancel={() => setEditModalOpen(false)}
+        loading={editTaskMutation.isPending}
+      />
+
+      <StatusPickerModal
+        open={statusModalOpen}
+        selectedItem={statusModalItem}
+        onStatusSelect={selectStatus}
+        onCancel={() => setStatusModalOpen(false)}
+        loading={statusMutation.isPending}
+      />
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeId ? (
+          (() => {
+            const activeItem = items.find(item => item.id === activeId);
+            if (!activeItem) return null;
+            
+            return (
+              <div className="rotate-3 scale-105 rounded-lg bg-white p-4 shadow-lg border border-slate-200 opacity-90">
+                <div className="mb-3 flex items-start justify-between">
+                  <StatusChip
+                    status={activeItem.status}
+                    onOpenModal={() => {}}
+                    disabled={true}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-medium text-slate-900">{activeItem.title}</h3>
+                  {activeItem.parentTitle && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                      </svg>
+                      {activeItem.parentTitle}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })()
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+
+const ProgressOverviewSkeleton = memo(function ProgressOverviewSkeleton() {
+  return (
+    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-lg bg-white p-4 shadow-sm border border-slate-200 animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-slate-200"></div>
+            <div>
+              <div className="h-4 w-20 rounded bg-slate-200 mb-2"></div>
+              <div className="h-6 w-8 rounded bg-slate-200"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+export default function TodayPage({ onNavigate }: TodayPageProps) {
+  return (
+    <ErrorBoundary>
+      <TodayPageContent onNavigate={onNavigate} />
+    </ErrorBoundary>
+  );
+}
+
