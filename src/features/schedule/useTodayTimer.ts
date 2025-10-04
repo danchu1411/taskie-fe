@@ -203,8 +203,18 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   }, [timerRunning, timerRemain, isCustomMode, currentSession, sessionPlan.length, startNextCustomSession]);
 
   const openTimer = useCallback((item?: TodayItem) => {
-    setCurrentSession(1);
+    const planned = item?.plannedMinutes && item.plannedMinutes > 0 ? item.plannedMinutes : 25;
+    const duration = planned * 60 * 1000;
+    
+    setTimerMode("focus");
+    setTimerRunning(false);
     setIsCustomMode(false);
+    setSessionPlan([]);
+    setCurrentSession(1);
+    setIsFullscreen(false);
+    setIsFloating(false);
+    setTimerDuration(duration);
+    setTimerRemain(duration);
     setTimerItemId(item?.id ?? null);
     setTimerOpen(true);
   }, []);

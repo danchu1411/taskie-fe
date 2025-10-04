@@ -472,7 +472,20 @@ export function useTodayData(userId: string | null): TodayDataResult {
   
   const items = useMemo(() => {
     if (!tasksQuery.data) return [];
-    return mapTodayItems(tasksQuery.data);
+    const mapped = mapTodayItems(tasksQuery.data);
+    
+    // Filter to only show tasks scheduled for today or without startAt
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    
+    return mapped.filter(item => {
+      if (!item.startAt) return true;
+      const scheduledAt = new Date(item.startAt);
+      if (Number.isNaN(scheduledAt.getTime())) return true;
+      return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;
+    });
   }, [tasksQuery.data]);
 
   const categories = useTaskCategories(items);

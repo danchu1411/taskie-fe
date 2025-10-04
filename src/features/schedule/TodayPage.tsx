@@ -640,7 +640,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   );
 
 
-  const openTimer = useCallback((item: TodayItem) => { timer.openTimer(item); }, [timer]);
+  const openTimer = useCallback((item: TodayItem) => {
+    const minutes = item.plannedMinutes && item.plannedMinutes > 0 ? item.plannedMinutes : getDefaultFocusDuration();
+    setCustomDuration(minutes);
+    timer.openTimer(item);
+  }, [timer, setCustomDuration]);
 
   // Timer close confirmation handlers
   const handleTimerClose = useCallback(() => {
@@ -1004,7 +1008,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             id="in-progress-column"
             title="In Progress"
             subtitle="Currently working on"
-            icon="?"
+            icon="\u23F3"
             iconBg="bg-amber-50"
             iconText="text-amber-600"
             countBg="bg-amber-50"
