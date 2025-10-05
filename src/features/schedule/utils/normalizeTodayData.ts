@@ -544,7 +544,12 @@ export function augmentWithSchedule(
 }
 
 /**
- * Filters items to only include those scheduled for today or without a schedule
+ * Filters items to only include those relevant for today's view:
+ * 1. Items without schedule (startAt = null) 
+ * 2. Items with IN_PROGRESS status (work in progress, regardless of scheduled date)
+ * 3. Items scheduled for today
+ * 
+ * Excludes: Items scheduled for other days (past/future) that are not in progress
  */
 export function filterTodayItems(items: TodayItem[]): TodayItem[] {
   const now = new Date();
@@ -553,7 +558,13 @@ export function filterTodayItems(items: TodayItem[]): TodayItem[] {
   startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
   
   return items.filter(item => {
+    // Always show items without a schedule
     if (!item.startAt) return true;
+    
+    // Always show items that are in progress (regardless of scheduled date)
+    if (item.status === 1) return true; // STATUS.IN_PROGRESS = 1
+    
+    // For other items, only show if scheduled for today
     const scheduledAt = new Date(item.startAt);
     if (Number.isNaN(scheduledAt.getTime())) return true;
     return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;

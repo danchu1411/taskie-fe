@@ -28,6 +28,32 @@ function statusLabel(value: StatusValue) {
   return "Planned";
 }
 
+function priorityLabel(value: 1 | 2 | 3): string {
+  switch (value) {
+    case 1:
+      return "Want";
+    case 2:
+      return "Should";
+    case 3:
+      return "Must";
+    default:
+      return "";
+  }
+}
+
+function getPriorityStyles(value: 1 | 2 | 3): string {
+  switch (value) {
+    case 1:
+      return "text-slate-500"; // Low priority - grey
+    case 2:
+      return "text-blue-600"; // Medium priority - blue
+    case 3:
+      return "text-red-600 font-semibold"; // High priority - red, bold
+    default:
+      return "text-slate-500";
+  }
+}
+
 const StatusChip = memo(function StatusChip({ 
   status, 
   onOpenModal, 
@@ -195,9 +221,13 @@ export const TodayTaskCard = memo(function TodayTaskCard({
             return null;
           })()}
           {item.priority && (
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              Priority {item.priority}
+            <span className={`flex items-center gap-1 ${getPriorityStyles(item.priority)}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${
+                item.priority === 3 ? 'bg-red-500' : 
+                item.priority === 2 ? 'bg-blue-500' : 
+                'bg-slate-400'
+              }`}></span>
+              {priorityLabel(item.priority)}
             </span>
           )}
           {item.deadline && (

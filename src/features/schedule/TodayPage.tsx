@@ -686,6 +686,13 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     timer.openTimer(item);
   }, [timer, setCustomDuration]);
 
+  // Handler for task selection from dropdown in timer
+  const handleTaskSelect = useCallback((task: TodayItem) => {
+    const minutes = task.plannedMinutes && task.plannedMinutes > 0 ? task.plannedMinutes : getDefaultFocusDuration();
+    setCustomDuration(minutes);
+    timer.openTimer(task);
+  }, [timer, setCustomDuration]);
+
   // Timer close confirmation handlers
   const handleTimerClose = useCallback(() => {
     setConfirmStopOpen(true);
@@ -1187,11 +1194,13 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           timerRemain={timerRemain}
           customDuration={customDuration}
           skipBreaks={skipBreaks}
+          availableTasks={items}
           onClose={handleTimerClose}
           onSetCustomDuration={setCustomDuration}
           onStartCustomDuration={startCustomDuration}
           onSetTimerRunning={setTimerRunning}
           onSkipBreaksChange={setSkipBreaks}
+          onTaskSelect={handleTaskSelect}
         />
       )}
 

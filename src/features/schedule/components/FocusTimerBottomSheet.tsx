@@ -1,18 +1,21 @@
 import { memo } from "react";
 import { getNextDuration } from "../constants";
+import type { TodayItem } from "../hooks/useTodayData";
 
 interface FocusTimerBottomSheetProps {
   timerAnimating: boolean;
-  timerItem: { title: string } | null;
+  timerItem: { title: string; id?: string } | null;
   timerRunning: boolean;
   timerRemain: number;
   customDuration: number;
   skipBreaks: boolean;
+  availableTasks: TodayItem[];
   onClose: () => void;
   onSetCustomDuration: (duration: number) => void;
   onStartCustomDuration: (minutes: number, options?: { skipBreaks?: boolean }) => void;
   onSetTimerRunning: (running: boolean) => void;
   onSkipBreaksChange: (value: boolean) => void;
+  onTaskSelect: (task: TodayItem) => void;
 }
 
 function formatTime(ms: number) {
@@ -29,12 +32,22 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
   timerRemain,
   customDuration,
   skipBreaks,
+  availableTasks,
   onClose,
   onSetCustomDuration,
   onStartCustomDuration,
   onSetTimerRunning,
   onSkipBreaksChange,
+  onTaskSelect,
 }: FocusTimerBottomSheetProps) {
+  // Debug: Log conditions for dropdown visibility
+  console.log('FocusTimer Debug:', {
+    timerRunning,
+    timerItem,
+    availableTasksCount: availableTasks.length,
+    shouldShowDropdown: !timerRunning && !timerItem && availableTasks.length > 0
+  });
+
   const overlayClasses = timerAnimating
     ? "flex-1 bg-black/20 transition-opacity duration-300 opacity-100"
     : "flex-1 bg-black/20 transition-opacity duration-300 opacity-0 pointer-events-none";
@@ -52,10 +65,40 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
           {/* Header */}
           <div className="mb-8 text-center">
             <h3 className="text-xl font-semibold text-gray-900">Focus Session</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              {timerItem ? timerItem.title : "Select a task to focus on"}
-            </p>
+            {timerItem ? (
+              <p className="mt-1 text-sm text-gray-600">{timerItem.title}</p>
+            ) : (
+              <p className="mt-1 text-sm text-gray-600">Select a task to focus on</p>
+            )}
           </div>
+
+          {/* Task Selector - Only show when not running and no task selected */}
+          {!timerRunning && !timerItem && availableTasks.length > 0 && (
+            <div className="mb-8">
+              <label htmlFor="task-select" className="block text-sm font-medium text-gray-700 mb-2">
+                Choose a task
+              </label>
+              <select
+                id="task-select"
+                onChange={(e) => {
+                  const selectedTask = availableTasks.find(t => t.id === e.target.value);
+                  if (selectedTask) {
+                    onTaskSelect(selectedTask);
+                  }
+                }}
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3"
+                defaultValue=""
+              >
+                <option value="" disabled>Select a task...</option>
+                {availableTasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.parentTitle ? `${task.parentTitle} › ` : ''}{task.title}
+                    {task.plannedMinutes ? ` (${task.plannedMinutes} min)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Time Display - Only show when running */}
           {timerRunning && (

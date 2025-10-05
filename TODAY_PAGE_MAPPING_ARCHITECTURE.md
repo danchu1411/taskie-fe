@@ -1026,3 +1026,186 @@ const { items, scheduleLookup } = useMemo(() => {
 4. Monitor performance improvements
 5. Remove client-side filtering once backend is stable
 
+---
+
+## 🔍 Today Page Filtering Logic (Updated)
+
+### Current Implementation
+
+**Function:** `filterTodayItems()` in `src/features/schedule/utils/normalizeTodayData.ts`
+
+**Behavior:** Shows items relevant to today's work:
+
+```typescript
+export function filterTodayItems(items: TodayItem[]): TodayItem[] {
+  return items.filter(item => {
+    // 1. Always show items without a schedule (startAt = null)
+    if (!item.startAt) return true;
+    
+    // 2. Always show items that are IN_PROGRESS (work in progress)
+    if (item.status === STATUS.IN_PROGRESS) return true;
+    
+    // 3. For other items, only show if scheduled for today
+    const scheduledAt = new Date(item.startAt);
+    return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;
+  });
+}
+```
+
+### Filter Rules
+
+| Condition | Example | Show on Today? | Reason |
+|-----------|---------|----------------|--------|
+| `startAt = null` | Unscheduled task | ✅ YES | Can be scheduled today |
+| `startAt = null` + `status = IN_PROGRESS` | Working on it now | ✅ YES | Currently active |
+| `startAt = 2024-10-05` (today) | Scheduled for today | ✅ YES | Today's plan |
+| `startAt = 2024-10-10` (future) + `status = PLANNED` | Future task | ❌ NO | Not relevant today |
+| `startAt = 2024-10-10` (future) + `status = IN_PROGRESS` | Started early | ✅ YES | Work in progress |
+| `startAt = 2024-10-01` (past) + `status = PLANNED` | Overdue | ❌ NO | Should be rescheduled |
+| `startAt = 2024-10-01` (past) + `status = IN_PROGRESS` | Ongoing work | ✅ YES | Still working on it |
+
+### Design Philosophy
+
+**Show on Today page:**
+- ✅ Unscheduled items (user can schedule them today)
+- ✅ In-progress items (regardless of scheduled date - track ongoing work)
+- ✅ Items scheduled for today
+
+**Hide from Today page:**
+- ❌ Items scheduled for other days (unless in progress)
+- ❌ Past scheduled items that are still PLANNED (stale data)
+- ❌ Future scheduled items (appear on their scheduled day)
+
+### Why Include Unscheduled Items?
+
+**Purpose:** Today page serves as a **triage view** where users can:
+1. See what's planned for today
+2. Track ongoing work
+3. **Schedule unscheduled tasks** that need attention
+
+Without showing `startAt = null` items, users would need to go to Tasks page to find items to schedule, breaking the workflow.
+
+### Alternative: Strict Today-Only Mode
+
+If you want to show ONLY items explicitly scheduled for today:
+
+```typescript
+export function filterTodayItems(items: TodayItem[]): TodayItem[] {
+  return items.filter(item => {
+    // Only show in-progress items
+    if (item.status === STATUS.IN_PROGRESS) return true;
+    
+    // Or items scheduled for today
+    if (!item.startAt) return false; // ← Hide unscheduled items
+    const scheduledAt = new Date(item.startAt);
+    return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;
+  });
+}
+```
+
+**Trade-off:** Cleaner today view, but users lose quick access to schedule unscheduled tasks.
+
+---
+
+## ⚠️ Critical Bug Fix: Schedule Range Issue (RESOLVED)
+
+### 🐛 Problem
+
+**Symptom:** When scheduling a task for tomorrow with `status = PLANNED`, the task:
+- ✅ Still appears on Today page (should be hidden)
+- ❌ Shows with `startAt = null` and no `plannedMinutes` (data loss)
+
+### 🔍 Root Cause
+
+**File:** `src/features/schedule/hooks/useTodayData.ts`
+
+**Original code (line 134-138):**
+```typescript
+const { data: scheduleData } = useScheduleData(
+  userId,
+  { preset: 'today' },  // ❌ Only fetches schedule entries for TODAY
+  { status: STATUS.PLANNED }
+);
+```
+
+**Problem flow:**
+1. User updates schedule entry: `start_at = tomorrow`
+2. Mutation refetches schedule data with `preset: 'today'`
+3. Backend returns only schedules with `start_at` between `today 00:00` and `tomorrow 00:00`
+4. Tomorrow's schedule entry **NOT included** in response
+5. `buildScheduleLookup()` doesn't have this entry
+6. `augmentWithSchedule()` can't find schedule → item keeps `startAt = null` from task
+7. `filterTodayItems()` sees `!item.startAt` → returns `true` → **shows item**
+8. **Result:** Task appears without schedule info
+
+### ✅ Solution (Updated)
+
+**Updated code:**
+```typescript
+// Custom range from START OF TODAY to +30 days
+const now = new Date();
+const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const endDate = new Date(startOfToday);
+endDate.setDate(endDate.getDate() + 30);
+
+const { data: scheduleData } = useScheduleData(
+  userId,
+  { from: startOfToday, to: endDate }, // ✅ Custom range, not preset
+  { status: STATUS.PLANNED }
+);
+```
+
+**Why custom range instead of preset:**
+- ❌ `preset: 'today'` → Too narrow (only today, misses tomorrow's schedules)
+- ❌ `preset: 'upcoming'` → Starts from **NOW** (e.g., 3PM), misses morning schedules (8AM, 10AM)
+- ✅ Custom `{ from: startOfToday, to: +30days }` → Includes ALL schedules from 00:00 today
+
+**Why this works:**
+- Fetches ALL schedule entries from start of today to +30 days
+- Includes morning schedules (8AM) even if current time is afternoon (3PM)
+- Items scheduled for tomorrow/next week are included
+- `augmentWithSchedule()` can properly set `startAt` and `plannedMinutes`
+- `filterTodayItems()` correctly filters out items with `startAt` outside today
+
+**New flow:**
+1. User updates schedule entry: `start_at = tomorrow 10AM`
+2. Mutation refetches with custom range: `{ from: startOfToday, to: +30days }`
+3. Backend returns schedule entries from today 00:00 to +30 days (including tomorrow)
+4. `buildScheduleLookup()` has tomorrow's entry
+5. `augmentWithSchedule()` sets correct `startAt = tomorrow 10AM` and `plannedMinutes`
+6. `filterTodayItems()` sees `startAt = tomorrow` → returns `false` → **hides item** ✅
+7. **Result:** Task correctly hidden from today view
+
+**Example with today's schedule:**
+1. User creates schedule: `start_at = today 8AM`
+2. Current time: 3PM (afternoon)
+3. Query fetches from `startOfToday (00:00)` to `+30days`
+4. 8AM schedule **IS included** in response (even though it's before 3PM)
+5. `augmentWithSchedule()` sets `startAt = today 8AM`
+6. `filterTodayItems()` sees today → **shows item** ✅
+
+### 📊 Before/After Comparison
+
+| Scenario | Old Behavior | New Behavior |
+|----------|-------------|--------------|
+| Schedule task for tomorrow | ❌ Still shows on Today (no schedule info) | ✅ Hidden from Today |
+| Schedule task for today | ✅ Shows correctly | ✅ Shows correctly |
+| Unscheduled task | ✅ Shows on Today | ✅ Shows on Today |
+| Task IN_PROGRESS scheduled tomorrow | ✅ Shows (but no schedule info) | ✅ Shows with schedule info |
+
+### 🔄 Performance Note
+
+**Trade-off:** Fetching 30 days of schedules instead of just today's
+- **Data size:** Slightly larger payload (typically 10-50 entries vs 5-10)
+- **Benefit:** Correct filtering logic + proper data display
+- **Acceptable:** Schedule entries are lightweight objects
+
+**Future optimization:** Backend could support a "broad filter" mode that returns:
+- All schedules for items in the task list (regardless of date)
+- More efficient than fetching 30 days if user has sparse schedules
+
+### 📝 Files Modified
+
+- ✅ `src/features/schedule/hooks/useTodayData.ts` - Changed `preset: 'today'` to `preset: 'upcoming'`
+- ✅ Added comprehensive documentation of the issue
+

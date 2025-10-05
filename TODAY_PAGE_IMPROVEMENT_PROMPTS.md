@@ -134,6 +134,67 @@ Schedule data was showing stale values after mutations because:
 
 ---
 
+### ✅ Task: Schedule Range Bug Fix (COMPLETED)
+**Priority:** CRITICAL | **Effort:** 30 minutes | **Impact:** Correctness | **Status:** ✅ DONE
+
+**Problem:**
+Tasks scheduled for tomorrow/future dates still appeared on Today page with missing schedule info:
+- Item showed `startAt = null` and no `plannedMinutes`
+- Should be hidden from Today view entirely
+
+**Root Cause:**
+`useTodayData` fetched schedule entries with `preset: 'today'` (only today's range):
+- Tomorrow's schedule entry NOT included in response
+- `augmentWithSchedule` couldn't find entry → kept `startAt = null`
+- `filterTodayItems` saw null → showed item (wrong!)
+
+**Solution:**
+Use custom date range from **start of today** to +30 days (not preset):
+```typescript
+// ❌ BAD: preset: 'today' (too narrow, misses tomorrow)
+useScheduleData(userId, { preset: 'today' })
+
+// ❌ BAD: preset: 'upcoming' (from NOW, misses morning schedules)
+useScheduleData(userId, { preset: 'upcoming' })
+
+// ✅ GOOD: Custom range from start of today
+const now = new Date();
+const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const endDate = new Date(startOfToday);
+endDate.setDate(endDate.getDate() + 30);
+
+useScheduleData(userId, { from: startOfToday, to: endDate })
+```
+
+**Why custom range is needed:**
+- `preset: 'today'` → Only fetches today's schedules, can't detect tomorrow's items
+- `preset: 'upcoming'` → Starts from current time (e.g., 3PM), **misses morning schedules** (8AM)
+- Custom `{ from: startOfToday, to: +30days }` → Includes all schedules from 00:00 today
+
+**Why it works:**
+- Fetches from **start of today** (00:00), not current time
+- Includes morning schedules even if checked in afternoon
+- Includes tomorrow/future schedule entries for proper filtering
+- `augmentWithSchedule` properly sets `startAt` and `plannedMinutes`
+- `filterTodayItems` correctly filters out non-today items
+- IN_PROGRESS items still show regardless of schedule date
+
+**Example scenarios:**
+- Schedule at 8AM, checked at 3PM → ✅ Shows correctly (included in fetch)
+- Schedule at tomorrow 10AM → ✅ Hidden from today (filtered out)
+- Unscheduled task → ✅ Shows on today (filter rule allows null)
+
+**Trade-off:**
+- Slightly larger payload (10-50 entries vs 5-10)
+- But essential for correct behavior across all times of day
+
+**Files Modified:**
+- ✅ `src/features/schedule/hooks/useTodayData.ts` (custom date range from startOfToday)
+- ✅ `src/features/schedule/utils/normalizeTodayData.ts` (improved filterTodayItems comments)
+- ✅ `TODAY_PAGE_MAPPING_ARCHITECTURE.md` (added "Critical Bug Fix" section with examples)
+
+---
+
 ## 📋 PHASE 1: QUICK WINS (1-2 ngày)
 
 ### Task 1.1: Extract Constants (COMPLETED - See above)

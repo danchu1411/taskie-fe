@@ -130,10 +130,18 @@ function useTaskCategories(items: TodayItem[]) {
 export function useTodayData(userId: string | null): TodayDataResult {
   const tasksQuery = useTasksData(userId);
   
-  // Use the centralized schedule data hook for today's planned entries
+  // Fetch ALL schedule entries from today onwards (not just today) to properly filter items
+  // This is necessary because we need to know if a task is scheduled for another day
+  // so we can hide it from today's view
+  // Use custom range starting from start of today (not current time) to include morning schedules
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDate = new Date(startOfToday);
+  endDate.setDate(endDate.getDate() + 30); // 30 days ahead
+  
   const { data: scheduleData } = useScheduleData(
     userId,
-    { preset: 'today' },
+    { from: startOfToday, to: endDate }, // Custom range from start of today to +30 days
     { status: STATUS.PLANNED, order: 'asc' }
   );
   
