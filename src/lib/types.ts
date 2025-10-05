@@ -48,11 +48,18 @@ export interface ChecklistItemRecord {
 
 export interface WorkItemRecord {
   work_item_id: string;
+  work_id?: string; // Alias for work_item_id (backend uses this field name)
   task_id: string;
-  checklist_item_id?: string;
+  checklist_item_id?: string | null; // Populated for checklist items
+  atomic_task_id?: string | null; // Populated for atomic tasks
   start_at?: string;
   planned_minutes?: number;
   status: StatusValue;
+  is_atomic?: boolean;
+  work_type?: 'checklist_item' | 'atomic_task'; // Source type identifier
+  title?: string; // Work item title
+  effective_deadline?: string;
+  effective_priority?: number;
   created_at: string;
   updated_at: string;
 }

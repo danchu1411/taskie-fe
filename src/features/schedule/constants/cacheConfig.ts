@@ -67,6 +67,10 @@ export const DEFAULT_VALUES = {
   WIDGET_WIDTH: 200,
   /** Floating widget height (pixels) */
   WIDGET_HEIGHT: 150,
+  /** Debug mode focus duration in seconds */
+  DEBUG_FOCUS_SECONDS: 10,
+  /** Debug mode break duration in seconds */
+  DEBUG_BREAK_SECONDS: 5,
 } as const;
 
 /**

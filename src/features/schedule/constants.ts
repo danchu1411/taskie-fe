@@ -54,11 +54,15 @@ function isValidSessionDuration(totalMinutes: number): boolean {
  * Generated from 5 to 240 minutes with step 5
  * Excludes durations that would result in focus sessions < 20 minutes when split evenly
  * Example: 35 minutes → [15, break, 15] → excluded because 15 < 20
+ * Note: 0.33 minutes = 20 seconds (debug mode)
  */
-export const ALLOWED_FOCUS_DURATIONS = Array.from(
-  { length: (240 - 5) / 5 + 1 }, 
-  (_, i) => 5 + i * 5
-).filter(duration => isValidSessionDuration(duration));
+export const ALLOWED_FOCUS_DURATIONS = [
+  0.33, // Debug mode: ~20 seconds
+  ...Array.from(
+    { length: (240 - 5) / 5 + 1 }, 
+    (_, i) => 5 + i * 5
+  ).filter(duration => isValidSessionDuration(duration))
+];
 
 /**
  * Type for allowed focus durations
@@ -146,6 +150,7 @@ export function isAllowedDuration(minutes: number): boolean {
 export function getDurationDisplayName(minutes: number): string {
   // Special cases for common durations
   const specialCases: Record<number, string> = {
+    0.33: '20 sec - 🐛 DEBUG MODE',
     5: '5 min - Quick focus',
     10: '10 min - Short focus',
     15: '15 min - Brief session',
@@ -165,7 +170,9 @@ export function getDurationDisplayName(minutes: number): string {
   }
 
   // Generate automatic labels for other durations
-  if (minutes < 60) {
+  if (minutes < 1) {
+    return `${Math.round(minutes * 60)} sec - Debug`;
+  } else if (minutes < 60) {
     return `${minutes} min`;
   } else if (minutes < 120) {
     return `${minutes} min - ${(minutes / 60).toFixed(1)} hours`;

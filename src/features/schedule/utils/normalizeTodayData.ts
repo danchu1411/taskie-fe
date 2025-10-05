@@ -167,8 +167,22 @@ export function normalizeWorkItem(
   const startAt = readField<string>(workItemRecord, ["startAt", "start_at"]) ?? null;
   const plannedMinutes = toNumber(readField(workItemRecord, ["plannedMinutes", "planned_minutes"])) ?? null;
 
+  const workItemId = readField<string>(workItemRecord, ["workItemId", "work_item_id", "work_id"]);
+  const finalId = workItemId ?? checklistItemId ?? taskId ?? "(Unknown)";
+  
+  // Debug: Log when fallback happens
+  if (!workItemId && checklistItemId) {
+    console.warn('⚠️ normalizeWorkItem: workItemId missing, using checklistItemId as fallback:', {
+      checklistItemId,
+      taskId,
+      title: readField<string>(workItemRecord, ["title"])
+    });
+  } else if (workItemId) {
+    console.log('✅ normalizeWorkItem: Found workItemId:', workItemId);
+  }
+
   return {
-    id: readField<string>(workItemRecord, ["workItemId", "work_item_id"]) ?? taskId ?? "(Unknown)",
+    id: finalId,
     source: checklistItemId ? "checklist" : "task",
     title: readField<string>(workItemRecord, ["title"]) ?? "(Untitled)",
     // Only show parent title badge for actual checklist children, not standalone work items
@@ -285,6 +299,18 @@ export function normalizeTask(taskRecord: TaskRecord): TodayItem | null {
  */
 export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[] {
   if (!payload?.items?.length) return [];
+  
+  // Debug: Log payload to diagnose duplicate key issues
+  console.log('🔍 mapTodayItems called with payload:', {
+    taskCount: payload.items.length,
+    tasks: payload.items.map((t: any) => ({
+      taskId: t.task_id ?? t.taskId,
+      title: t.title,
+      workItemsCount: (t.workItems ?? t.work_items ?? []).length,
+      checklistCount: (t.checklist ?? []).length
+    }))
+  });
+  
   const result: TodayItem[] = [];
   // Global guards to prevent duplicates across entire payload
   const globalSeenChecklistIds = new Set<string>(); // normalized (lowercase) checklist ids
@@ -312,6 +338,23 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
 
     const workItems =
       readField<WorkItemRecord[]>(taskRecord, ["workItems"], []) ?? [];
+    
+    // Debug: Log raw workItems structure to see what backend actually returns
+    if (workItems.length > 0) {
+      console.log('🔍 Raw workItems from backend:', {
+        taskTitle: readField<string>(taskRecord, ["title"]),
+        workItems: workItems.map((wi: any) => ({
+          raw: wi,
+          work_id: wi.work_id,
+          work_item_id: wi.work_item_id,
+          workItemId: wi.workItemId,
+          checklist_item_id: wi.checklist_item_id,
+          checklistItemId: wi.checklistItemId,
+          title: wi.title
+        }))
+      });
+    }
+    
     // Track checklist items that already have scheduled work items to avoid duplicates
     const scheduledChecklistIds = new Set<string>(); // normalized (lowercase)
     const uniqueChecklistWork = new Map<string, TodayItem>();
@@ -336,7 +379,7 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
 
       const normalized = normalizeWorkItem(taskRecord, (synthesized ?? workItem) as any);
       if (!normalized) continue;
-      const wid = (readField<string>(workItem, ["workItemId", "work_item_id"]) ?? normalized.id ?? "").toLowerCase();
+      const wid = (readField<string>(workItem, ["workItemId", "work_item_id", "work_id"]) ?? normalized.id ?? "").toLowerCase();
       const checklistId = (normalized.checklistItemId ?? "").toLowerCase();
 
       if (normalized.source === "checklist" && checklistId) {
@@ -363,6 +406,13 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
       if (!globalSeenKeys.has(dedupeKey)) {
         result.push(item);
         globalSeenKeys.add(dedupeKey);
+      } else {
+        console.warn('⚠️ Duplicate checklist work item skipped:', {
+          id: item.id,
+          checklistItemId: item.checklistItemId,
+          title: item.title,
+          dedupeKey
+        });
       }
     }
 
@@ -389,6 +439,12 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
         if (checklistId) {
           const dedupeKey = `${ENTITY_PREFIXES.CHECKLIST}:${checklistId}`;
           if (globalSeenKeys.has(dedupeKey)) {
+            console.warn('⚠️ Duplicate checklist item skipped (already seen):', {
+              id: normalized.id,
+              checklistItemId: checklistId,
+              title: normalized.title,
+              dedupeKey
+            });
             continue;
           }
           globalSeenKeys.add(dedupeKey);
@@ -421,13 +477,23 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
     return STATUS_PRIORITY_SCORE.SKIPPED;
   };
 
+  console.log('🔍 Before final dedupe, result count:', result.length);
+
   // Keep the highest-priority item per logical entity key
+  // CRITICAL: Dedupe by item.id to prevent React duplicate key errors
   const bestByKey = new Map<string, TodayItem>();
   for (const it of result) {
-    const baseId = (it.source === "checklist" ? (it.checklistItemId ?? it.id) : it.source === "task" ? (it.taskId ?? it.id) : it.id) ?? it.id;
-    const prefix = it.source === "checklist" ? ENTITY_PREFIXES.CHECKLIST : it.source === "task" ? ENTITY_PREFIXES.TASK : ENTITY_PREFIXES.WORK_ITEM;
-    const key = `${prefix}:${String(baseId).toLowerCase()}`;
+    // Use item.id directly as the deduplication key
+    // This ensures no two items with the same ID reach React rendering
+    const key = `item:${String(it.id).toLowerCase()}`;
     const prev = bestByKey.get(key);
+    if (prev) {
+      console.warn('⚠️ Final dedupe: Duplicate item.id found!', {
+        key,
+        existing: { id: prev.id, checklistItemId: prev.checklistItemId, title: prev.title, status: prev.status },
+        new: { id: it.id, checklistItemId: it.checklistItemId, title: it.title, status: it.status }
+      });
+    }
     if (!prev || score(it.status) > score(prev.status)) {
       bestByKey.set(key, it);
     }
@@ -436,6 +502,8 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
   for (const [, it] of bestByKey) {
     final.push(it);
   }
+
+  console.log('🔍 After final dedupe, final count:', final.length);
 
   return final;
 }
@@ -456,7 +524,8 @@ export function buildScheduleLookup(
   // Register helper: adds entry to map with multiple keys
   const register = (entry: ScheduleEntry) => {
     const keys: string[] = [];
-    if (entry.work_item_id) keys.push(entry.work_item_id.toLowerCase());
+    const workId = (entry as any).work_id ?? entry.work_item_id;
+    if (workId) keys.push(workId.toLowerCase());
     if (entry.task_id) keys.push(entry.task_id.toLowerCase());
     if (entry.checklist_item_id) keys.push(entry.checklist_item_id.toLowerCase());
 

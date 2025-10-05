@@ -328,14 +328,19 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
       const tasks = tasksQuery.data?.items ?? [];
 
-      if (item.source === "checklist") {
-        if (item.id && item.checklistItemId && item.id !== item.checklistItemId) {
-          return item.id;
-        }
-      } else if (item.source === "task") {
-        if (item.id && item.taskId && item.id !== item.taskId) {
-          return item.id;
-        }
+      // Debug logging
+      console.log('🔍 resolveWorkItemId called:', {
+        source: item.source,
+        itemId: item.id,
+        taskId: item.taskId,
+        checklistItemId: item.checklistItemId,
+        title: item.title
+      });
+
+      // Quick path: if item.id is already a workItemId (starts with 'wi_')
+      if (item.id && String(item.id).startsWith('wi_')) {
+        console.log('✅ Quick return: item.id is already a workItemId:', item.id);
+        return item.id;
       }
 
       const targetTaskId = normalize(item.taskId ?? item.id);
@@ -359,6 +364,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         for (const rawWorkItem of workItems) {
           const workItem = rawWorkItem as WorkItemRecord;
           const workItemId =
+            (rawWorkItem as any).work_id ??
             workItem.work_item_id ??
             (rawWorkItem as { workItemId?: string }).workItemId ??
             null;
@@ -368,17 +374,29 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           const workItemChecklistId =
             normalize(workItem.checklist_item_id) ??
             normalize((rawWorkItem as { checklistItemId?: string }).checklistItemId);
+          
+          const workItemTaskId = 
+            normalize(workItem.task_id) ??
+            normalize((rawWorkItem as { taskId?: string }).taskId);
 
+          // For checklist items: match by checklistItemId
           if (item.source === "checklist") {
             if (targetChecklistId && workItemChecklistId === targetChecklistId) {
+              console.log('✅ Found workItemId for checklist:', workItemId);
               return workItemId;
             }
-          } else if (!workItemChecklistId) {
-            return workItemId;
+          } 
+          // For tasks: match by taskId AND ensure it's an atomic task (no checklist_item_id)
+          else if (item.source === "task") {
+            if (targetTaskId && workItemTaskId === targetTaskId && !workItemChecklistId) {
+              console.log('✅ Found workItemId for atomic task:', workItemId);
+              return workItemId;
+            }
           }
         }
       }
 
+      console.log('⚠️ Fallback: returning item.id:', item.id);
       return item.id ?? null;
     },
     [tasksQuery.data],
@@ -573,12 +591,19 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const scheduleMutation = useMutation<void, unknown, { workItemId: string; startAt: string; plannedMinutes: number }>({
     mutationFn: async ({ workItemId, startAt, plannedMinutes }) => {
-      await api.post("/schedule-entries", {
-        workItemId,
+      // Backend accepts work_id as workItemId
+      // For checklist items: work_id = checklist_item_id
+      // For atomic tasks: work_id = atomic_task_id
+      const payload = {
+        workItemId,  // Always send workItemId (work_id from backend)
         startAt,
         plannedMinutes,
         status: STATUS.PLANNED,
-      });
+      };
+      
+      console.log('📤 POST /schedule-entries payload:', payload);
+      
+      await api.post("/schedule-entries", payload);
     },
     onError: (err) => {
       setStatusError(getErrorMessage(err));
@@ -858,9 +883,23 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       return;
     }
 
+    console.log('📝 createSchedule called:', {
+      isEditingSchedule,
+      scheduleEntryId,
+      selectedItem: {
+        id: selectedItem.id,
+        source: selectedItem.source,
+        taskId: selectedItem.taskId,
+        checklistItemId: selectedItem.checklistItemId,
+        title: selectedItem.title,
+        startAt: selectedItem.startAt
+      }
+    });
+
     // Decide between UPDATE and CREATE
     if (isEditingSchedule && scheduleEntryId) {
       // UPDATE existing schedule entry
+      console.log('✏️ UPDATE mode with entryId:', scheduleEntryId);
       updateScheduleMutation.mutate({
         entryId: scheduleEntryId,
         startAt: startAtDate.toISOString(),
@@ -869,6 +908,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     } else {
       // CREATE new schedule entry
       const workItemId = resolveWorkItemId(selectedItem);
+      console.log('➕ CREATE mode with workItemId:', workItemId);
+      
       if (!workItemId) {
         setStatusError("Unable to schedule this item right now. Please try again later.");
         return;
