@@ -117,29 +117,60 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
 
   const generateSessionPlan = useCallback((totalMinutes: number) => {
     const plan: Array<{ type: SessionType; duration: number }> = [];
-    let remainingMinutes = totalMinutes;
-    let focusCount = 0;
-    while (remainingMinutes > 0) {
-      if (remainingMinutes >= DEFAULT_VALUES.FOCUS_DURATION_MINUTES) {
-        plan.push({ type: "focus", duration: DEFAULT_VALUES.FOCUS_DURATION_MINUTES });
-        remainingMinutes -= DEFAULT_VALUES.FOCUS_DURATION_MINUTES;
-        focusCount++;
-        if (remainingMinutes > 0) {
-          if (focusCount % DEFAULT_VALUES.SESSIONS_BEFORE_LONG_BREAK === 0 && remainingMinutes >= DEFAULT_VALUES.LONG_BREAK_MINUTES) {
-            plan.push({ type: "long-break", duration: DEFAULT_VALUES.LONG_BREAK_MINUTES });
-            remainingMinutes -= DEFAULT_VALUES.LONG_BREAK_MINUTES;
-          } else if (remainingMinutes >= DEFAULT_VALUES.SHORT_BREAK_MINUTES) {
-            plan.push({ type: "short-break", duration: DEFAULT_VALUES.SHORT_BREAK_MINUTES });
-            remainingMinutes -= DEFAULT_VALUES.SHORT_BREAK_MINUTES;
-          }
-        }
-      } else {
-        if (remainingMinutes > 0) {
-          plan.push({ type: "focus", duration: remainingMinutes });
-          remainingMinutes = 0;
+    
+    // Configuration
+    const MIN_FOCUS = 15; // Minimum focus session duration
+    const OPTIMAL_FOCUS = DEFAULT_VALUES.FOCUS_DURATION_MINUTES; // 25 minutes (optimal session length)
+    const SHORT_BREAK = DEFAULT_VALUES.SHORT_BREAK_MINUTES; // 5 minutes
+    const LONG_BREAK = DEFAULT_VALUES.LONG_BREAK_MINUTES; // 15 minutes
+    const SESSIONS_BEFORE_LONG = DEFAULT_VALUES.SESSIONS_BEFORE_LONG_BREAK; // 4
+    
+    // Edge case: very short duration
+    if (totalMinutes <= MIN_FOCUS) {
+      plan.push({ type: "focus", duration: totalMinutes });
+      return plan;
+    }
+    
+    // Calculate optimal number of focus sessions
+    // Start with ideal sessions of OPTIMAL_FOCUS minutes each
+    let numFocusSessions = Math.max(1, Math.round(totalMinutes / (OPTIMAL_FOCUS + SHORT_BREAK)));
+    
+    // Calculate breaks needed
+    const numShortBreaks = Math.max(0, numFocusSessions - 1 - Math.floor((numFocusSessions - 1) / SESSIONS_BEFORE_LONG));
+    const numLongBreaks = Math.max(0, Math.floor((numFocusSessions - 1) / SESSIONS_BEFORE_LONG));
+    const totalBreakTime = numShortBreaks * SHORT_BREAK + numLongBreaks * LONG_BREAK;
+    
+    // Calculate focus time available
+    const totalFocusTime = totalMinutes - totalBreakTime;
+    
+    // If not enough time for breaks, reduce to single session
+    if (totalFocusTime < MIN_FOCUS * numFocusSessions) {
+      plan.push({ type: "focus", duration: totalMinutes });
+      return plan;
+    }
+    
+    // Distribute focus time evenly across sessions
+    const baseFocusTime = Math.floor(totalFocusTime / numFocusSessions);
+    const extraMinutes = totalFocusTime % numFocusSessions;
+    
+    // Build the session plan
+    for (let i = 0; i < numFocusSessions; i++) {
+      // Add focus session (distribute extra minutes to early sessions)
+      const focusDuration = baseFocusTime + (i < extraMinutes ? 1 : 0);
+      plan.push({ type: "focus", duration: focusDuration });
+      
+      // Add break after each focus session except the last one
+      if (i < numFocusSessions - 1) {
+        const focusCountSoFar = i + 1;
+        // Add long break after every SESSIONS_BEFORE_LONG focus sessions
+        if (focusCountSoFar % SESSIONS_BEFORE_LONG === 0) {
+          plan.push({ type: "long-break", duration: LONG_BREAK });
+        } else {
+          plan.push({ type: "short-break", duration: SHORT_BREAK });
         }
       }
     }
+    
     return plan;
   }, []);
 
@@ -279,7 +310,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       isDarkTheme: isDarkTheme,
       timerRemain: timerRemain,
       currentSession: currentSession,
-      sessionPlanLength: sessionPlan.length,
+      sessionPlan: sessionPlan,
       timerRunning: timerRunning,
       widgetPosition: widgetPosition,
       onExitFloatingMode: exitFloatingMode,
@@ -287,7 +318,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       onToggleTimer: () => setTimerRunning(!timerRunning),
       onDragEnd: applyFloatingDelta
     });
-  }, [isDarkTheme, timerRemain, currentSession, sessionPlan.length, timerRunning, widgetPosition, exitFloatingMode, closeTimer, applyFloatingDelta]);
+  }, [isDarkTheme, timerRemain, currentSession, sessionPlan, timerRunning, widgetPosition, exitFloatingMode, closeTimer, applyFloatingDelta]);
 
   return {
     // state

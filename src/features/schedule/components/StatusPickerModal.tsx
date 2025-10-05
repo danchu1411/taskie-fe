@@ -11,10 +11,46 @@ interface StatusPickerModalProps {
 }
 
 const statusOptions = [
-  { value: STATUS.PLANNED, label: "Planned", description: "Task is planned but not started" },
-  { value: STATUS.IN_PROGRESS, label: "In Progress", description: "Currently working on this task" },
-  { value: STATUS.DONE, label: "Done", description: "Task has been completed" },
-  { value: STATUS.SKIPPED, label: "Skipped", description: "Task was skipped or cancelled" },
+  { 
+    value: STATUS.PLANNED, 
+    label: "Planned", 
+    description: "Task is planned but not started",
+    dotColor: "bg-blue-500",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    hoverColor: "hover:bg-blue-100",
+    textColor: "text-blue-700"
+  },
+  { 
+    value: STATUS.IN_PROGRESS, 
+    label: "In Progress", 
+    description: "Currently working on this task",
+    dotColor: "bg-amber-500",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
+    hoverColor: "hover:bg-amber-100",
+    textColor: "text-amber-700"
+  },
+  { 
+    value: STATUS.DONE, 
+    label: "Done", 
+    description: "Task has been completed",
+    dotColor: "bg-green-500",
+    bgColor: "bg-green-50",
+    borderColor: "border-green-200",
+    hoverColor: "hover:bg-green-100",
+    textColor: "text-green-700"
+  },
+  { 
+    value: STATUS.SKIPPED, 
+    label: "Skipped", 
+    description: "Task was skipped or cancelled",
+    dotColor: "bg-slate-400",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
+    hoverColor: "hover:bg-slate-100",
+    textColor: "text-slate-600"
+  },
 ];
 
 export const StatusPickerModal = memo(function StatusPickerModal({
@@ -41,25 +77,30 @@ export const StatusPickerModal = memo(function StatusPickerModal({
               type="button"
               onClick={() => onStatusSelect(statusOption.value)}
               disabled={loading}
-              className={`w-full rounded-lg border p-3 text-left transition hover:bg-slate-50 ${
+              className={`w-full rounded-lg border p-3 text-left transition ${
+                statusOption.bgColor
+              } ${
+                statusOption.borderColor
+              } ${
+                statusOption.hoverColor
+              } ${
                 selectedItem.status === statusOption.value
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-slate-200"
+                  ? "ring-2 ring-offset-1 " + statusOption.dotColor.replace('bg-', 'ring-')
+                  : ""
               } ${loading ? "cursor-not-allowed opacity-60" : ""}`}
             >
               <div className="flex items-center gap-3">
-                <div className={`h-3 w-3 rounded-full ${
-                  statusOption.value === STATUS.PLANNED && "bg-sky-500",
-                  statusOption.value === STATUS.IN_PROGRESS && "bg-amber-500",
-                  statusOption.value === STATUS.DONE && "bg-emerald-500",
-                  statusOption.value === STATUS.SKIPPED && "bg-slate-500"
-                }`} />
-                <div>
-                  <div className="font-medium text-slate-900">{statusOption.label}</div>
-                  <div className="text-xs text-slate-500">{statusOption.description}</div>
+                <div className={`h-3 w-3 rounded-full ${statusOption.dotColor}`} />
+                <div className="flex-1">
+                  <div className={`font-semibold ${statusOption.textColor}`}>
+                    {statusOption.label}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {statusOption.description}
+                  </div>
                 </div>
                 {selectedItem.status === statusOption.value && (
-                  <div className="ml-auto text-indigo-600">
+                  <div className={`ml-auto ${statusOption.textColor}`}>
                     <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>

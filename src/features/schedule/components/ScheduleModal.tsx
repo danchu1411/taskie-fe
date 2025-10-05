@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { TodayItem } from "../hooks/useTodayData";
 import { getFocusDurationOptions } from "../constants";
 
@@ -27,6 +27,26 @@ export const ScheduleModal = memo(function ScheduleModal({
   loading,
   isEditMode = false,
 }: ScheduleModalProps) {
+  // Get current time in local timezone for min attribute
+  const minDateTime = useMemo(() => {
+    const now = new Date();
+    // Format: YYYY-MM-DDThh:mm
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }, [open]); // Recalculate when modal opens
+
+  // Check if selected time is in the past
+  const isPastTime = useMemo(() => {
+    if (!startAt) return false;
+    const selectedTime = new Date(startAt).getTime();
+    const now = Date.now();
+    return selectedTime < now;
+  }, [startAt]);
+
   if (!open || !selectedItem) return null;
 
   return (
@@ -46,9 +66,22 @@ export const ScheduleModal = memo(function ScheduleModal({
               id="schedule-start"
               type="datetime-local"
               value={startAt}
+              min={minDateTime}
               onChange={(e) => onStartAtChange(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                isPastTime 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/20'
+              }`}
             />
+            {isPastTime && (
+              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Cannot schedule in the past. Please select a future time.
+              </p>
+            )}
           </div>
           
           <div>
@@ -81,9 +114,9 @@ export const ScheduleModal = memo(function ScheduleModal({
           <button
             type="button"
             onClick={onSave}
-            disabled={loading}
+            disabled={loading || isPastTime}
             className={`flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 ${
-              loading ? "cursor-not-allowed opacity-60" : ""
+              (loading || isPastTime) ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
             {loading 

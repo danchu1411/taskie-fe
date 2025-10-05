@@ -31,7 +31,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     page: 1,
     pageSize: 20,
   });
-  const [view, setView] = useState<'list' | 'board' | 'calendar'>('list');
+  const [view, setView] = useState<'list' | 'board'>('list');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -259,7 +259,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onFilterChange={setFilters}
           onCreate={() => setModalOpen(true)}
           currentView={view}
-          onViewChange={setView}
+          onViewChange={(newView) => setView(newView)}
           taskStats={taskStats}
         />
 
@@ -301,7 +301,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onChecklistItemReorder={handleChecklistItemReorder}
           onCreateTask={() => setModalOpen(true)}
         />
-      ) : view === 'board' ? (
+      ) : (
         <TaskBoardView
           tasksByStatus={tasksByStatus}
           isUpdating={isUpdating}
@@ -313,14 +313,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onSchedule={handleSchedule}
           onStart={handleStart}
         />
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
-          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <div className="w-6 h-6 bg-slate-500 rounded-full"></div>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">Calendar View</h3>
-          <p className="text-slate-600">Calendar view coming soon...</p>
-        </div>
       )}
 
       {/* Task Modal */}

@@ -7,8 +7,8 @@ export interface TaskToolbarProps {
   filters: TaskFilters;
   onFilterChange: (filters: TaskFilters) => void;
   onCreate: () => void;
-  currentView: 'list' | 'board' | 'calendar';
-  onViewChange: (view: 'list' | 'board' | 'calendar') => void;
+  currentView: 'list' | 'board';
+  onViewChange: (view: 'list' | 'board') => void;
   taskStats?: {
     total: number;
     planned: number;
@@ -163,17 +163,6 @@ export const TaskToolbar = React.memo(function TaskToolbar({
                 )}
               >
                 Board
-              </button>
-              <button
-                onClick={() => onViewChange('calendar')}
-                className={clsx(
-                  "px-3 py-1 rounded-md text-sm font-medium transition-colors",
-                  currentView === 'calendar' 
-                    ? "bg-white text-slate-900 shadow-sm" 
-                    : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                Calendar
               </button>
             </div>
           </div>

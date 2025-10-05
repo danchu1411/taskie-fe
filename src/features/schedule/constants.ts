@@ -6,13 +6,59 @@
 import { DEFAULT_VALUES } from "./constants/cacheConfig";
 
 /**
+ * Helper function to check if a duration would result in focus sessions < 20 minutes
+ * Uses the same logic as the session planning algorithm
+ */
+function isValidSessionDuration(totalMinutes: number): boolean {
+  const OPTIMAL_FOCUS = DEFAULT_VALUES.FOCUS_DURATION_MINUTES; // 25
+  const SHORT_BREAK = DEFAULT_VALUES.SHORT_BREAK_MINUTES; // 5
+  const LONG_BREAK = DEFAULT_VALUES.LONG_BREAK_MINUTES; // 15
+  const SESSIONS_BEFORE_LONG = DEFAULT_VALUES.SESSIONS_BEFORE_LONG_BREAK; // 4
+  const MIN_ACCEPTABLE_FOCUS = 20; // Minimum focus session duration to keep option
+  
+  // Very short durations are always valid (single session)
+  if (totalMinutes <= MIN_ACCEPTABLE_FOCUS) {
+    return true;
+  }
+  
+  // Calculate optimal number of focus sessions
+  const numFocusSessions = Math.max(1, Math.round(totalMinutes / (OPTIMAL_FOCUS + SHORT_BREAK)));
+  
+  // If only 1 session, always valid
+  if (numFocusSessions === 1) {
+    return true;
+  }
+  
+  // Calculate breaks needed
+  const numShortBreaks = Math.max(0, numFocusSessions - 1 - Math.floor((numFocusSessions - 1) / SESSIONS_BEFORE_LONG));
+  const numLongBreaks = Math.max(0, Math.floor((numFocusSessions - 1) / SESSIONS_BEFORE_LONG));
+  const totalBreakTime = numShortBreaks * SHORT_BREAK + numLongBreaks * LONG_BREAK;
+  
+  // Calculate focus time available
+  const totalFocusTime = totalMinutes - totalBreakTime;
+  
+  // Check if we have enough time for minimum focus sessions
+  if (totalFocusTime < MIN_ACCEPTABLE_FOCUS * numFocusSessions) {
+    return false; // Would result in sessions < 20 minutes
+  }
+  
+  // Calculate average focus session duration
+  const avgFocusTime = Math.floor(totalFocusTime / numFocusSessions);
+  
+  // Only allow if average focus session is >= 20 minutes
+  return avgFocusTime >= MIN_ACCEPTABLE_FOCUS;
+}
+
+/**
  * Allowed focus durations in minutes
  * Generated from 5 to 240 minutes with step 5
+ * Excludes durations that would result in focus sessions < 20 minutes when split evenly
+ * Example: 35 minutes → [15, break, 15] → excluded because 15 < 20
  */
 export const ALLOWED_FOCUS_DURATIONS = Array.from(
   { length: (240 - 5) / 5 + 1 }, 
   (_, i) => 5 + i * 5
-);
+).filter(duration => isValidSessionDuration(duration));
 
 /**
  * Type for allowed focus durations

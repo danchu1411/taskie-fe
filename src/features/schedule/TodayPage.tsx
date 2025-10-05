@@ -817,18 +817,32 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       const entryId = existingEntry.id ?? existingEntry.schedule_id;
       setScheduleEntryId(entryId!);
       setIsEditingSchedule(true);
-      // Use existing schedule values
-      setScheduleStartAt(existingEntry.start_at.slice(0, 16));
+      // Convert UTC time from backend to LOCAL time for input
+      const utcDate = new Date(existingEntry.start_at);
+      const year = utcDate.getFullYear();
+      const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+      const day = String(utcDate.getDate()).padStart(2, '0');
+      const hours = String(utcDate.getHours()).padStart(2, '0');
+      const minutes = String(utcDate.getMinutes()).padStart(2, '0');
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      console.log('EDIT MODE - UTC from backend:', existingEntry.start_at, '→ Local time for input:', localTimeString);
+      setScheduleStartAt(localTimeString);
       setScheduleMinutes(existingEntry.planned_minutes ?? existingEntry.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
     } else {
       // CREATE MODE: Item doesn't have schedule
       setScheduleEntryId(null);
       setIsEditingSchedule(false);
-      // Set default start time to next hour
+      // Set default start time to current LOCAL time (not UTC)
       const now = new Date();
-      const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
-      nextHour.setMinutes(0, 0, 0);
-      setScheduleStartAt(nextHour.toISOString().slice(0, 16));
+      // Format to YYYY-MM-DDThh:mm for datetime-local input
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      console.log('CREATE MODE - Current local time:', new Date(), '→ Input value:', localTimeString);
+      setScheduleStartAt(localTimeString);
       setScheduleMinutes(item.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
     }
     

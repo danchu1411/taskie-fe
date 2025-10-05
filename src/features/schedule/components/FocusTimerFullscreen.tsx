@@ -27,13 +27,34 @@ export const FocusTimerFullscreen = memo(function FocusTimerFullscreen({
   onClose,
   onToggleTheme,
 }: FocusTimerFullscreenProps) {
+  // Calculate focus session info
+  const totalFocusSessions = sessionPlan.filter(s => s.type === 'focus').length;
+  const currentSessionType = sessionPlan[currentSession - 1]?.type || 'focus';
+  
+  // Calculate current focus session number (only count focus sessions before current)
+  const focusSessionNumber = sessionPlan
+    .slice(0, currentSession)
+    .filter(s => s.type === 'focus')
+    .length;
+  
+  // Determine session label
+  const getSessionLabel = () => {
+    if (currentSessionType === 'focus') {
+      return `Focus session (${focusSessionNumber} of ${totalFocusSessions})`;
+    } else if (currentSessionType === 'long-break') {
+      return 'Long break - Relax';
+    } else {
+      return 'Short break - Relax';
+    }
+  };
+  
   return (
     <div className={`fixed inset-0 z-50 ${isDarkTheme ? 'bg-gray-900' : 'bg-white'}`}>
       <div className="flex h-full flex-col items-center justify-center">
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className={`text-xl font-medium ${isDarkTheme ? 'text-white' : 'text-gray-900'}`}>
-            Focus period ({currentSession} of {sessionPlan.length})
+            {getSessionLabel()}
           </h1>
         </div>
 

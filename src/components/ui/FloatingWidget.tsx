@@ -5,7 +5,7 @@ interface FloatingWidgetProps {
   isDarkTheme: boolean;
   timerRemain: number;
   currentSession: number;
-  sessionPlanLength: number;
+  sessionPlan: Array<{ type: "focus" | "short-break" | "long-break"; duration: number }>;
   timerRunning: boolean;
   widgetPosition: { x: number; y: number };
   onExitFloatingMode: () => void;
@@ -18,7 +18,7 @@ export function FloatingWidget({
   isDarkTheme,
   timerRemain,
   currentSession,
-  sessionPlanLength,
+  sessionPlan,
   timerRunning,
   widgetPosition,
   onExitFloatingMode,
@@ -26,6 +26,29 @@ export function FloatingWidget({
   onToggleTimer,
   onDragEnd,
 }: FloatingWidgetProps) {
+  // Calculate focus session info (same logic as FocusTimerFullscreen)
+  const totalFocusSessions = sessionPlan.filter(s => s.type === 'focus').length;
+  const currentSessionType = sessionPlan[currentSession - 1]?.type || 'focus';
+  
+  // Calculate current focus session number (only count focus sessions)
+  const focusSessionNumber = sessionPlan
+    .slice(0, currentSession)
+    .filter(s => s.type === 'focus')
+    .length;
+  
+  // Determine session label
+  const getSessionLabel = () => {
+    if (sessionPlan.length === 0) return 'Session';
+    
+    if (currentSessionType === 'focus') {
+      return `Focus ${focusSessionNumber}/${totalFocusSessions}`;
+    } else if (currentSessionType === 'long-break') {
+      return 'Long break';
+    } else {
+      return 'Break';
+    }
+  };
+  
   const widgetId = 'floating-widget';
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
     id: widgetId, 
@@ -120,7 +143,7 @@ export function FloatingWidget({
             {Math.floor(timerRemain / (60 * 1000))} min
           </div>
           <div className={`${isDarkTheme ? 'text-gray-400' : 'text-gray-500'} text-xs`}>
-            Session {currentSession} of {sessionPlanLength}
+            {getSessionLabel()}
           </div>
         </div>
         <div className="flex justify-center">
