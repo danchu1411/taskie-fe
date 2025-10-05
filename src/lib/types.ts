@@ -16,6 +16,15 @@ export const PRIORITY = {
   WANT: 3,
 } as const;
 
+/**
+ * Get the display status for a task
+ * For atomic tasks: uses manual status
+ * For non-atomic tasks: uses derived status (computed from checklist items)
+ */
+export function getTaskDisplayStatus(task: TaskRecord): StatusValue {
+  return task.derived_status;
+}
+
 // Task-related interfaces
 export interface TaskRecord {
   task_id: string;
@@ -25,7 +34,10 @@ export interface TaskRecord {
   deadline?: string;
   priority?: PriorityValue;
   status: StatusValue;
+  derived_status: StatusValue; // Auto-computed from checklist items (for non-atomic tasks)
   is_atomic: boolean;
+  total_items?: number; // Number of checklist items
+  done_items?: number; // Number of completed checklist items
   created_at: string;
   updated_at: string;
   start_at?: string;
@@ -42,6 +54,8 @@ export interface ChecklistItemRecord {
   priority?: PriorityValue;
   status: StatusValue;
   order_index: number;
+  start_at?: string;
+  planned_minutes?: number;
   created_at: string;
   updated_at: string;
 }

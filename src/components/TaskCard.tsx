@@ -159,27 +159,15 @@ export const TaskCard = React.memo(function TaskCard({
                 )}>
                   {item.title}
                 </h5>
-                {/* Effective values with inheritance indicators */}
+                {/* Effective values */}
                 <div className="flex items-center gap-2 mt-2">
                   {effectivePriority && (
-                    <div className="flex items-center gap-1">
-                      <PriorityBadge priority={effectivePriority} />
-                      {!item.priority && (
-                        <span className="text-xs text-slate-400" title="Inherited from task">
-                          (inherited)
-                        </span>
-                      )}
-                    </div>
+                    <PriorityBadge priority={effectivePriority} />
                   )}
 
                   {effectiveDeadline && (
                     <div className="flex items-center gap-1">
                       <DueDateBadge deadline={effectiveDeadline} />
-                      {!item.deadline && (
-                        <span className="text-xs text-slate-400" title="Inherited from task">
-                          (inherited)
-                        </span>
-                      )}
                       {hasDeadlineConflict && (
                         <span className="text-xs text-red-500" title="Deadline conflict with task">
                           ⚠️ conflict
@@ -231,9 +219,9 @@ export const TaskCard = React.memo(function TaskCard({
           <div className="flex items-start gap-3 mb-3">
             <div className="flex items-center gap-2">
               <StatusBadge 
-                status={task.status} 
-                onClick={() => onStatusChange(task)}
-                disabled={isUpdating}
+                status={task.derived_status} 
+                onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
+                disabled={isUpdating || !task.is_atomic}
               />
               {needsStatusUpdate && (
                 <div className="flex items-center gap-1">

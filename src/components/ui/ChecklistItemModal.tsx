@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { STATUS, PRIORITY } from '../../lib';
 import type { ChecklistItemRecord, StatusValue, PriorityValue } from '../../lib';
 import { Button, Input } from './index';
+import { getFocusDurationOptions } from '../../features/schedule/constants';
 
 interface ChecklistItemModalProps {
   isOpen: boolean;
@@ -36,6 +37,30 @@ export default function ChecklistItemModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Get focus duration options, excluding debug mode
+  const plannedMinutesOptions = useMemo(() => {
+    return getFocusDurationOptions().filter(opt => opt.value >= 1); // Exclude debug mode (0.33)
+  }, []);
+
+  // Get current time in local timezone for min attribute and default value
+  const currentDateTime = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }, [isOpen]); // Recalculate when modal opens
+
+  // Check if startAt is in the past
+  const isPastStartTime = useMemo(() => {
+    if (!formData.startAt) return false;
+    const startTime = new Date(formData.startAt).getTime();
+    const now = Date.now();
+    return startTime < now;
+  }, [formData.startAt]);
+
   useEffect(() => {
     if (item) {
       setFormData({
@@ -46,10 +71,11 @@ export default function ChecklistItemModal({
         status: item.status,
         useTaskDeadline: !item.deadline,
         useTaskPriority: !item.priority,
-        startAt: '',
-        plannedMinutes: ''
+        startAt: item.start_at ? new Date(item.start_at).toISOString().slice(0, 16) : '',
+        plannedMinutes: item.planned_minutes ? String(item.planned_minutes) : ''
       });
     } else {
+      // CREATE MODE: Set defaults including current time for startAt
       setFormData({
         title: '',
         description: '',
@@ -58,12 +84,12 @@ export default function ChecklistItemModal({
         status: STATUS.PLANNED,
         useTaskDeadline: true,
         useTaskPriority: true,
-        startAt: '',
+        startAt: currentDateTime, // Default to current time
         plannedMinutes: ''
       });
     }
     setErrors({});
-  }, [item, isOpen]);
+  }, [item, isOpen, currentDateTime]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +104,9 @@ export default function ChecklistItemModal({
       newErrors.deadline = 'Checklist deadline cannot be later than task deadline';
     }
     
+    if (isPastStartTime) {
+      newErrors.startAt = 'Cannot schedule in the past';
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -89,9 +118,9 @@ export default function ChecklistItemModal({
       deadline: formData.useTaskDeadline ? undefined : formData.deadline || undefined,
       priority: formData.useTaskPriority ? null : formData.priority,
       status: formData.status,
-      // Optional scheduling fields for checklist item
-      startAt: formData.startAt || undefined,
-      plannedMinutes: formData.plannedMinutes ? Number(formData.plannedMinutes) : undefined,
+      // Optional scheduling fields for checklist item (convert to ISO format)
+      start_at: formData.startAt ? new Date(formData.startAt).toISOString() : undefined,
+      planned_minutes: formData.plannedMinutes ? parseFloat(formData.plannedMinutes) : undefined,
     };
     
     onSubmit(submitData);
@@ -234,28 +263,46 @@ export default function ChecklistItemModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Start time (optional)
+                  Start Time
                 </label>
-                <Input
+                <input
                   type="datetime-local"
                   value={formData.startAt}
+                  min={currentDateTime}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('startAt', e.target.value)}
                   disabled={isLoading}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${
+                    isPastStartTime 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                      : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500'
+                  }`}
                 />
+                {isPastStartTime && (
+                  <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Cannot schedule in the past. Please select a future time.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Planned minutes (optional)
+                  Planned Minutes
                 </label>
-                <Input
-                  type="number"
-                  min={5}
-                  max={240}
-                  step={5}
+                <select
                   value={formData.plannedMinutes}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('plannedMinutes', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleInputChange('plannedMinutes', e.target.value)}
                   disabled={isLoading}
-                />
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500"
+                >
+                  <option value="">No time planned</option>
+                  {plannedMinutesOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -274,7 +321,7 @@ export default function ChecklistItemModal({
               <Button
                 type="submit"
                 variant="primary"
-                disabled={isLoading || !formData.title.trim()}
+                disabled={isLoading || !formData.title.trim() || isPastStartTime}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
                 {isLoading ? "Saving..." : item ? "Update Item" : "Add Item"}

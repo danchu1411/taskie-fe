@@ -50,7 +50,6 @@ export type TodayTimerHook = {
   enterFloatingMode: () => void;
   exitFloatingMode: () => void;
   startCustomDuration: (minutes: number, options?: { skipBreaks?: boolean }) => void;
-  startNextCustomSession: () => void;
   applyFloatingDelta: (delta: { x: number; y: number }) => void;
 
   // Floating widget component
@@ -105,7 +104,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       plan.push({ type: "short-break", duration: breakSeconds });
       plan.push({ type: "focus", duration: focusSeconds });
       
-      console.log('🐛 DEBUG MODE: 10s focus → 5s break → 10s focus');
       return plan;
     }
     
@@ -172,13 +170,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       ? [{ type: "focus" as SessionType, duration: minutes }]
       : generateSessionPlan(minutes);
     
-    console.log('🚀 startCustomDuration:', {
-      minutes,
-      shouldSkipBreaks,
-      plan,
-      planLength: plan.length
-    });
-    
     setSessionPlan(plan);
     setCurrentSession(1);
     setIsCustomMode(true);
@@ -188,63 +179,23 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     const firstSession = plan[0];
     const duration = firstSession.duration * 60 * 1000;
     
-    console.log('⏰ Starting first session:', {
-      type: firstSession.type,
-      durationMinutes: firstSession.duration,
-      durationMs: duration,
-      durationSeconds: duration / 1000
-    });
-    
     setTimerDuration(duration);
     setTimerRemain(duration);
     setTimerRunning(true);
     setIsFullscreen(true);
     setIsFloating(false);
 
-    if (firstSession.type === "focus" && timerItem) {
+    // Play sound for first session
+    if (firstSession.type === "focus") {
+      timerSounds.playFocusSound();
+      if (timerItem) {
       onStartFocus(timerItem);
+      }
+    } else {
+      timerSounds.playBreakSound();
     }
   }, [generateSessionPlan, timerItem, onStartFocus]);
 
-  const startNextCustomSession = useCallback(() => {
-    console.log('🔄 startNextCustomSession called:', {
-      skipBreaks,
-      currentSession,
-      sessionPlanLength: sessionPlan.length
-    });
-    
-    if (skipBreaks) {
-      console.log('⏭️ Skip breaks enabled, not transitioning');
-      return;
-    }
-    
-    const nextSessionIndex = currentSession;
-    if (nextSessionIndex < sessionPlan.length) {
-      const nextSession = sessionPlan[nextSessionIndex];
-      const duration = nextSession.duration * 60 * 1000;
-      
-      console.log('▶️ Starting next session:', {
-        session: nextSessionIndex + 1,
-        type: nextSession.type,
-        duration: nextSession.duration + ' min'
-      });
-      
-      // Play notification sound based on session type
-      if (nextSession.type === 'focus') {
-        timerSounds.playFocusSound(); // Starting focus session
-      } else {
-        timerSounds.playBreakSound(); // Starting break session
-      }
-      
-      setTimerDuration(duration);
-      setTimerRemain(duration);
-      setTimerRunning(true);
-      setCurrentSession((prev) => prev + 1);
-      if (nextSession.type === "focus" && timerItem) {
-        onStartFocus(timerItem);
-      }
-    }
-  }, [currentSession, sessionPlan, timerItem, onStartFocus, skipBreaks]);
 
   // Animation mount effect
   useEffect(() => {
@@ -277,11 +228,9 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
 
   // Countdown with custom session transitions
   useEffect(() => {
-    console.log('🔄 Countdown effect re-run:', { timerRunning });
     let interval: ReturnType<typeof setInterval> | null = null;
     
     if (timerRunning) {
-      console.log('✅ Starting countdown interval (only once per timer start)');
       interval = setInterval(() => {
         setTimerRemain((time) => {
           const newTime = time - TIMER_INTERVALS.COUNTDOWN_TICK_MS;
@@ -291,47 +240,23 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
             const currentSessionNum = currentSessionRef.current;
             const currentPlan = sessionPlanRef.current;
             
-            console.log('⏱️ Session ended at 0!', {
-              isCustomMode: currentIsCustomMode,
-              currentSession: currentSessionNum,
-              sessionPlanLength: currentPlan.length,
-              willAutoTransition: currentIsCustomMode && currentSessionNum < currentPlan.length
-            });
-            
             // Handle session transition
             if (currentIsCustomMode && currentSessionNum < currentPlan.length) {
               const shouldSkipBreaks = skipBreaksRef.current;
               
               if (shouldSkipBreaks) {
-                console.log('⏭️ Skip breaks enabled, stopping timer');
                 setTimerRunning(false);
                 return 0;
               }
               
-              console.log('🔄 Auto-transitioning to next session...');
-              
               // currentSession starts from 1, sessionPlan is 0-indexed
               // When currentSession=1 (first session, index 0) ends, next is index 1
-              const nextSessionIndex = currentSessionNum; // This is correct: session 1 → index 1 (next)
+              const nextSessionIndex = currentSessionNum;
               const plan = currentPlan;
-              
-              console.log('📊 Session transition debug:', {
-                currentSessionNum,
-                nextSessionIndex,
-                planLength: plan.length,
-                nextSessionType: plan[nextSessionIndex]?.type
-              });
               
               if (nextSessionIndex < plan.length) {
                 const nextSession = plan[nextSessionIndex];
                 const duration = nextSession.duration * 60 * 1000;
-                
-                console.log('▶️ Starting next session:', {
-                  sessionNumber: currentSessionNum + 1,
-                  sessionIndex: nextSessionIndex,
-                  type: nextSession.type,
-                  duration: nextSession.duration + ' min'
-                });
                 
                 // Play notification sound based on session type
                 if (nextSession.type === 'focus') {
@@ -342,7 +267,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
                 
                 // Update duration and session BEFORE returning new time
                 setTimerDuration(duration);
-                setCurrentSession(currentSessionNum + 1); // Use captured value, not prev
+                setCurrentSession(currentSessionNum + 1);
                 
                 if (nextSession.type === "focus" && timerItemRef.current) {
                   onStartFocusRef.current(timerItemRef.current);
@@ -353,7 +278,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
               }
             } else if (currentIsCustomMode && currentSessionNum >= currentPlan.length) {
               // All sessions complete!
-              console.log('🎊 All sessions complete!');
               timerSounds.playCompleteSound();
               setTimerRunning(false);
             } else {
@@ -368,13 +292,11 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
                   ? DEFAULT_VALUES.FOCUS_DURATION_MINUTES * 60 * 1000 
                   : DEFAULT_VALUES.SHORT_BREAK_MINUTES * 60 * 1000;
                 
-                console.log('🔄 Simple mode auto-toggle:', { currentMode, nextMode });
-                
                 // Play notification sound
                 if (nextMode === "break") {
-                  timerSounds.playBreakSound(); // Focus ended → Break starts
+                  timerSounds.playBreakSound();
                 } else {
-                  timerSounds.playFocusSound(); // Break ended → Focus starts
+                  timerSounds.playFocusSound();
                 }
                 
                 setTimerMode(nextMode);
@@ -384,7 +306,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
                 return nextDuration;
               } else {
                 // Skip breaks enabled - stop after focus
-                console.log('⏭️ Simple mode: Skip breaks enabled, stopping');
             setTimerRunning(false);
               }
             }
@@ -395,13 +316,10 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
           return newTime;
         });
       }, TIMER_INTERVALS.COUNTDOWN_TICK_MS);
-    } else {
-      console.log('⏸️ Timer not running, interval not started');
     }
     
     return () => {
       if (interval) {
-        console.log('🧹 Cleaning up countdown interval');
         clearInterval(interval);
       }
     };
@@ -515,7 +433,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     enterFloatingMode,
     exitFloatingMode,
     startCustomDuration,
-    startNextCustomSession,
     applyFloatingDelta,
     // components
     FloatingWidget: FloatingWidgetComponent,

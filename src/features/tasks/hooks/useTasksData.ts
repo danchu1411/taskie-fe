@@ -50,15 +50,16 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
 
   const { data: tasksData } = tasksQuery;
 
-  // Filter tasks by status for board view
+  // Filter tasks by derived status for board view
+  // Use derived_status (auto-computed for tasks with checklist)
   const tasksByStatus = useMemo((): TasksByStatus => {
     if (!tasksData?.items) return { planned: [], inProgress: [], done: [], skipped: [] };
     
     return {
-      planned: tasksData.items.filter(task => task.status === STATUS.PLANNED),
-      inProgress: tasksData.items.filter(task => task.status === STATUS.IN_PROGRESS),
-      done: tasksData.items.filter(task => task.status === STATUS.DONE),
-      skipped: tasksData.items.filter(task => task.status === STATUS.SKIPPED),
+      planned: tasksData.items.filter(task => task.derived_status === STATUS.PLANNED),
+      inProgress: tasksData.items.filter(task => task.derived_status === STATUS.IN_PROGRESS),
+      done: tasksData.items.filter(task => task.derived_status === STATUS.DONE),
+      skipped: tasksData.items.filter(task => task.derived_status === STATUS.SKIPPED),
     };
   }, [tasksData?.items]);
 

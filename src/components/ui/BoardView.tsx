@@ -313,7 +313,14 @@ export default function BoardView({
     const task: TaskRecord | undefined = active.data?.current?.task;
     const overStatus = (over.data?.current?.status as StatusValue) ?? null;
     if (!task || overStatus == null) return;
-    if (task.status === overStatus) return;
+    
+    // Prevent status change for non-atomic tasks (tasks with checklist)
+    if (!task.is_atomic) {
+      setActiveTask(null);
+      return;
+    }
+    
+    if (task.derived_status === overStatus) return;
     onStatusChange({ ...task, status: overStatus });
     setActiveTask(null);
   };
