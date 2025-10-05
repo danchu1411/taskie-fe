@@ -33,6 +33,20 @@ export interface TaskListResponse {
   items: TaskRecord[];
 }
 
+export type ScheduleEntry = {
+  id?: string;
+  schedule_id?: string;
+  work_item_id?: string;
+  task_id?: string;
+  checklist_item_id?: string;
+  start_at: string;
+  planned_minutes?: number;
+  plannedMinutes?: number;
+  status?: number;
+  updated_at?: string;
+  updatedAt?: string;
+};
+
 export interface TodayDataResult {
   tasksQuery: ReturnType<typeof useQuery<TaskListResponse, unknown>>;
   items: TodayItem[];
@@ -43,6 +57,7 @@ export interface TodayDataResult {
     doneCount: number;
     progressValue: number;
   };
+  findScheduleEntry: (item: TodayItem) => ScheduleEntry | undefined;
 }
 
 // Helper functions
@@ -91,6 +106,18 @@ function toDateValue(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   const timestamp = Date.parse(String(value));
   return Number.isNaN(timestamp) ? undefined : timestamp;
+}
+
+// Helper to get updated_at timestamp from entry
+function getUpdatedAt(entry: ScheduleEntry): number | undefined {
+  const value = entry.updated_at ?? entry.updatedAt;
+  if (!value) return undefined;
+  try {
+    const timestamp = Date.parse(String(value));
+    return Number.isNaN(timestamp) ? undefined : timestamp;
+  } catch {
+    return undefined;
+  }
 }
 
 // Normalization functions
@@ -410,11 +437,8 @@ function useTasksData(userId: string | null) {
         });
         return response.data;
       } catch (error) {
-        console.error("Failed to fetch tasks:", error);
         if (isAxiosError(error)) {
-          console.error("Response data:", error.response?.data);
-          console.error("Response status:", error.response?.status);
-          console.error("Response headers:", error.response?.headers);
+          throw error;
         }
         throw error;
       }
@@ -470,29 +494,160 @@ function useTaskCategories(items: TodayItem[]) {
 export function useTodayData(userId: string | null): TodayDataResult {
   const tasksQuery = useTasksData(userId);
   
-  const items = useMemo(() => {
-    if (!tasksQuery.data) return [];
+  const scheduleQuery = useQuery<ScheduleEntry[]>({
+    queryKey: ["schedule", "upcoming"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+      const params: Record<string, unknown> = {
+        from: startOfToday.toISOString(),
+        to: startOfTomorrow.toISOString(),
+        status: 'planned',
+        page: 1,
+        pageSize: 200,
+      };
+
+      const res = await api.get("/schedule-entries/upcoming", { params });
+      const payload = res.data;
+      if (Array.isArray(payload)) return payload;
+      if (payload?.items && Array.isArray(payload.items)) return payload.items;
+      return [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+  
+  const { items, scheduleLookup } = useMemo(() => {
+    if (!tasksQuery.data) return { items: [], scheduleLookup: new Map<string, ScheduleEntry>() };
     const mapped = mapTodayItems(tasksQuery.data);
     
+    // Get schedule entries and create a lookup map
+    const scheduleEntries = scheduleQuery.data ?? [];
+    const scheduleLookup = new Map<string, ScheduleEntry>();
+
+    // Register helper: adds entry to map with multiple keys
+    const register = (entry: ScheduleEntry) => {
+      const keys: string[] = [];
+      if (entry.work_item_id) keys.push(entry.work_item_id.toLowerCase());
+      if (entry.task_id) keys.push(entry.task_id.toLowerCase());
+      if (entry.checklist_item_id) keys.push(entry.checklist_item_id.toLowerCase());
+
+      for (const key of keys) {
+        const existing = scheduleLookup.get(key);
+        
+        if (!existing) {
+          scheduleLookup.set(key, entry);
+          continue;
+        }
+
+        // Priority 1: If both have updated_at, prefer the newer one
+        const incomingUpdatedAt = getUpdatedAt(entry);
+        const existingUpdatedAt = getUpdatedAt(existing);
+        
+        if (incomingUpdatedAt !== undefined && existingUpdatedAt !== undefined) {
+          if (incomingUpdatedAt > existingUpdatedAt) {
+            scheduleLookup.set(key, entry);
+          }
+          continue;
+        }
+
+        // Priority 2: If only one has updated_at, prefer that one
+        if (incomingUpdatedAt !== undefined && existingUpdatedAt === undefined) {
+          scheduleLookup.set(key, entry);
+          continue;
+        }
+        if (incomingUpdatedAt === undefined && existingUpdatedAt !== undefined) {
+          continue;
+        }
+
+        // Priority 3: If neither has updated_at, prefer earlier start_at
+        const incomingStart = new Date(entry.start_at).getTime();
+        const existingStart = new Date(existing.start_at).getTime();
+        if (incomingStart <= existingStart) {
+          scheduleLookup.set(key, entry);
+        }
+      }
+    };
+
+    // Build schedule lookup map
+    for (const entry of scheduleEntries) {
+      if (entry.status !== undefined && entry.status !== STATUS.PLANNED) continue;
+      register(entry);
+    }
+
+    // Augment items with schedule data
+    const augmentedItems = mapped.map((item) => {
+      let scheduleEntry: ScheduleEntry | undefined;
+
+      // Try to find schedule entry by multiple keys
+      if (item.id) {
+        scheduleEntry = scheduleLookup.get(item.id.toLowerCase());
+      }
+      if (!scheduleEntry && item.taskId) {
+        scheduleEntry = scheduleLookup.get(item.taskId.toLowerCase());
+      }
+      if (!scheduleEntry && item.checklistItemId) {
+        scheduleEntry = scheduleLookup.get(item.checklistItemId.toLowerCase());
+      }
+
+      if (scheduleEntry?.start_at) {
+        const plannedMinutes = 
+          scheduleEntry.planned_minutes ?? 
+          scheduleEntry.plannedMinutes ?? 
+          item.plannedMinutes;
+        return {
+          ...item,
+          startAt: scheduleEntry.start_at,
+          plannedMinutes,
+        };
+      }
+
+      return item;
+    });
+
     // Filter to only show tasks scheduled for today or without startAt
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfTomorrow = new Date(startOfToday);
     startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
     
-    return mapped.filter(item => {
+    const filteredItems = augmentedItems.filter(item => {
       if (!item.startAt) return true;
       const scheduledAt = new Date(item.startAt);
       if (Number.isNaN(scheduledAt.getTime())) return true;
       return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;
     });
-  }, [tasksQuery.data]);
+
+    return { items: filteredItems, scheduleLookup };
+  }, [tasksQuery.data, scheduleQuery.data]);
 
   const categories = useTaskCategories(items);
+
+  // Helper function to find schedule entry for a specific item
+  const findScheduleEntry = (item: TodayItem): ScheduleEntry | undefined => {
+    if (item.id) {
+      const entry = scheduleLookup.get(item.id.toLowerCase());
+      if (entry) return entry;
+    }
+    if (item.taskId) {
+      const entry = scheduleLookup.get(item.taskId.toLowerCase());
+      if (entry) return entry;
+    }
+    if (item.checklistItemId) {
+      const entry = scheduleLookup.get(item.checklistItemId.toLowerCase());
+      if (entry) return entry;
+    }
+    return undefined;
+  };
 
   return {
     tasksQuery,
     items,
     categories,
+    findScheduleEntry,
   };
 }

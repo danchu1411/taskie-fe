@@ -84,6 +84,7 @@ export const TodayTaskCard = memo(function TodayTaskCard({
     isDragging,
   } = useSortable({ id: item.id });
 
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -179,7 +180,20 @@ export const TodayTaskCard = memo(function TodayTaskCard({
           </span>
         )}
         
+        
         <div className="flex items-center gap-4 text-xs text-slate-500">
+          {item.startAt && (() => {
+            const startAtDate = new Date(item.startAt);
+            if (!Number.isNaN(startAtDate.getTime())) {
+              return (
+                <span className="flex items-center gap-1 font-medium text-blue-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                  Scheduled {startAtDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              );
+            }
+            return null;
+          })()}
           {item.priority && (
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
@@ -203,3 +217,4 @@ export const TodayTaskCard = memo(function TodayTaskCard({
     </div>
   );
 });
+
