@@ -2,7 +2,17 @@ import { useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import api from "../../../lib/api";
-import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../../lib/types";
+import type { TaskRecord } from "../../../lib/types";
+import { CACHE_CONFIG, PAGINATION } from "../constants/cacheConfig";
+import { useScheduleData, type ScheduleEntry } from "./useScheduleData";
+import {
+  mapTodayItems,
+  buildScheduleLookup,
+  augmentWithSchedule,
+  filterTodayItems,
+  findScheduleEntryForItem,
+  toDateValue,
+} from "../utils/normalizeTodayData";
 
 // Types
 export type StatusValue = 0 | 1 | 2 | 3;
@@ -33,20 +43,6 @@ export interface TaskListResponse {
   items: TaskRecord[];
 }
 
-export type ScheduleEntry = {
-  id?: string;
-  schedule_id?: string;
-  work_item_id?: string;
-  task_id?: string;
-  checklist_item_id?: string;
-  start_at: string;
-  planned_minutes?: number;
-  plannedMinutes?: number;
-  status?: number;
-  updated_at?: string;
-  updatedAt?: string;
-};
-
 export interface TodayDataResult {
   tasksQuery: ReturnType<typeof useQuery<TaskListResponse, unknown>>;
   items: TodayItem[];
@@ -60,366 +56,6 @@ export interface TodayDataResult {
   findScheduleEntry: (item: TodayItem) => ScheduleEntry | undefined;
 }
 
-// Helper functions
-function readField<T>(
-  source: TaskRecord | WorkItemRecord | ChecklistItemRecord | undefined,
-  keys: string[],
-  fallback?: T,
-): T | undefined {
-  if (!source) return fallback;
-  for (const key of keys) {
-    if (Object.prototype.hasOwnProperty.call(source, key)) {
-      const value = (source as unknown as Record<string, unknown>)[key];
-      if (value !== undefined && value !== null) {
-        return value as T;
-      }
-    }
-  }
-  return fallback;
-}
-
-function toNumber(value: unknown): number | undefined {
-  if (value === undefined || value === null) return undefined;
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) ? numeric : undefined;
-}
-
-function toStatus(value: unknown): StatusValue {
-  const numeric = toNumber(value);
-  if (numeric === STATUS.IN_PROGRESS) return STATUS.IN_PROGRESS;
-  if (numeric === STATUS.DONE) return STATUS.DONE;
-  if (numeric === STATUS.SKIPPED) return STATUS.SKIPPED;
-  if (numeric === STATUS.PLANNED) return STATUS.PLANNED;
-  return STATUS.PLANNED;
-}
-
-function toPriority(value: unknown): 1 | 2 | 3 | null {
-  const numeric = toNumber(value);
-  if (numeric === 1) return 1;
-  if (numeric === 2) return 2;
-  if (numeric === 3) return 3;
-  return null;
-}
-
-function toDateValue(value: unknown): number | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  const timestamp = Date.parse(String(value));
-  return Number.isNaN(timestamp) ? undefined : timestamp;
-}
-
-// Helper to get updated_at timestamp from entry
-function getUpdatedAt(entry: ScheduleEntry): number | undefined {
-  const value = entry.updated_at ?? entry.updatedAt;
-  if (!value) return undefined;
-  try {
-    const timestamp = Date.parse(String(value));
-    return Number.isNaN(timestamp) ? undefined : timestamp;
-  } catch {
-    return undefined;
-  }
-}
-
-// Normalization functions
-function normalizeWorkItem(
-  taskRecord: TaskRecord,
-  workItemRecord: WorkItemRecord,
-): TodayItem | null {
-  const taskId =
-    readField<string>(workItemRecord, ["taskId", "task_id"]) ??
-    readField<string>(taskRecord, ["taskId", "task_id"]);
-  const checklistItemId = readField<string>(workItemRecord, [
-    "checklistItemId",
-    "checklist_item_id",
-    "checklistId",
-    "checklist_id",
-  ]);
-
-  const status =
-    toStatus(readField(workItemRecord, ["status"])) ??
-    toStatus(readField(taskRecord, ["status"]));
-
-  const priority =
-    toPriority(readField(workItemRecord, ["priority"])) ??
-    toPriority(readField(taskRecord, ["priority", "effectivePriority"]));
-
-  const deadline =
-    readField<string>(workItemRecord, ["deadline"]) ??
-    readField<string>(taskRecord, ["effectiveDeadline", "deadline"]) ??
-    null;
-
-  const updatedAt =
-    toDateValue(readField(workItemRecord, ["updatedAt", "updated_at"])) ??
-    toDateValue(readField(taskRecord, ["updatedAt", "updated_at"]));
-
-  const startAt = readField<string>(workItemRecord, ["startAt", "start_at"]) ?? null;
-  const plannedMinutes = toNumber(readField(workItemRecord, ["plannedMinutes", "planned_minutes"])) ?? null;
-
-  return {
-    id: readField<string>(workItemRecord, ["workItemId", "work_item_id"]) ?? taskId ?? "(Unknown)",
-    source: checklistItemId ? "checklist" : "task",
-    title: readField<string>(workItemRecord, ["title"]) ?? "(Untitled)",
-    parentTitle: readField<string>(taskRecord, ["title"]) ?? null,
-    status,
-    priority,
-    startAt,
-    plannedMinutes,
-    deadline,
-    updatedAt,
-    taskId: taskId ?? null,
-    checklistItemId: checklistItemId ?? null,
-  };
-}
-
-function normalizeChecklist(
-  taskRecord: TaskRecord,
-  checklistRecord: ChecklistItemRecord,
-): TodayItem | null {
-  const checklistItemId = readField<string>(checklistRecord, [
-    "checklistItemId",
-    "checklist_item_id",
-    "itemId",
-    "id",
-  ]);
-  if (!checklistItemId) return null;
-
-  const taskId = readField<string>(taskRecord, ["taskId", "task_id"]) ?? null;
-
-  const status =
-    toStatus(readField(checklistRecord, ["status"])) ??
-    toStatus(readField(taskRecord, ["status"]));
-
-  const priority =
-    toPriority(readField(checklistRecord, ["priority"])) ??
-    toPriority(readField(taskRecord, ["priority", "effectivePriority"]));
-
-  const deadline =
-    readField<string>(checklistRecord, ["deadline"]) ??
-    readField<string>(taskRecord, ["effectiveDeadline", "deadline"]) ??
-    null;
-
-  const updatedAt =
-    toDateValue(readField(checklistRecord, ["updatedAt", "updated_at"])) ??
-    toDateValue(readField(taskRecord, ["updatedAt", "updated_at"]));
-
-  const startAt = readField<string>(checklistRecord, ["startAt", "start_at"]) ?? null;
-  const plannedMinutes = toNumber(readField(checklistRecord, ["plannedMinutes", "planned_minutes"])) ?? null;
-
-  return {
-    id: checklistItemId,
-    source: "checklist",
-    title: readField<string>(checklistRecord, ["title"]) ?? "(Untitled)",
-    parentTitle: readField<string>(taskRecord, ["title"]) ?? null,
-    status,
-    priority,
-    startAt,
-    plannedMinutes,
-    deadline,
-    updatedAt,
-    taskId,
-    checklistItemId,
-  };
-}
-
-function normalizeTask(taskRecord: TaskRecord): TodayItem | null {
-  const taskId = readField<string>(taskRecord, ["taskId", "task_id"]);
-  if (!taskId) return null;
-
-  const status = toStatus(readField(taskRecord, ["status"]));
-  const priority =
-    toPriority(readField(taskRecord, ["priority", "effectivePriority"])) ?? null;
-
-  const deadline =
-    readField<string>(taskRecord, ["effectiveDeadline", "deadline"]) ?? null;
-
-  const updatedAt = toDateValue(readField(taskRecord, ["updatedAt", "updated_at"]));
-  const startAt = readField<string>(taskRecord, ["startAt", "start_at"]) ?? null;
-  const plannedMinutes = toNumber(readField(taskRecord, ["plannedMinutes", "planned_minutes"])) ?? null;
-
-  return {
-    id: taskId,
-    source: "task",
-    title: readField<string>(taskRecord, ["title"]) ?? "(Untitled)",
-    parentTitle: null,
-    status,
-    priority,
-    startAt,
-    plannedMinutes,
-    deadline,
-    updatedAt,
-    taskId,
-    checklistItemId: null,
-  };
-}
-
-// Main mapping function
-function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[] {
-  if (!payload?.items?.length) return [];
-  const result: TodayItem[] = [];
-  // Global guards to prevent duplicates across entire payload
-  const globalSeenChecklistIds = new Set<string>(); // normalized (lowercase) checklist ids
-  const globalSeenKeys = new Set<string>(); // composite keys: work:<id>, check:<id>, task:<id>
-
-  for (const task of payload.items) {
-    const taskRecord = task ?? {};
-
-    // Read checklist first to build title->id map
-    const checklistForTitleMap =
-      readField<ChecklistItemRecord[]>(taskRecord, ["checklist"], []) ?? [];
-    const checklistTitleMap = new Map<string, string>();
-    for (const checklistItem of checklistForTitleMap) {
-      const cidRaw = readField<string>(checklistItem, [
-        "checklistItemId",
-        "checklist_item_id",
-        "itemId",
-        "id",
-      ]);
-      const title = (readField<string>(checklistItem, ["title"]) ?? "").trim().toLowerCase();
-      if (cidRaw && title) {
-        checklistTitleMap.set(title, cidRaw);
-      }
-    }
-
-    const workItems =
-      readField<WorkItemRecord[]>(taskRecord, ["workItems"], []) ?? [];
-    // Track checklist items that already have scheduled work items to avoid duplicates
-    const scheduledChecklistIds = new Set<string>(); // normalized (lowercase)
-    const uniqueChecklistWork = new Map<string, TodayItem>();
-    const seenWorkIds = new Set<string>();
-
-    function shouldPreferWorkItem(a: TodayItem, b: TodayItem): boolean {
-      // Prefer IN_PROGRESS > PLANNED > DONE > SKIPPED
-      const score = (s: StatusValue) => (s === STATUS.IN_PROGRESS ? 3 : s === STATUS.PLANNED ? 2 : s === STATUS.DONE ? 1 : 0);
-      const sa = score(a.status);
-      const sb = score(b.status);
-      if (sa !== sb) return sa > sb;
-      // If both planned: earlier startAt first
-      const aStart = a.startAt ? Date.parse(a.startAt) : Number.POSITIVE_INFINITY;
-      const bStart = b.startAt ? Date.parse(b.startAt) : Number.POSITIVE_INFINITY;
-      if (aStart !== bStart) return aStart < bStart;
-      // Fallback: newer updatedAt first
-      const au = a.updatedAt ?? 0;
-      const bu = b.updatedAt ?? 0;
-      return au > bu;
-    }
-
-    for (const workItem of workItems) {
-      // If work item misses checklistItemId but matches a checklist title, synthesize the id
-      let synthesized: WorkItemRecord | null = null;
-      const rawChecklistId = readField<string>(workItem, [
-        "checklistItemId",
-        "checklist_item_id",
-        "checklistId",
-        "checklist_id",
-      ]);
-      if (!rawChecklistId) {
-        const wTitle = (readField<string>(workItem, ["title"]) ?? "").trim().toLowerCase();
-        const matchId = wTitle ? checklistTitleMap.get(wTitle) : undefined;
-        if (matchId) {
-          synthesized = { ...(workItem as any), checklist_item_id: matchId } as any;
-        }
-      }
-
-      const normalized = normalizeWorkItem(taskRecord, (synthesized ?? workItem) as any);
-      if (!normalized) continue;
-      const wid = (readField<string>(workItem, ["workItemId", "work_item_id"]) ?? normalized.id ?? "").toLowerCase();
-      const checklistId = (normalized.checklistItemId ?? "").toLowerCase();
-
-      if (normalized.source === "checklist" && checklistId) {
-        const prev = uniqueChecklistWork.get(checklistId);
-        if (!prev || shouldPreferWorkItem(normalized, prev)) {
-          uniqueChecklistWork.set(checklistId, normalized);
-        }
-        scheduledChecklistIds.add(checklistId);
-        continue;
-      }
-
-      // Non-checklist work items: keep unique per workItemId
-      const dedupeKey = wid ? `work:${wid}` : `work:${normalized.id.toLowerCase?.() ?? String(normalized.id)}`;
-      if (!globalSeenKeys.has(dedupeKey) && !seenWorkIds.has(dedupeKey)) {
-        result.push(normalized);
-        globalSeenKeys.add(dedupeKey);
-        seenWorkIds.add(dedupeKey);
-      }
-    }
-
-    // Push unique checklist work items
-    for (const [, item] of uniqueChecklistWork) {
-      const dedupeKey = `check:${(item.checklistItemId ?? item.id).toLowerCase?.() ?? String(item.id)}`;
-      if (!globalSeenKeys.has(dedupeKey)) {
-        result.push(item);
-        globalSeenKeys.add(dedupeKey);
-      }
-    }
-
-    const checklist =
-      readField<ChecklistItemRecord[]>(taskRecord, ["checklist"], []) ?? [];
-    for (const checklistItem of checklist) {
-      // Skip raw checklist item if it already has a scheduled work item
-      const checklistIdRaw = readField<string>(checklistItem, [
-        "checklistItemId",
-        "checklist_item_id",
-        "itemId",
-        "id",
-      ]);
-      const checklistId = checklistIdRaw ? checklistIdRaw.toLowerCase() : null;
-      if (checklistId && scheduledChecklistIds.has(checklistId)) {
-        continue;
-      }
-      // Also skip if we have already emitted this checklist id (defensive against backend duplicates)
-      if (checklistId && globalSeenChecklistIds.has(checklistId)) {
-        continue;
-      }
-      const normalized = normalizeChecklist(taskRecord, checklistItem);
-      if (normalized) {
-        if (checklistId) {
-          const dedupeKey = `check:${checklistId}`;
-          if (globalSeenKeys.has(dedupeKey)) {
-            continue;
-          }
-          globalSeenKeys.add(dedupeKey);
-          globalSeenChecklistIds.add(checklistId);
-        }
-        result.push(normalized);
-      }
-    }
-
-    if (!workItems.length && !checklist.length) {
-      const normalized = normalizeTask(taskRecord);
-      if (normalized) {
-        const tidRaw = readField<string>(taskRecord, ["taskId", "task_id"]) ?? normalized.id;
-        const tid = tidRaw ? String(tidRaw).toLowerCase() : "";
-        const dedupeKey = `task:${tid}`;
-        if (!globalSeenKeys.has(dedupeKey)) {
-        result.push(normalized);
-          globalSeenKeys.add(dedupeKey);
-        }
-      }
-    }
-  }
-
-  // Final defensive dedupe across all items to ensure no visual duplicates remain
-  const final: TodayItem[] = [];
-  const score = (s: StatusValue) => (s === STATUS.IN_PROGRESS ? 3 : s === STATUS.PLANNED ? 2 : s === STATUS.DONE ? 1 : 0);
-
-  // Keep the highest-priority item per logical entity key
-  const bestByKey = new Map<string, TodayItem>();
-  for (const it of result) {
-    const baseId = (it.source === "checklist" ? (it.checklistItemId ?? it.id) : it.source === "task" ? (it.taskId ?? it.id) : it.id) ?? it.id;
-    const key = `${it.source === "checklist" ? "check" : it.source === "task" ? "task" : "work"}:${String(baseId).toLowerCase()}`;
-    const prev = bestByKey.get(key);
-    if (!prev || score(it.status) > score(prev.status)) {
-      bestByKey.set(key, it);
-    }
-  }
-
-  for (const [, it] of bestByKey) {
-    final.push(it);
-  }
-
-  return final;
-}
-
 // Data fetching hook
 function useTasksData(userId: string | null) {
   return useQuery<TaskListResponse, unknown>({
@@ -431,8 +67,8 @@ function useTasksData(userId: string | null) {
           params: {
             includeChecklist: true,
             includeWorkItems: true,
-            page: 1,
-            pageSize: 100,
+            page: PAGINATION.DEFAULT_PAGE,
+            pageSize: PAGINATION.DEFAULT_PAGE_SIZE,
           },
         });
         return response.data;
@@ -449,8 +85,8 @@ function useTasksData(userId: string | null) {
       }
       return failureCount < 3;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: CACHE_CONFIG.STALE_TIME,
+    gcTime: CACHE_CONFIG.GC_TIME
   });
 }
 
@@ -494,133 +130,32 @@ function useTaskCategories(items: TodayItem[]) {
 export function useTodayData(userId: string | null): TodayDataResult {
   const tasksQuery = useTasksData(userId);
   
-  const scheduleQuery = useQuery<ScheduleEntry[]>({
-    queryKey: ["schedule", "upcoming"],
-    enabled: Boolean(userId),
-    queryFn: async () => {
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfTomorrow = new Date(startOfToday);
-      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-      const params: Record<string, unknown> = {
-        from: startOfToday.toISOString(),
-        to: startOfTomorrow.toISOString(),
-        status: 'planned',
-        page: 1,
-        pageSize: 200,
-      };
-
-      const res = await api.get("/schedule-entries/upcoming", { params });
-      const payload = res.data;
-      if (Array.isArray(payload)) return payload;
-      if (payload?.items && Array.isArray(payload.items)) return payload.items;
-      return [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
+  // Use the centralized schedule data hook for today's planned entries
+  const { data: scheduleData } = useScheduleData(
+    userId,
+    { preset: 'today' },
+    { status: STATUS.PLANNED, order: 'asc' }
+  );
+  
+  const scheduleQuery = {
+    data: scheduleData,
+  };
   
   const { items, scheduleLookup } = useMemo(() => {
     if (!tasksQuery.data) return { items: [], scheduleLookup: new Map<string, ScheduleEntry>() };
+    
+    // Step 1: Map tasks to TodayItems
     const mapped = mapTodayItems(tasksQuery.data);
     
-    // Get schedule entries and create a lookup map
+    // Step 2: Build schedule lookup
     const scheduleEntries = scheduleQuery.data ?? [];
-    const scheduleLookup = new Map<string, ScheduleEntry>();
-
-    // Register helper: adds entry to map with multiple keys
-    const register = (entry: ScheduleEntry) => {
-      const keys: string[] = [];
-      if (entry.work_item_id) keys.push(entry.work_item_id.toLowerCase());
-      if (entry.task_id) keys.push(entry.task_id.toLowerCase());
-      if (entry.checklist_item_id) keys.push(entry.checklist_item_id.toLowerCase());
-
-      for (const key of keys) {
-        const existing = scheduleLookup.get(key);
-        
-        if (!existing) {
-          scheduleLookup.set(key, entry);
-          continue;
-        }
-
-        // Priority 1: If both have updated_at, prefer the newer one
-        const incomingUpdatedAt = getUpdatedAt(entry);
-        const existingUpdatedAt = getUpdatedAt(existing);
-        
-        if (incomingUpdatedAt !== undefined && existingUpdatedAt !== undefined) {
-          if (incomingUpdatedAt > existingUpdatedAt) {
-            scheduleLookup.set(key, entry);
-          }
-          continue;
-        }
-
-        // Priority 2: If only one has updated_at, prefer that one
-        if (incomingUpdatedAt !== undefined && existingUpdatedAt === undefined) {
-          scheduleLookup.set(key, entry);
-          continue;
-        }
-        if (incomingUpdatedAt === undefined && existingUpdatedAt !== undefined) {
-          continue;
-        }
-
-        // Priority 3: If neither has updated_at, prefer earlier start_at
-        const incomingStart = new Date(entry.start_at).getTime();
-        const existingStart = new Date(existing.start_at).getTime();
-        if (incomingStart <= existingStart) {
-          scheduleLookup.set(key, entry);
-        }
-      }
-    };
-
-    // Build schedule lookup map
-    for (const entry of scheduleEntries) {
-      if (entry.status !== undefined && entry.status !== STATUS.PLANNED) continue;
-      register(entry);
-    }
-
-    // Augment items with schedule data
-    const augmentedItems = mapped.map((item) => {
-      let scheduleEntry: ScheduleEntry | undefined;
-
-      // Try to find schedule entry by multiple keys
-      if (item.id) {
-        scheduleEntry = scheduleLookup.get(item.id.toLowerCase());
-      }
-      if (!scheduleEntry && item.taskId) {
-        scheduleEntry = scheduleLookup.get(item.taskId.toLowerCase());
-      }
-      if (!scheduleEntry && item.checklistItemId) {
-        scheduleEntry = scheduleLookup.get(item.checklistItemId.toLowerCase());
-      }
-
-      if (scheduleEntry?.start_at) {
-        const plannedMinutes = 
-          scheduleEntry.planned_minutes ?? 
-          scheduleEntry.plannedMinutes ?? 
-          item.plannedMinutes;
-        return {
-          ...item,
-          startAt: scheduleEntry.start_at,
-          plannedMinutes,
-        };
-      }
-
-      return item;
-    });
-
-    // Filter to only show tasks scheduled for today or without startAt
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    const scheduleLookup = buildScheduleLookup(scheduleEntries, STATUS.PLANNED);
     
-    const filteredItems = augmentedItems.filter(item => {
-      if (!item.startAt) return true;
-      const scheduledAt = new Date(item.startAt);
-      if (Number.isNaN(scheduledAt.getTime())) return true;
-      return scheduledAt >= startOfToday && scheduledAt < startOfTomorrow;
-    });
+    // Step 3: Augment items with schedule data
+    const augmentedItems = augmentWithSchedule(mapped, scheduleLookup);
+    
+    // Step 4: Filter to today's items
+    const filteredItems = filterTodayItems(augmentedItems);
 
     return { items: filteredItems, scheduleLookup };
   }, [tasksQuery.data, scheduleQuery.data]);
@@ -629,19 +164,7 @@ export function useTodayData(userId: string | null): TodayDataResult {
 
   // Helper function to find schedule entry for a specific item
   const findScheduleEntry = useCallback((item: TodayItem): ScheduleEntry | undefined => {
-    if (item.id) {
-      const entry = scheduleLookup.get(item.id.toLowerCase());
-      if (entry) return entry;
-    }
-    if (item.taskId) {
-      const entry = scheduleLookup.get(item.taskId.toLowerCase());
-      if (entry) return entry;
-    }
-    if (item.checklistItemId) {
-      const entry = scheduleLookup.get(item.checklistItemId.toLowerCase());
-      if (entry) return entry;
-    }
-    return undefined;
+    return findScheduleEntryForItem(item, scheduleLookup);
   }, [scheduleLookup]);
 
   return {

@@ -1,21 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { TaskListResponse } from "../../lib/types";
-
-// Types
-type ScheduleStatus = 0 | 1 | 2 | 3; // planned, in_progress, done, canceled
-
-type ScheduleEntry = {
-  id: string;
-  user_id: string;
-  work_item_id: string;
-  start_at: string; // ISO
-  planned_minutes: number;
-  status: ScheduleStatus;
-  created_at: string;
-  updated_at: string;
-};
+import { useScheduleData, type ScheduleEntry } from "../../features/schedule/hooks/useScheduleData";
+import { CACHE_CONFIG, PAGINATION } from "../../features/schedule/constants/cacheConfig";
 
 type WorkItemInfo = {
   title: string;
@@ -59,26 +47,18 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const from = useMemo(() => startOfMonth(cursor), [cursor]);
   const to = useMemo(() => endOfMonth(cursor), [cursor]);
 
-  // Fetch schedule entries in current month range
-  const { data: entries } = useQuery<ScheduleEntry[]>({
-    queryKey: ["schedule", "upcoming", "month", toISOStringUTC(from), toISOStringUTC(to)],
-    enabled: Boolean(userId),
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append("from", toISOStringUTC(from));
-      params.append("to", toISOStringUTC(to));
-      params.append("order", "asc");
-      const res = await api.get<{ items: ScheduleEntry[] }>(`/schedule-entries/upcoming?${params}`);
-      return res.data.items ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  // Fetch schedule entries in current month range using centralized hook
+  const { data: entries } = useScheduleData(
+    userId,
+    { from: toISOStringUTC(from), to: toISOStringUTC(to) },
+    { order: 'asc' }
+  );
 
   // Infinite tasks for mapping work_item_id -> title/parent/priority
   const tasksQ = useInfiniteQuery<TaskListResponse>({
     queryKey: ["tasks", userId, "map"],
     enabled: Boolean(userId),
-    initialPageParam: 1,
+    initialPageParam: PAGINATION.DEFAULT_PAGE,
     getNextPageParam: (lastPage) => {
       const { page, pageSize, total } = lastPage;
       return page * pageSize < total ? page + 1 : undefined;
@@ -86,13 +66,13 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.append("page", String(pageParam));
-      params.append("pageSize", "100");
+      params.append("pageSize", String(PAGINATION.DEFAULT_PAGE_SIZE));
       params.append("includeChecklist", "true");
       params.append("includeWorkItems", "true");
       const res = await api.get<TaskListResponse>(`/tasks/by-user/${userId || "self"}?${params}`);
       return res.data;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: CACHE_CONFIG.STALE_TIME,
   });
 
   // Map work item id to info
@@ -114,7 +94,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const parentIdsWithChildEntries = useMemo(() => {
     const set = new Set<string>();
     for (const e of entries ?? []) {
-      const info = workItemMap.get(e.work_item_id);
+      const info = workItemMap.get(e.work_item_id ?? '');
       if (info?.parentTaskId) {
         set.add(info.parentTaskId);
       }
@@ -127,15 +107,16 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string }>>();
     for (const e of entries ?? []) {
       // Hide parent task entries if any child checklist has schedule entries
-      if (parentIdsWithChildEntries.has(e.work_item_id)) {
+      if (e.work_item_id && parentIdsWithChildEntries.has(e.work_item_id)) {
         continue;
       }
       const d = new Date(e.start_at);
       const key = fmt(d);
-      const info = workItemMap.get(e.work_item_id);
+      const info = workItemMap.get(e.work_item_id ?? '');
       const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const list = map.get(key) ?? [];
-      list.push({ title: info?.title || '(Untitled)', priority: info?.priority ?? null, time, duration: e.planned_minutes, parent: info?.parentTitle ?? undefined });
+      const duration = e.planned_minutes ?? e.plannedMinutes ?? 0;
+      list.push({ title: info?.title || '(Untitled)', priority: info?.priority ?? null, time, duration, parent: info?.parentTitle ?? undefined });
       map.set(key, list);
     }
     return map;

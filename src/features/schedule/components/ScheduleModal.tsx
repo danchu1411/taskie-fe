@@ -12,6 +12,7 @@ interface ScheduleModalProps {
   onSave: () => void;
   onCancel: () => void;
   loading: boolean;
+  isEditMode?: boolean;
 }
 
 export const ScheduleModal = memo(function ScheduleModal({
@@ -24,6 +25,7 @@ export const ScheduleModal = memo(function ScheduleModal({
   onSave,
   onCancel,
   loading,
+  isEditMode = false,
 }: ScheduleModalProps) {
   if (!open || !selectedItem) return null;
 
@@ -84,7 +86,10 @@ export const ScheduleModal = memo(function ScheduleModal({
               loading ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
-            {loading ? "Creating..." : "Create Schedule"}
+            {loading 
+              ? (isEditMode ? "Updating..." : "Creating...") 
+              : (isEditMode ? "Update Schedule" : "Create Schedule")
+            }
           </button>
         </div>
       </div>

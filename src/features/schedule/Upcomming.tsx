@@ -1,15 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "../../lib/api";
 import type { ReactNode } from "react";
-
-type ScheduleEntry = {
-  id?: string;
-  schedule_id?: string;
-  work_item_id?: string;
-  start_at: string;
-  planned_minutes: number;
-  status?: number;
-};
+import { useUpcomingSchedule, type ScheduleEntry } from "./hooks/useScheduleData";
 
 type UpcommingProps = {
   className?: string;
@@ -17,21 +7,14 @@ type UpcommingProps = {
 };
 
 export default function Upcomming({ className, emptyState }: UpcommingProps) {
-  const { data, isLoading, error } = useQuery<ScheduleEntry[]>({
-    queryKey: ["schedule", "upcoming"],
-    queryFn: async () => {
-      const res = await api.get("/schedule-entries/upcoming");
-      const payload = res.data;
-      if (Array.isArray(payload)) return payload;
-      if (payload?.items && Array.isArray(payload.items)) return payload.items;
-      return [];
-    },
-  });
+  // Use centralized schedule hook for upcoming entries
+  const { data, isLoading, isError } = useUpcomingSchedule(undefined);
+  const error = isError ? new Error("Failed to load schedule") : null;
 
   const baseClass = ["space-y-4", className].filter(Boolean).join(" ");
 
   if (isLoading) {
-    return <p className={["text-sm text-slate-500", className].filter(Boolean).join(" ")}>?ang t?i l?ch s?p t?iÅc</p>;
+    return <p className={["text-sm text-slate-500", className].filter(Boolean).join(" ")}>?ang t?i l?ch s?p t?iÔøΩc</p>;
   }
 
   if (error) {
@@ -70,6 +53,7 @@ export default function Upcomming({ className, emptyState }: UpcommingProps) {
       {data.map((item) => {
         const key = item.id ?? item.schedule_id ?? `${item.work_item_id ?? "work"}-${item.start_at}`;
         const date = new Date(item.start_at);
+        const minutes = item.planned_minutes ?? item.plannedMinutes ?? 0;
         return (
           <div
             key={key}
@@ -87,7 +71,7 @@ export default function Upcomming({ className, emptyState }: UpcommingProps) {
               </p>
             </div>
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 shadow-sm">
-              {item.planned_minutes} phut
+              {minutes} phut
             </span>
           </div>
         );

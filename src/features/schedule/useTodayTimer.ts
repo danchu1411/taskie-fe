@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, createElement, type Dispatch, type SetStateAction, type JSX } from "react";
 import type { TodayItem } from "../../lib";
 import { FloatingWidget } from "../../components/ui/FloatingWidget";
+import { DEFAULT_VALUES, TIMER_INTERVALS } from "./constants/cacheConfig";
 
 type SessionType = "focus" | "short-break" | "long-break";
 
@@ -61,7 +62,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerAnimating, setTimerAnimating] = useState(false);
   const [timerMode, setTimerMode] = useState<"focus" | "break">("focus");
-  const [timerDuration, setTimerDuration] = useState(25 * 60 * 1000);
+  const [timerDuration, setTimerDuration] = useState(DEFAULT_VALUES.FOCUS_DURATION_MINUTES * 60 * 1000);
   const [timerRemain, setTimerRemain] = useState(timerDuration);
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerItemId, setTimerItemId] = useState<string | null>(null);
@@ -72,7 +73,10 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
-  const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
+  const [widgetPosition, setWidgetPosition] = useState<{ x: number; y: number }>({ 
+    x: DEFAULT_VALUES.WIDGET_EDGE_MARGIN, 
+    y: DEFAULT_VALUES.WIDGET_EDGE_MARGIN 
+  });
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [skipBreaks, setSkipBreaks] = useState(false);
 
@@ -86,21 +90,23 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     if (!timerRunning) return;
     const id = window.setInterval(() => {
       setTimerRemain((prev) => {
-        if (prev <= 1_000) {
+        if (prev <= TIMER_INTERVALS.COUNTDOWN_TICK_MS) {
           window.clearInterval(id);
           setTimerRunning(false);
           if (!isCustomMode && !skipBreaks) {
             const nextMode = timerMode === "focus" ? "break" : "focus";
-            const nextDuration = nextMode === "focus" ? 25 * 60 * 1000 : 5 * 60 * 1000;
+            const nextDuration = nextMode === "focus" 
+              ? DEFAULT_VALUES.FOCUS_DURATION_MINUTES * 60 * 1000 
+              : DEFAULT_VALUES.SHORT_BREAK_MINUTES * 60 * 1000;
             setTimerMode(nextMode);
             setTimerDuration(nextDuration);
             return nextDuration;
           }
           return 0;
         }
-        return prev - 1_000;
+        return prev - TIMER_INTERVALS.COUNTDOWN_TICK_MS;
       });
-    }, 1_000);
+    }, TIMER_INTERVALS.COUNTDOWN_TICK_MS);
     return () => window.clearInterval(id);
   }, [timerRunning, timerMode, isCustomMode, skipBreaks]);
 
@@ -114,17 +120,17 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     let remainingMinutes = totalMinutes;
     let focusCount = 0;
     while (remainingMinutes > 0) {
-      if (remainingMinutes >= 25) {
-        plan.push({ type: "focus", duration: 25 });
-        remainingMinutes -= 25;
+      if (remainingMinutes >= DEFAULT_VALUES.FOCUS_DURATION_MINUTES) {
+        plan.push({ type: "focus", duration: DEFAULT_VALUES.FOCUS_DURATION_MINUTES });
+        remainingMinutes -= DEFAULT_VALUES.FOCUS_DURATION_MINUTES;
         focusCount++;
         if (remainingMinutes > 0) {
-          if (focusCount % 4 === 0 && remainingMinutes >= 15) {
-            plan.push({ type: "long-break", duration: 15 });
-            remainingMinutes -= 15;
-          } else if (remainingMinutes >= 5) {
-            plan.push({ type: "short-break", duration: 5 });
-            remainingMinutes -= 5;
+          if (focusCount % DEFAULT_VALUES.SESSIONS_BEFORE_LONG_BREAK === 0 && remainingMinutes >= DEFAULT_VALUES.LONG_BREAK_MINUTES) {
+            plan.push({ type: "long-break", duration: DEFAULT_VALUES.LONG_BREAK_MINUTES });
+            remainingMinutes -= DEFAULT_VALUES.LONG_BREAK_MINUTES;
+          } else if (remainingMinutes >= DEFAULT_VALUES.SHORT_BREAK_MINUTES) {
+            plan.push({ type: "short-break", duration: DEFAULT_VALUES.SHORT_BREAK_MINUTES });
+            remainingMinutes -= DEFAULT_VALUES.SHORT_BREAK_MINUTES;
           }
         }
       } else {
@@ -182,7 +188,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   // Animation mount effect
   useEffect(() => {
     if (timerOpen) {
-      const t = setTimeout(() => setTimerAnimating(true), 10);
+      const t = setTimeout(() => setTimerAnimating(true), TIMER_INTERVALS.ANIMATION_DELAY_MS);
       return () => clearTimeout(t);
     } else {
       setTimerAnimating(false);
@@ -195,18 +201,18 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     if (timerRunning && timerRemain > 0) {
       interval = setInterval(() => {
         setTimerRemain((time) => {
-          if (time <= 1000) {
+          if (time <= TIMER_INTERVALS.COUNTDOWN_TICK_MS) {
             setTimerRunning(false);
             if (isCustomMode && currentSession < sessionPlan.length) {
               setTimeout(() => {
                 startNextCustomSession();
-              }, 1000);
+              }, TIMER_INTERVALS.SESSION_TRANSITION_DELAY_MS);
             }
             return 0;
           }
-          return time - 1000;
+          return time - TIMER_INTERVALS.COUNTDOWN_TICK_MS;
         });
-      }, 1000);
+      }, TIMER_INTERVALS.COUNTDOWN_TICK_MS);
     } else if (timerRemain === 0) {
       setTimerRunning(false);
     }
@@ -214,7 +220,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   }, [timerRunning, timerRemain, isCustomMode, currentSession, sessionPlan.length, startNextCustomSession]);
 
   const openTimer = useCallback((item?: TodayItem) => {
-    const planned = item?.plannedMinutes && item.plannedMinutes > 0 ? item.plannedMinutes : 25;
+    const planned = item?.plannedMinutes && item.plannedMinutes > 0 ? item.plannedMinutes : DEFAULT_VALUES.FOCUS_DURATION_MINUTES;
     const duration = planned * 60 * 1000;
     
     setTimerMode("focus");
@@ -241,7 +247,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setSessionPlan([]);
     setSkipBreaks(false);
     setTimerRemain(timerDuration);
-    setTimeout(() => setTimerOpen(false), 300);
+    setTimeout(() => setTimerOpen(false), TIMER_INTERVALS.CLOSE_TIMER_DELAY_MS);
   }, [timerDuration]);
 
   const enterFloatingMode = useCallback(() => {
@@ -260,8 +266,8 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       const newY = prev.y + delta.y;
       
       // Clamp within viewport bounds
-      const clampedX = Math.max(0, Math.min(newX, window.innerWidth - 200)); // 200px widget width
-      const clampedY = Math.max(0, Math.min(newY, window.innerHeight - 150)); // 150px widget height
+      const clampedX = Math.max(0, Math.min(newX, window.innerWidth - DEFAULT_VALUES.WIDGET_WIDTH));
+      const clampedY = Math.max(0, Math.min(newY, window.innerHeight - DEFAULT_VALUES.WIDGET_HEIGHT));
       
       return { x: clampedX, y: clampedY };
     });

@@ -16,8 +16,10 @@ import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, SystemError } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
+import { type ScheduleEntry, SCHEDULE_QUERY_KEY } from "./hooks/useScheduleData";
 import useTodayTimer from "./useTodayTimer";
 import { getDefaultFocusDuration } from "./constants";
+import { DEFAULT_VALUES, TIMER_INTERVALS } from "./constants/cacheConfig";
 import { QuickAddPanel } from "./components/QuickAddPanel";
 import { TodaySection } from "./components/TodaySection";
 import { ScheduleModal } from "./components/ScheduleModal";
@@ -295,6 +297,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
   const [scheduleStartAt, setScheduleStartAt] = useState("");
   const [scheduleMinutes, setScheduleMinutes] = useState(getDefaultFocusDuration());
+  const [scheduleEntryId, setScheduleEntryId] = useState<string | null>(null);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TodayItem | null>(null);
@@ -313,7 +317,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const quickRef = useRef<HTMLInputElement | null>(null);
 
-  const { tasksQuery, items, categories } = useTodayData(userId);
+  const { tasksQuery, items, categories, findScheduleEntry } = useTodayData(userId);
 
   const resolveWorkItemId = useCallback(
     (item: TodayItem | null) => {
@@ -493,7 +497,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const quickAddMutation = useMutation<TaskRecord, unknown, string, QuickAddMutationContext>({
     mutationFn: async (title) => {
-      const response = await api.post("/tasks/create", { title, priority: 2 });
+      const response = await api.post("/tasks/create", { title, priority: DEFAULT_VALUES.DEFAULT_PRIORITY });
       return response.data;
     },
     retry: (failureCount, error) => {
@@ -520,8 +524,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         title: title.trim(),
         description: undefined,
         deadline: undefined,
-        priority: 2,
-        status: 0,
+        priority: DEFAULT_VALUES.DEFAULT_PRIORITY,
+        status: STATUS.PLANNED,
         is_atomic: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -573,19 +577,53 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         workItemId,
         startAt,
         plannedMinutes,
-        status: 0, // planned
+        status: STATUS.PLANNED,
       });
     },
     onError: (err) => {
       setStatusError(getErrorMessage(err));
     },
     onSuccess: () => {
+      // Force immediate refetch of ALL active schedule queries (Today, Planner, Upcoming)
+      // This fixes the stale cache issue - data updates instantly without waiting for 5min staleTime
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY, 
+        type: "active" 
+      });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
-      queryClient.invalidateQueries({ queryKey: ["schedule", "upcoming"] });
       // Keep Tasks page in sync
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setScheduleModalOpen(false);
       setSelectedItem(null);
+      setScheduleEntryId(null);
+      setIsEditingSchedule(false);
+    },
+  });
+
+  const updateScheduleMutation = useMutation<void, unknown, { entryId: string; startAt: string; plannedMinutes: number }>({
+    mutationFn: async ({ entryId, startAt, plannedMinutes }) => {
+      await api.patch(`/schedule-entries/${entryId}`, {
+        startAt,
+        plannedMinutes,
+      });
+    },
+    onError: (err) => {
+      setStatusError(getErrorMessage(err));
+    },
+    onSuccess: () => {
+      // Force immediate refetch of ALL active schedule queries (Today, Planner, Upcoming)
+      // This fixes the stale cache issue - data updates instantly without waiting for 5min staleTime
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY, 
+        type: "active" 
+      });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      // Keep Tasks page in sync
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setScheduleModalOpen(false);
+      setSelectedItem(null);
+      setScheduleEntryId(null);
+      setIsEditingSchedule(false);
     },
   });
 
@@ -763,23 +801,35 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const openScheduleModal = useCallback((item: TodayItem) => {
     setSelectedItem(item);
-    // Set default start time to next hour
-    const now = new Date();
-    const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
-    nextHour.setMinutes(0, 0, 0);
-    setScheduleStartAt(nextHour.toISOString().slice(0, 16));
-    setScheduleMinutes(item.plannedMinutes ?? 25);
+    
+    // Check if item already has a schedule entry
+    const existingEntry = findScheduleEntry(item);
+    
+    if (existingEntry && (existingEntry.id || existingEntry.schedule_id)) {
+      // EDIT MODE: Item already has schedule
+      const entryId = existingEntry.id ?? existingEntry.schedule_id;
+      setScheduleEntryId(entryId!);
+      setIsEditingSchedule(true);
+      // Use existing schedule values
+      setScheduleStartAt(existingEntry.start_at.slice(0, 16));
+      setScheduleMinutes(existingEntry.planned_minutes ?? existingEntry.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
+    } else {
+      // CREATE MODE: Item doesn't have schedule
+      setScheduleEntryId(null);
+      setIsEditingSchedule(false);
+      // Set default start time to next hour
+      const now = new Date();
+      const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+      nextHour.setMinutes(0, 0, 0);
+      setScheduleStartAt(nextHour.toISOString().slice(0, 16));
+      setScheduleMinutes(item.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
+    }
+    
     setScheduleModalOpen(true);
-  }, []);
+  }, [findScheduleEntry]);
 
   const createSchedule = useCallback(() => {
     if (!selectedItem) return;
-
-    const workItemId = resolveWorkItemId(selectedItem);
-    if (!workItemId) {
-      setStatusError("Unable to schedule this item right now. Please try again later.");
-      return;
-    }
 
     const startAtDate = new Date(scheduleStartAt);
     if (Number.isNaN(startAtDate.getTime())) {
@@ -787,12 +837,38 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       return;
     }
 
-    scheduleMutation.mutate({
-      workItemId,
-      startAt: startAtDate.toISOString(),
-      plannedMinutes: scheduleMinutes,
-    });
-  }, [selectedItem, scheduleStartAt, scheduleMinutes, scheduleMutation, resolveWorkItemId]);
+    // Decide between UPDATE and CREATE
+    if (isEditingSchedule && scheduleEntryId) {
+      // UPDATE existing schedule entry
+      updateScheduleMutation.mutate({
+        entryId: scheduleEntryId,
+        startAt: startAtDate.toISOString(),
+        plannedMinutes: scheduleMinutes,
+      });
+    } else {
+      // CREATE new schedule entry
+      const workItemId = resolveWorkItemId(selectedItem);
+      if (!workItemId) {
+        setStatusError("Unable to schedule this item right now. Please try again later.");
+        return;
+      }
+
+      scheduleMutation.mutate({
+        workItemId,
+        startAt: startAtDate.toISOString(),
+        plannedMinutes: scheduleMinutes,
+      });
+    }
+  }, [
+    selectedItem,
+    scheduleStartAt,
+    scheduleMinutes,
+    isEditingSchedule,
+    scheduleEntryId,
+    scheduleMutation,
+    updateScheduleMutation,
+    resolveWorkItemId
+  ]);
 
   const openChecklistModal = useCallback((item: TodayItem) => {
     if (item.source !== "task" || !item.taskId) return;
@@ -1069,7 +1145,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
               if (!quickOpen) {
                 quickRef.current?.focus();
               }
-            }, 40);
+            }, TIMER_INTERVALS.FOCUS_INPUT_DELAY_MS);
           }}
           className="rounded-lg bg-blue-600 p-4 text-white transition-colors hover:bg-blue-700"
         >
@@ -1134,7 +1210,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         onMinutesChange={setScheduleMinutes}
         onSave={createSchedule}
         onCancel={() => setScheduleModalOpen(false)}
-        loading={scheduleMutation.isPending}
+        loading={scheduleMutation.isPending || updateScheduleMutation.isPending}
+        isEditMode={isEditingSchedule}
       />
 
       <ChecklistAssignModal

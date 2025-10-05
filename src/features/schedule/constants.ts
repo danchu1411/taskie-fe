@@ -3,6 +3,8 @@
  * Contains focus duration configurations and helper functions
  */
 
+import { DEFAULT_VALUES } from "./constants/cacheConfig";
+
 /**
  * Allowed focus durations in minutes
  * Generated from 5 to 240 minutes with step 5
@@ -131,7 +133,7 @@ export function getDurationDisplayName(minutes: number): string {
  * Returns the standard Pomodoro duration (25 minutes)
  */
 export function getDefaultFocusDuration(): AllowedFocusDuration {
-  return 25;
+  return DEFAULT_VALUES.FOCUS_DURATION_MINUTES;
 }
 
 /**

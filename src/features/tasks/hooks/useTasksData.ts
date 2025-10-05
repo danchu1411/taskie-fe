@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import api from "../../../lib/api";
 import type { TaskListResponse, TaskFilters, TaskRecord } from "../../../lib";
 import { STATUS } from "../../../lib";
+import { CACHE_CONFIG, PAGINATION } from "../../schedule/constants/cacheConfig";
 
 export interface TasksByStatus {
   planned: TaskRecord[];
@@ -36,7 +37,7 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
       if (filters.search) params.append("q", filters.search);
       if (filters.status && filters.status !== 'all') params.append("status", filters.status.toString());
       if (filters.priority && filters.priority !== 'all') params.append("priority", filters.priority.toString());
-      params.append("page", (filters.page || 1).toString());
+      params.append("page", (filters.page || PAGINATION.DEFAULT_PAGE).toString());
       params.append("pageSize", (filters.pageSize || 20).toString());
       params.append("includeChecklist", "true");
       params.append("includeWorkItems", "true");
@@ -44,7 +45,7 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
       const response = await api.get<TaskListResponse>(`/tasks/by-user/${userId}?${params}`);
       return response.data;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: CACHE_CONFIG.STALE_TIME
   });
 
   const { data: tasksData } = tasksQuery;
