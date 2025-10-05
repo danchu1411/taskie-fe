@@ -7,6 +7,7 @@ interface FocusTimerFullscreenProps {
   timerRemain: number;
   timerDuration: number;
   timerRunning: boolean;
+  skipBreaks: boolean;
   onToggleRunning: () => void;
   onEnterFloatingMode: () => void;
   onClose: () => void;
@@ -20,6 +21,7 @@ export const FocusTimerFullscreen = memo(function FocusTimerFullscreen({
   timerRemain,
   timerDuration,
   timerRunning,
+  skipBreaks,
   onToggleRunning,
   onEnterFloatingMode,
   onClose,
@@ -123,9 +125,9 @@ export const FocusTimerFullscreen = memo(function FocusTimerFullscreen({
         <div className="mt-8 text-center">
           <div className={isDarkTheme ? 'text-white' : 'text-gray-900'}>
             Up next: <span className="font-semibold">
-              {currentSession < sessionPlan.length ? 
-                `${sessionPlan[currentSession]?.duration || 5} min break` : 
-                'Session complete'
+              {skipBreaks || currentSession >= sessionPlan.length ? 
+                'Session complete' : 
+                `${sessionPlan[currentSession]?.duration || 5} min break`
               }
             </span>
           </div>

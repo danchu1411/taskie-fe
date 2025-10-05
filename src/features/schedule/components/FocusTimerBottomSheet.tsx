@@ -7,10 +7,12 @@ interface FocusTimerBottomSheetProps {
   timerRunning: boolean;
   timerRemain: number;
   customDuration: number;
+  skipBreaks: boolean;
   onClose: () => void;
   onSetCustomDuration: (duration: number) => void;
-  onStartCustomDuration: (minutes: number) => void;
+  onStartCustomDuration: (minutes: number, options?: { skipBreaks?: boolean }) => void;
   onSetTimerRunning: (running: boolean) => void;
+  onSkipBreaksChange: (value: boolean) => void;
 }
 
 function formatTime(ms: number) {
@@ -26,10 +28,12 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
   timerRunning,
   timerRemain,
   customDuration,
+  skipBreaks,
   onClose,
   onSetCustomDuration,
   onStartCustomDuration,
   onSetTimerRunning,
+  onSkipBreaksChange,
 }: FocusTimerBottomSheetProps) {
   const overlayClasses = timerAnimating
     ? "flex-1 bg-black/20 transition-opacity duration-300 opacity-100"
@@ -93,10 +97,27 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                 </div>
               </div>
               
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <input
+                  type="checkbox"
+                  id="skip-breaks-toggle"
+                  checked={skipBreaks}
+                  onChange={(e) => onSkipBreaksChange(e.target.checked)}
+                  disabled={timerRunning}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                />
+                <label
+                  htmlFor="skip-breaks-toggle"
+                  className={`text-sm font-medium ${timerRunning ? 'text-gray-400' : 'text-gray-700 cursor-pointer'}`}
+                >
+                  Skip breaks
+                </label>
+              </div>
+              
               <div className="flex justify-center">
                 <button
                   type="button"
-                  onClick={() => onStartCustomDuration(customDuration)}
+                  onClick={() => onStartCustomDuration(customDuration, { skipBreaks })}
                   className="flex items-center gap-3 rounded-lg bg-blue-600 px-6 py-3 text-white transition hover:bg-blue-700"
                 >
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">

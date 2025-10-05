@@ -39,13 +39,15 @@ export type TodayTimerHook = {
   setWidgetPosition: (pos: { x: number; y: number }) => void;
   isDarkTheme: boolean;
   setIsDarkTheme: (v: boolean) => void;
+  skipBreaks: boolean;
+  setSkipBreaks: (v: boolean) => void;
 
   // actions
   openTimer: (item?: TodayItem) => void;
   closeTimer: () => void;
   enterFloatingMode: () => void;
   exitFloatingMode: () => void;
-  startCustomDuration: (minutes: number) => void;
+  startCustomDuration: (minutes: number, options?: { skipBreaks?: boolean }) => void;
   startNextCustomSession: () => void;
   applyFloatingDelta: (delta: { x: number; y: number }) => void;
 
@@ -72,6 +74,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   const [isFloating, setIsFloating] = useState(false);
   const [widgetPosition, setWidgetPosition] = useState({ x: 20, y: 20 });
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const [skipBreaks, setSkipBreaks] = useState(false);
 
   // Mirror remain when duration changes
   useEffect(() => {
@@ -86,7 +89,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
         if (prev <= 1_000) {
           window.clearInterval(id);
           setTimerRunning(false);
-          if (!isCustomMode) {
+          if (!isCustomMode && !skipBreaks) {
             const nextMode = timerMode === "focus" ? "break" : "focus";
             const nextDuration = nextMode === "focus" ? 25 * 60 * 1000 : 5 * 60 * 1000;
             setTimerMode(nextMode);
@@ -99,7 +102,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
       });
     }, 1_000);
     return () => window.clearInterval(id);
-  }, [timerRunning, timerMode, isCustomMode]);
+  }, [timerRunning, timerMode, isCustomMode, skipBreaks]);
 
   const timerItem = useMemo(
     () => items.find((item) => item.id === timerItemId) ?? null,
@@ -134,11 +137,17 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     return plan;
   }, []);
 
-  const startCustomDuration = useCallback((minutes: number) => {
-    const plan = generateSessionPlan(minutes);
+  const startCustomDuration = useCallback((minutes: number, options?: { skipBreaks?: boolean }) => {
+    const shouldSkipBreaks = options?.skipBreaks ?? false;
+    
+    const plan = shouldSkipBreaks 
+      ? [{ type: "focus" as SessionType, duration: minutes }]
+      : generateSessionPlan(minutes);
+    
     setSessionPlan(plan);
     setCurrentSession(1);
     setIsCustomMode(true);
+    setTimerMode("focus");
 
     const firstSession = plan[0];
     const duration = firstSession.duration * 60 * 1000;
@@ -154,6 +163,8 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
   }, [generateSessionPlan, timerItem, onStartFocus]);
 
   const startNextCustomSession = useCallback(() => {
+    if (skipBreaks) return;
+    
     const nextSessionIndex = currentSession;
     if (nextSessionIndex < sessionPlan.length) {
       const nextSession = sessionPlan[nextSessionIndex];
@@ -166,7 +177,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
         onStartFocus(timerItem);
       }
     }
-  }, [currentSession, sessionPlan, timerItem, onStartFocus]);
+  }, [currentSession, sessionPlan, timerItem, onStartFocus, skipBreaks]);
 
   // Animation mount effect
   useEffect(() => {
@@ -213,6 +224,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setCurrentSession(1);
     setIsFullscreen(false);
     setIsFloating(false);
+    setSkipBreaks(false);
     setTimerDuration(duration);
     setTimerRemain(duration);
     setTimerItemId(item?.id ?? null);
@@ -227,6 +239,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setIsCustomMode(false);
     setCurrentSession(1);
     setSessionPlan([]);
+    setSkipBreaks(false);
     setTimerRemain(timerDuration);
     setTimeout(() => setTimerOpen(false), 300);
   }, [timerDuration]);
@@ -300,6 +313,8 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     setWidgetPosition,
     isDarkTheme,
     setIsDarkTheme,
+    skipBreaks,
+    setSkipBreaks,
     // actions
     openTimer,
     closeTimer,

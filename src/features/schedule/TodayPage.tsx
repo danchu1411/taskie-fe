@@ -403,6 +403,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     currentSession,
     sessionPlan,
     isDarkTheme,
+    skipBreaks,
+    setSkipBreaks,
     FloatingWidget,
     startCustomDuration,
     closeTimer,
@@ -929,7 +931,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
               className="rounded-lg bg-blue-600 px-8 py-4 text-white transition-colors hover:bg-blue-700"
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm">?</span>
+                <span className="text-lg">⏱</span>
                 <span className="font-medium">Start Focus</span>
               </div>
             </button>
@@ -1093,6 +1095,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           timerRemain={timerRemain}
           timerDuration={timerDuration}
           timerRunning={timerRunning}
+          skipBreaks={skipBreaks}
           onToggleRunning={() => setTimerRunning(!timerRunning)}
           onEnterFloatingMode={enterFloatingMode}
           onClose={handleTimerClose}
@@ -1107,10 +1110,12 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           timerRunning={timerRunning}
           timerRemain={timerRemain}
           customDuration={customDuration}
+          skipBreaks={skipBreaks}
           onClose={handleTimerClose}
           onSetCustomDuration={setCustomDuration}
           onStartCustomDuration={startCustomDuration}
           onSetTimerRunning={setTimerRunning}
+          onSkipBreaksChange={setSkipBreaks}
         />
       )}
 

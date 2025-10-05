@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import api from "../../../lib/api";
@@ -628,7 +628,7 @@ export function useTodayData(userId: string | null): TodayDataResult {
   const categories = useTaskCategories(items);
 
   // Helper function to find schedule entry for a specific item
-  const findScheduleEntry = (item: TodayItem): ScheduleEntry | undefined => {
+  const findScheduleEntry = useCallback((item: TodayItem): ScheduleEntry | undefined => {
     if (item.id) {
       const entry = scheduleLookup.get(item.id.toLowerCase());
       if (entry) return entry;
@@ -642,7 +642,7 @@ export function useTodayData(userId: string | null): TodayDataResult {
       if (entry) return entry;
     }
     return undefined;
-  };
+  }, [scheduleLookup]);
 
   return {
     tasksQuery,
