@@ -286,8 +286,6 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
         setTimerRemain((time) => {
           const newTime = time - TIMER_INTERVALS.COUNTDOWN_TICK_MS;
           
-          console.log('⏰ Tick:', { time, newTime, timeSeconds: (time/1000).toFixed(1), newTimeSeconds: (newTime/1000).toFixed(1) });
-          
           if (newTime <= 0) {
             const currentIsCustomMode = isCustomModeRef.current;
             const currentSessionNum = currentSessionRef.current;

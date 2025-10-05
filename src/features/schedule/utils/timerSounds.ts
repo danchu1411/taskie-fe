@@ -20,7 +20,7 @@ class TimerSounds {
 
   /**
    * Play a pleasant notification sound for break time
-   * Lower, softer tones for relaxation
+   * Warm, relaxing tones with gentle reverb effect (plays twice)
    */
   playBreakSound() {
     if (!this.enabled || !this.audioContext) return;
@@ -28,32 +28,65 @@ class TimerSounds {
     const ctx = this.audioContext;
     const now = ctx.currentTime;
 
-    // Create oscillator for pleasant chime
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    // Play twice with a pause in between
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const repeatDelay = repeat * 2.2; // 2.2s between repeats
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      // Create low-pass filter for warmth
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800, now + repeatDelay);
+      filter.Q.setValueAtTime(1, now + repeatDelay);
 
-    // Soft bell-like tone: E5 -> G5 -> B5
-    osc.frequency.setValueAtTime(659.25, now); // E5
-    osc.frequency.setValueAtTime(783.99, now + 0.15); // G5
-    osc.frequency.setValueAtTime(987.77, now + 0.3); // B5
+      // Main gain
+      const masterGain = ctx.createGain();
+      filter.connect(masterGain);
+      masterGain.connect(ctx.destination);
 
-    // Smooth fade in/out
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
-    gain.gain.linearRampToValueAtTime(0.3, now + 0.4);
-    gain.gain.linearRampToValueAtTime(0, now + 0.7);
+      // Play soft descending tones like wind chimes: A4 -> F4 -> D4
+      const frequencies = [440, 349.23, 293.66]; // A4, F4, D4
+      const delays = [0, 0.25, 0.5];
 
-    osc.type = 'sine';
-    osc.start(now);
-    osc.stop(now + 0.7);
+      frequencies.forEach((freq, i) => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(filter);
+
+        const startTime = now + repeatDelay + delays[i];
+
+        // Main tone
+        osc1.frequency.setValueAtTime(freq, startTime);
+        osc1.type = 'sine';
+
+        // Subtle harmonic for richness (perfect fifth above)
+        osc2.frequency.setValueAtTime(freq * 1.5, startTime);
+        osc2.type = 'sine';
+
+        // Gentle fade in and long fade out
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.12, startTime + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + 1.2);
+        osc2.stop(startTime + 1.2);
+      });
+
+      // Master fade out
+      masterGain.gain.setValueAtTime(1, now + repeatDelay);
+      masterGain.gain.setValueAtTime(1, now + repeatDelay + 1.0);
+      masterGain.gain.linearRampToValueAtTime(0, now + repeatDelay + 1.8);
+    }
   }
 
   /**
    * Play an energetic notification sound for focus time
-   * Higher, sharper tones for alertness
+   * Bright, clear tones for alertness - gentle but motivating (plays twice)
    */
   playFocusSound() {
     if (!this.enabled || !this.audioContext) return;
@@ -61,43 +94,65 @@ class TimerSounds {
     const ctx = this.audioContext;
     const now = ctx.currentTime;
 
-    // Create two oscillators for richer sound
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
+    // Play twice with a pause in between
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const repeatDelay = repeat * 1.2; // 1.2s between repeats
 
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
+      // Create filter for smooth, pleasant tone
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2000, now + repeatDelay);
+      filter.Q.setValueAtTime(0.5, now + repeatDelay);
 
-    // Energetic rising tone: C5 -> E5 -> G5
-    osc1.frequency.setValueAtTime(523.25, now); // C5
-    osc1.frequency.setValueAtTime(659.25, now + 0.12); // E5
-    osc1.frequency.setValueAtTime(783.99, now + 0.24); // G5
+      const masterGain = ctx.createGain();
+      filter.connect(masterGain);
+      masterGain.connect(ctx.destination);
 
-    // Add harmonic for richness
-    osc2.frequency.setValueAtTime(1046.5, now); // C6 (octave higher)
-    osc2.frequency.setValueAtTime(1318.5, now + 0.12); // E6
-    osc2.frequency.setValueAtTime(1567.98, now + 0.24); // G6
+      // Two gentle ascending chimes: C5 -> G5
+      const notes = [
+        { freq: 523.25, harmonic: 783.99, delay: 0 },    // C5 + G5
+        { freq: 783.99, harmonic: 1046.5, delay: 0.18 }  // G5 + C6
+      ];
 
-    // Quick fade in/out for sharpness
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.03);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.3);
-    gain.gain.linearRampToValueAtTime(0, now + 0.5);
+      notes.forEach(note => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-    osc1.type = 'triangle';
-    osc2.type = 'sine';
-    
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.5);
-    osc2.stop(now + 0.5);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(filter);
+
+        const startTime = now + repeatDelay + note.delay;
+
+        // Main tone
+        osc1.frequency.setValueAtTime(note.freq, startTime);
+        osc1.type = 'sine';
+
+        // Harmonic for brightness
+        osc2.frequency.setValueAtTime(note.harmonic, startTime);
+        osc2.type = 'sine';
+
+        // Smooth envelope
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
+
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + 0.6);
+        osc2.stop(startTime + 0.6);
+      });
+
+      // Master volume
+      masterGain.gain.setValueAtTime(1, now + repeatDelay);
+      masterGain.gain.linearRampToValueAtTime(0, now + repeatDelay + 0.85);
+    }
   }
 
   /**
    * Play completion sound (end of all sessions)
-   * Triple chime for completion
+   * Celebratory ascending chimes - warm and satisfying (plays twice)
    */
   playCompleteSound() {
     if (!this.enabled || !this.audioContext) return;
@@ -105,26 +160,58 @@ class TimerSounds {
     const ctx = this.audioContext;
     const now = ctx.currentTime;
 
-    // Three ascending chimes
-    for (let i = 0; i < 3; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    // Play twice with a pause in between
+    for (let repeat = 0; repeat < 2; repeat++) {
+      const repeatDelay = repeat * 1.5; // 1.5s between repeats
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      // Create filter for warmth
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1500, now + repeatDelay);
+      filter.Q.setValueAtTime(1, now + repeatDelay);
 
-      const startTime = now + i * 0.2;
-      const freq = 523.25 * Math.pow(1.5, i); // C5, G5, E6
+      const masterGain = ctx.createGain();
+      filter.connect(masterGain);
+      masterGain.connect(ctx.destination);
 
-      osc.frequency.setValueAtTime(freq, startTime);
-      
-      gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.25, startTime + 0.05);
-      gain.gain.linearRampToValueAtTime(0, startTime + 0.3);
+      // Three ascending chimes with harmonics: C5 -> E5 -> G5
+      const notes = [
+        { freq: 523.25, harmonic: 659.25 },  // C5 + E5
+        { freq: 659.25, harmonic: 783.99 },  // E5 + G5
+        { freq: 783.99, harmonic: 1046.5 }   // G5 + C6
+      ];
 
-      osc.type = 'sine';
-      osc.start(startTime);
-      osc.stop(startTime + 0.3);
+      notes.forEach((note, i) => {
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(filter);
+
+        const startTime = now + repeatDelay + i * 0.22;
+
+        osc1.frequency.setValueAtTime(note.freq, startTime);
+        osc2.frequency.setValueAtTime(note.harmonic, startTime);
+
+        osc1.type = 'sine';
+        osc2.type = 'sine';
+
+        // Gentle envelope
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.18, startTime + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+
+        osc1.start(startTime);
+        osc2.start(startTime);
+        osc1.stop(startTime + 0.5);
+        osc2.stop(startTime + 0.5);
+      });
+
+      // Master volume fade
+      masterGain.gain.setValueAtTime(1, now + repeatDelay);
+      masterGain.gain.linearRampToValueAtTime(0, now + repeatDelay + 1.1);
     }
   }
 }
