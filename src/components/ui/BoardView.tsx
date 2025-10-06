@@ -56,7 +56,7 @@ function BoardTaskCardInner({
   onDelete,
   onStatusChange: _onStatusChange,
   onChecklist: _onChecklist,
-  onSchedule: _onSchedule,
+  onSchedule,
   onStart,
   isUpdating: _isUpdating = false,
   isDragging = false
@@ -133,6 +133,18 @@ function BoardTaskCardInner({
             >
               Edit
             </button>
+            {onSchedule && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSchedule(task);
+                }}
+                className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-200"
+                title="Schedule"
+              >
+                Schedule
+              </button>
+            )}
             {onStart && (
               <button
                 onClick={(e) => {

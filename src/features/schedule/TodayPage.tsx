@@ -297,7 +297,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
   const [scheduleStartAt, setScheduleStartAt] = useState("");
   const [scheduleMinutes, setScheduleMinutes] = useState(getDefaultFocusDuration());
-  const [scheduleEntryId, setScheduleEntryId] = useState<string | null>(null);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
@@ -507,6 +506,13 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
       // Keep Tasks page in sync
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      // Force immediate refetch of schedule queries - critical for status changes
+      // When task/checklist status changes, schedule entry status may also change
+      // Using refetchQueries instead of invalidateQueries to bypass staleTime
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY,
+        type: "active"
+      });
     },
     onSettled: () => {
       setPendingStatusId(null);
@@ -621,14 +627,14 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setScheduleModalOpen(false);
       setSelectedItem(null);
-      setScheduleEntryId(null);
       setIsEditingSchedule(false);
     },
   });
 
-  const updateScheduleMutation = useMutation<void, unknown, { entryId: string; startAt: string; plannedMinutes: number }>({
-    mutationFn: async ({ entryId, startAt, plannedMinutes }) => {
-      await api.patch(`/schedule-entries/${entryId}`, {
+  const updateScheduleMutation = useMutation<void, unknown, { workItemId: string; startAt: string; plannedMinutes: number }>({
+    mutationFn: async ({ workItemId, startAt, plannedMinutes }) => {
+      console.log('📤 PATCH /schedule-entries/by-work-item/' + workItemId, { startAt, plannedMinutes });
+      await api.patch(`/schedule-entries/by-work-item/${workItemId}`, {
         startAt,
         plannedMinutes,
       });
@@ -643,12 +649,16 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         queryKey: SCHEDULE_QUERY_KEY, 
         type: "active" 
       });
+      // Invalidate ALL queries (including inactive ones like Tasks page)
+      queryClient.invalidateQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY,
+        refetchType: "none"
+      });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
       // Keep Tasks page in sync
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setScheduleModalOpen(false);
       setSelectedItem(null);
-      setScheduleEntryId(null);
       setIsEditingSchedule(false);
     },
   });
@@ -840,8 +850,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     
     if (existingEntry && (existingEntry.id || existingEntry.schedule_id)) {
       // EDIT MODE: Item already has schedule
-      const entryId = existingEntry.id ?? existingEntry.schedule_id;
-      setScheduleEntryId(entryId!);
+      // No need to store entryId anymore - we'll use workItemId for update
       setIsEditingSchedule(true);
       // Convert UTC time from backend to LOCAL time for input
       const utcDate = new Date(existingEntry.start_at);
@@ -851,12 +860,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       const hours = String(utcDate.getHours()).padStart(2, '0');
       const minutes = String(utcDate.getMinutes()).padStart(2, '0');
       const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
-      console.log('EDIT MODE - UTC from backend:', existingEntry.start_at, '→ Local time for input:', localTimeString);
+      console.log('✏️ EDIT MODE - UTC from backend:', existingEntry.start_at, '→ Local time for input:', localTimeString);
       setScheduleStartAt(localTimeString);
       setScheduleMinutes(existingEntry.planned_minutes ?? existingEntry.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
     } else {
       // CREATE MODE: Item doesn't have schedule
-      setScheduleEntryId(null);
       setIsEditingSchedule(false);
       // Set default start time to current LOCAL time (not UTC)
       const now = new Date();
@@ -867,7 +875,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
-      console.log('CREATE MODE - Current local time:', new Date(), '→ Input value:', localTimeString);
+      console.log('➕ CREATE MODE - Current local time:', new Date(), '→ Input value:', localTimeString);
       setScheduleStartAt(localTimeString);
       setScheduleMinutes(item.plannedMinutes ?? DEFAULT_VALUES.FOCUS_DURATION_MINUTES);
     }
@@ -886,7 +894,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
     console.log('📝 createSchedule called:', {
       isEditingSchedule,
-      scheduleEntryId,
       selectedItem: {
         id: selectedItem.id,
         source: selectedItem.source,
@@ -897,25 +904,27 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       }
     });
 
+    // Get work item ID for both CREATE and UPDATE
+    const workItemId = resolveWorkItemId(selectedItem);
+    console.log('Work Item ID:', workItemId);
+    
+    if (!workItemId) {
+      setStatusError("Unable to schedule this item right now. Please try again later.");
+      return;
+    }
+
     // Decide between UPDATE and CREATE
-    if (isEditingSchedule && scheduleEntryId) {
-      // UPDATE existing schedule entry
-      console.log('✏️ UPDATE mode with entryId:', scheduleEntryId);
+    if (isEditingSchedule) {
+      // UPDATE existing schedule entry using new optimized endpoint
+      console.log('✏️ UPDATE mode with workItemId:', workItemId);
       updateScheduleMutation.mutate({
-        entryId: scheduleEntryId,
+        workItemId,
         startAt: startAtDate.toISOString(),
         plannedMinutes: scheduleMinutes,
       });
     } else {
       // CREATE new schedule entry
-      const workItemId = resolveWorkItemId(selectedItem);
       console.log('➕ CREATE mode with workItemId:', workItemId);
-      
-      if (!workItemId) {
-        setStatusError("Unable to schedule this item right now. Please try again later.");
-        return;
-      }
-
       scheduleMutation.mutate({
         workItemId,
         startAt: startAtDate.toISOString(),
@@ -927,7 +936,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     scheduleStartAt,
     scheduleMinutes,
     isEditingSchedule,
-    scheduleEntryId,
     scheduleMutation,
     updateScheduleMutation,
     resolveWorkItemId

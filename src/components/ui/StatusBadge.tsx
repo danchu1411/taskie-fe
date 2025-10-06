@@ -77,7 +77,10 @@ export default function StatusBadge({
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
         className={baseClasses}
         disabled={disabled}
       >

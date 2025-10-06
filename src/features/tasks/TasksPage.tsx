@@ -23,9 +23,9 @@ import {
 import {
   TaskToolbar,
   TaskStatusModal,
-  TaskListView,
-  TaskBoardView
+  TaskListView
 } from "./components";
+import { TaskDisplayBoardView } from "./components/TaskDisplayBoardView";
 
 // Main Tasks Page Component
 export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
@@ -74,14 +74,13 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     createChecklistItem,
     deleteChecklistItem,
     reorderChecklistItem,
-    changeTaskStatus,
     changeChecklistItemStatus,
     isCreating,
     isUpdating,
     isUpdatingChecklist,
   } = useTasksMutations(user?.id || null);
 
-  // Schedule mutations
+  // Schedule mutations - CREATE
   const scheduleMutation = useMutation<void, unknown, { workItemId: string; startAt: string; plannedMinutes: number }>({
     mutationFn: async ({ workItemId, startAt, plannedMinutes }) => {
       const payload = {
@@ -94,9 +93,16 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
       await api.post("/schedule-entries", payload);
     },
     onSuccess: () => {
+      // Refetch active queries (current page)
       queryClient.refetchQueries({ 
         queryKey: SCHEDULE_QUERY_KEY, 
         type: "active" 
+      });
+      // Invalidate ALL queries (including inactive ones like Today page)
+      // This ensures Today page will refetch when user navigates back
+      queryClient.invalidateQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY,
+        refetchType: "none" // Don't refetch immediately, just mark as stale
       });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
@@ -106,26 +112,34 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     },
   });
 
-  // const updateScheduleMutation = useMutation<void, unknown, { entryId: string; startAt: string; plannedMinutes: number }>({
-  //   mutationFn: async ({ entryId, startAt, plannedMinutes }) => {
-  //     console.log('📤 PATCH /schedule-entries/' + entryId, { startAt, plannedMinutes });
-  //     await api.patch(`/schedule-entries/${entryId}`, {
-  //       startAt,
-  //       plannedMinutes,
-  //     });
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.refetchQueries({ 
-  //       queryKey: SCHEDULE_QUERY_KEY, 
-  //       type: "active" 
-  //     });
-  //     queryClient.invalidateQueries({ queryKey: ["tasks"] });
-  //     queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
-  //     setScheduleModalOpen(false);
-  //     setSchedulingItem(null);
-  //     setIsEditingSchedule(false);
-  //   },
-  // });
+  // Schedule mutations - UPDATE (using new optimized endpoint ⭐)
+  const updateScheduleMutation = useMutation<void, unknown, { workItemId: string; startAt: string; plannedMinutes: number }>({
+    mutationFn: async ({ workItemId, startAt, plannedMinutes }) => {
+      console.log('📤 PATCH /schedule-entries/by-work-item/' + workItemId, { startAt, plannedMinutes });
+      await api.patch(`/schedule-entries/by-work-item/${workItemId}`, {
+        startAt,
+        plannedMinutes,
+      });
+    },
+    onSuccess: () => {
+      // Refetch active queries (current page)
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY, 
+        type: "active" 
+      });
+      // Invalidate ALL queries (including inactive ones like Today page)
+      // This ensures Today page will refetch when user navigates back
+      queryClient.invalidateQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY,
+        refetchType: "none" // Don't refetch immediately, just mark as stale
+      });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
+      setScheduleModalOpen(false);
+      setSchedulingItem(null);
+      setIsEditingSchedule(false);
+    },
+  });
 
   // Handlers
   const handleCreateTask = useCallback((taskData: Partial<TaskRecord>) => {
@@ -198,11 +212,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     setStatusModalTask(null);
   }, [statusModalTask, handleUpdateTask]);
 
-  // Direct status change used by BoardView DnD (no modal)
-  const handleBoardDropStatusChange = useCallback((taskWithNewStatus: TaskRecord) => {
-    changeTaskStatus(taskWithNewStatus, taskWithNewStatus.status);
-  }, [changeTaskStatus]);
-
   const handleEditTask = useCallback((task: TaskRecord) => {
     setEditingTask(task);
     setModalOpen(true);
@@ -213,10 +222,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     console.log("Checklist functionality coming soon!");
   }, []);
 
-  const handleSchedule = useCallback((_task: TaskRecord) => {
-    // TODO: Implement schedule functionality
-    console.log("Schedule functionality coming soon!");
-  }, []);
 
   const handleStart = useCallback((_task: TaskRecord) => {
     // TODO: Implement start timer functionality
@@ -257,6 +262,10 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     setEditingChecklistItem(null);
     setChecklistModalTaskId(null);
   }, [editingChecklistItem, checklistModalTaskId, createChecklistItem, updateChecklistItem]);
+
+  const handleTaskStatusChange = useCallback((taskId: string, newStatus: StatusValue) => {
+    handleUpdateTask({ status: newStatus }, taskId);
+  }, [handleUpdateTask]);
 
   const handleChecklistItemStatusChange = useCallback((itemId: string, newStatus: StatusValue) => {
     changeChecklistItemStatus(itemId, newStatus);
@@ -300,6 +309,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
       // EDIT MODE: Item already has schedule
       console.log('✏️ EDIT MODE - Loading existing schedule');
       setIsEditingSchedule(true);
+      
       const utcDate = new Date(existingStartAt);
       const year = utcDate.getFullYear();
       const month = String(utcDate.getMonth() + 1).padStart(2, '0');
@@ -349,21 +359,33 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
       workItemId,
       startAt: startAtDate.toISOString(),
       planned_minutes: scheduleMinutes,
+      isEditMode: isEditingSchedule,
     });
     
-    // Always CREATE new schedule entry
-    // Backend will handle if one already exists (upsert or replace)
-    console.log('Creating/Updating schedule entry for:', workItemId);
-    scheduleMutation.mutate({
-      workItemId,
-      startAt: startAtDate.toISOString(),
-      plannedMinutes: scheduleMinutes,
-    });
+    if (isEditingSchedule) {
+      // UPDATE existing schedule entry using new optimized endpoint
+      console.log('✏️ Updating existing schedule entry for work item:', workItemId);
+      updateScheduleMutation.mutate({
+        workItemId,
+        startAt: startAtDate.toISOString(),
+        plannedMinutes: scheduleMinutes,
+      });
+    } else {
+      // CREATE new schedule entry
+      console.log('➕ Creating new schedule entry for:', workItemId);
+      scheduleMutation.mutate({
+        workItemId,
+        startAt: startAtDate.toISOString(),
+        plannedMinutes: scheduleMinutes,
+      });
+    }
   }, [
     schedulingItem, 
     scheduleStartAt, 
     scheduleMinutes, 
-    scheduleMutation
+    isEditingSchedule,
+    scheduleMutation,
+    updateScheduleMutation
   ]);
 
   const handleCloseModal = useCallback(() => {
@@ -471,16 +493,18 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onCreateTask={() => setModalOpen(true)}
         />
       ) : (
-        <TaskBoardView
-          tasksByStatus={tasksByStatus}
+        <TaskDisplayBoardView
+          tasks={tasks}
           isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
-          onStatusChange={handleBoardDropStatusChange}
+          onStatusChange={openStatusModal}
+          onDragStatusChange={handleTaskStatusChange}
           onChecklist={handleChecklist}
-          onSchedule={handleSchedule}
-          onStart={handleStart}
+          onSchedule={openScheduleModal}
+          onChecklistItemStatusChange={openChecklistStatusModal}
+          onDragChecklistItemStatusChange={handleChecklistItemStatusChange}
         />
       )}
 
@@ -540,7 +564,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           setScheduleModalOpen(false);
           setSchedulingItem(null);
         }}
-        loading={isUpdating || isUpdatingChecklist}
+        loading={scheduleMutation.isPending || updateScheduleMutation.isPending}
         isEditMode={isEditingSchedule}
       />
       </div>

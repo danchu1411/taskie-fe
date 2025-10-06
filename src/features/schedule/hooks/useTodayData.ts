@@ -130,19 +130,21 @@ function useTaskCategories(items: TodayItem[]) {
 export function useTodayData(userId: string | null): TodayDataResult {
   const tasksQuery = useTasksData(userId);
   
-  // Fetch ALL schedule entries from today onwards (not just today) to properly filter items
-  // This is necessary because we need to know if a task is scheduled for another day
-  // so we can hide it from today's view
-  // Use custom range starting from start of today (not current time) to include morning schedules
+  // Fetch schedule entries for filtering logic
+  // Note: Tasks already have schedule info in workItems (from /tasks/by-user response)
+  // We fetch schedule-entries mainly to:
+  // 1. Know which items are scheduled for other days (to hide from today)
+  // 2. Provide fallback schedule info for items without workItems
+  // 7 days is sufficient because IN_PROGRESS items show regardless of schedule date
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const endDate = new Date(startOfToday);
-  endDate.setDate(endDate.getDate() + 30); // 30 days ahead
+  endDate.setDate(endDate.getDate() + 7); // 7 days ahead (optimized from 30)
   
   const { data: scheduleData } = useScheduleData(
     userId,
-    { from: startOfToday, to: endDate }, // Custom range from start of today to +30 days
-    { status: STATUS.PLANNED, order: 'asc' }
+    { from: startOfToday, to: endDate }, // 7 days range for filtering
+    { order: 'asc' } // Fetch ALL statuses (PLANNED, IN_PROGRESS, DONE, SKIPPED)
   );
   
   const scheduleQuery = {
@@ -155,9 +157,9 @@ export function useTodayData(userId: string | null): TodayDataResult {
     // Step 1: Map tasks to TodayItems
     const mapped = mapTodayItems(tasksQuery.data);
     
-    // Step 2: Build schedule lookup
+    // Step 2: Build schedule lookup (include all statuses, not just PLANNED)
     const scheduleEntries = scheduleQuery.data ?? [];
-    const scheduleLookup = buildScheduleLookup(scheduleEntries, STATUS.PLANNED);
+    const scheduleLookup = buildScheduleLookup(scheduleEntries);
     
     // Step 3: Augment items with schedule data
     const augmentedItems = augmentWithSchedule(mapped, scheduleLookup);

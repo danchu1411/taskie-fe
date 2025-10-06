@@ -56,38 +56,7 @@ export const TaskCard = React.memo(function TaskCard({
   // Determine if task can be scheduled
   const canSchedule = !hasChecklist;
 
-  // Calculate derived task status based on checklist items
-  const derivedTaskStatus = useMemo(() => {
-    if (!hasChecklist) return task.status;
-    
-    const checklist = task.checklist!;
-    const statuses = checklist.map(item => item.status);
-    
-    // If all items are done, task should be done
-    if (statuses.every(status => status === STATUS.DONE)) {
-      return STATUS.DONE;
-    }
-    
-    // If any item is in progress, task should be in progress
-    if (statuses.some(status => status === STATUS.IN_PROGRESS)) {
-      return STATUS.IN_PROGRESS;
-    }
-    
-    // If any item is skipped, task should be skipped
-    if (statuses.some(status => status === STATUS.SKIPPED)) {
-      return STATUS.SKIPPED;
-    }
-    
-    // If all items are planned, task should be planned
-    if (statuses.every(status => status === STATUS.PLANNED)) {
-      return STATUS.PLANNED;
-    }
-    
-    return task.status;
-  }, [task.status, task.checklist, hasChecklist]);
 
-  // Check if task status needs to be updated
-  const needsStatusUpdate = derivedTaskStatus !== task.status;
 
   // DnD for checklist
   const sensors = useSensors(
@@ -122,95 +91,91 @@ export const TaskCard = React.memo(function TaskCard({
 
     return (
       <div ref={setNodeRef} style={style} key={item.checklist_item_id} className={clsx(
-        "group p-3 rounded-lg border transition-all duration-200",
-        item.status === STATUS.DONE 
-          ? "bg-green-50 border-green-200" 
-          : item.status === STATUS.IN_PROGRESS
-          ? "bg-amber-50 border-amber-200"
-          : item.status === STATUS.SKIPPED
-          ? "bg-slate-50 border-slate-200"
-          : "bg-white border-slate-200 hover:border-slate-300"
+        "group relative rounded-lg border transition-all duration-200 hover:shadow-sm mx-4 sm:mx-6 mb-2",
+        "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
       )}>
-        <div className="flex items-start gap-3">
+        {/* Status indicator line */}
+        <div className={clsx(
+          "absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg",
+          item.status === STATUS.DONE 
+            ? "bg-green-500" 
+            : item.status === STATUS.IN_PROGRESS
+            ? "bg-amber-500"
+            : item.status === STATUS.SKIPPED
+            ? "bg-slate-400"
+            : "bg-slate-300"
+        )} />
+
+        <div className="flex items-start gap-3 p-4 pl-5">
           {/* Drag Handle */}
-          <div className="flex flex-col items-center gap-1 mt-1" {...listeners} {...attributes}>
-            <div className="w-4 h-4 text-slate-400 cursor-move hover:text-slate-600">
+          <div className="flex flex-col items-center gap-1 mt-0.5" {...listeners} {...attributes}>
+            <div className="w-4 h-4 text-slate-400 cursor-move hover:text-slate-600 transition-colors">
               <svg fill="currentColor" viewBox="0 0 20 20">
                 <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
               </svg>
             </div>
-            <span className="text-xs text-slate-400 font-mono">#{item.order_index}</span>
+            <span className="text-xs text-slate-400 font-mono leading-none">#{item.order_index}</span>
           </div>
 
-          {/* Checkbox */}
-          <input 
-            type="checkbox"
-            checked={item.status === STATUS.DONE}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const newStatus = e.target.checked ? STATUS.DONE : STATUS.PLANNED;
-              onChecklistItemStatusChange?.(item.checklist_item_id, newStatus);
-            }}
-            className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
-          />
+          {/* Status Badge (replaces checkbox) */}
+          <div className="flex-shrink-0 mt-0.5">
+            <StatusBadge 
+              status={item.status} 
+              onClick={() => onChecklistItemOpenStatusModal?.(item)}
+              disabled={isChecklistItemUpdating?.(item.checklist_item_id)}
+            />
+          </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex-1 min-w-0 space-y-3">
             {/* Title Row */}
-            <div className="flex items-start justify-between gap-2">
-              <h5 className={clsx(
-                "text-sm font-medium leading-tight flex-1",
-                item.status === STATUS.DONE 
-                  ? "line-through text-slate-500" 
-                  : "text-slate-900"
-              )}>
-                {item.title}
-              </h5>
+            <div className="flex items-start justify-between gap-3">
+                <h5 className={clsx(
+                "text-sm font-medium leading-tight flex-1 pr-2",
+                  item.status === STATUS.DONE 
+                    ? "line-through text-slate-500" 
+                    : "text-slate-900"
+                )}>
+                  {item.title}
+                </h5>
 
-              {/* Status and Actions */}
-              <div className="flex items-center gap-2">
-                <StatusBadge 
-                  status={item.status} 
-                  onClick={() => onChecklistItemOpenStatusModal?.(item)}
-                  disabled={isChecklistItemUpdating?.(item.checklist_item_id)}
-                />
-                {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Actions */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                   {onSchedule && (
                     <button
                       onClick={() => onSchedule(item)}
-                      className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
                       title="Schedule"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </button>
                   )}
                   <button
                     onClick={() => onEditChecklistItem?.(item)}
-                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-all"
                     title="Edit"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   <button
                     onClick={() => onDeleteChecklistItem?.(item.checklist_item_id)}
-                    className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
                     title="Delete"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
-              </div>
             </div>
 
             {/* Schedule Info - if scheduled */}
             {item.start_at && item.planned_minutes && (
-              <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2.5 py-1.5 rounded-md">
+              <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-3 py-2 rounded-lg">
                 <svg className="w-3.5 h-3.5 flex-shrink-0 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -232,7 +197,7 @@ export const TaskCard = React.memo(function TaskCard({
                 <div className="flex items-center gap-1">
                   <DueDateBadge deadline={effectiveDeadline} />
                   {hasDeadlineConflict && (
-                    <span className="text-xs text-red-500" title="Deadline conflict with task">
+                    <span className="text-xs text-red-500 font-medium" title="Deadline conflict with task">
                       ⚠️ conflict
                     </span>
                   )}
@@ -250,29 +215,11 @@ export const TaskCard = React.memo(function TaskCard({
       {/* Top Bar - Meta Info */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-slate-50/80 border-b border-slate-200">
         <div className="flex items-center gap-3 flex-wrap">
-          <StatusBadge 
-            status={task.derived_status} 
-            onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
-            disabled={isUpdating || !task.is_atomic}
-          />
-          {needsStatusUpdate && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-amber-600 font-medium">→</span>
               <StatusBadge 
-                status={derivedTaskStatus} 
-                className="opacity-75"
+                status={task.derived_status} 
+                onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
+                disabled={isUpdating || !task.is_atomic}
               />
-              <button
-                onClick={() => {
-                  console.log('Auto-update task status to:', derivedTaskStatus);
-                }}
-                className="text-xs text-amber-600 hover:text-amber-800 transition-colors underline"
-                title="Click to update task status automatically"
-              >
-                Update
-              </button>
-            </div>
-          )}
           <div className="h-4 w-px bg-slate-300" />
           <PriorityBadge priority={task.priority ?? null} />
           <DueDateBadge deadline={task.deadline} />
@@ -305,7 +252,7 @@ export const TaskCard = React.memo(function TaskCard({
             </svg>
             Edit
           </button>
-          <button
+                  <button
             type="button"
             onClick={() => onDelete((task.task_id || (task as any).id))}
             className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-100"
@@ -315,23 +262,23 @@ export const TaskCard = React.memo(function TaskCard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
             Delete
-          </button>
-        </div>
-      </div>
+                  </button>
+                </div>
+            </div>
 
       {/* Main Content */}
       <div className="p-4 sm:p-6">
         {/* Title */}
         <h3 className="font-semibold text-slate-900 text-lg sm:text-xl leading-tight mb-2">
-          {task.title}
-        </h3>
-        
-        {/* Description */}
-        {task.description && (
-          <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
-            {task.description}
-          </p>
-        )}
+                  {task.title}
+                </h3>
+          
+          {/* Description */}
+          {task.description && (
+            <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
+              {task.description}
+            </p>
+          )}
 
         {/* Schedule Section - For Atomic Tasks */}
         {canSchedule && (
@@ -345,22 +292,22 @@ export const TaskCard = React.memo(function TaskCard({
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-indigo-900">
                       {new Date(task.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(task.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+              </span>
                     <span className="text-xs text-indigo-400">·</span>
                     <span className="text-sm font-medium text-indigo-700">
                       {task.planned_minutes} minutes
-                    </span>
+              </span>
                   </div>
                 </div>
                 {onSchedule && (
-                  <button
+              <button
                     type="button"
                     onClick={() => onSchedule(task)}
                     className="px-3 py-1.5 text-xs font-medium text-indigo-700 hover:text-indigo-900 transition-colors underline decoration-dotted"
-                  >
+              >
                     Reschedule
-                  </button>
-                )}
+              </button>
+            )}
               </div>
             ) : task.start_at ? (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
@@ -422,7 +369,9 @@ export const TaskCard = React.memo(function TaskCard({
 
       {/* Checklist Items */}
       {hasChecklist && expanded && (
-        <div className="mt-4 border-t border-slate-200 pt-4">
+        <div className="mt-4 border-t border-slate-200">
+          {/* Header - with padding */}
+          <div className="px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-slate-700">Checklist Items</h4>
             <div className="flex items-center gap-2">
@@ -434,10 +383,12 @@ export const TaskCard = React.memo(function TaskCard({
                   className="bg-green-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${totalChecklist > 0 ? (completedChecklist / totalChecklist) * 100 : 0}%` }}
                 />
+                </div>
               </div>
             </div>
           </div>
           
+          {/* Checklist Items - Full width, no padding */}
           <DndContext sensors={sensors} onDragEnd={handleChecklistDragEnd}>
             <SortableContext items={orderedChecklist.map(i => i.checklist_item_id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
@@ -448,8 +399,8 @@ export const TaskCard = React.memo(function TaskCard({
             </SortableContext>
           </DndContext>
           
-          {/* Add new checklist item */}
-          <div className="mt-3 pt-3 border-t border-slate-200">
+          {/* Add new checklist item - with padding */}
+          <div className="px-4 sm:px-6 py-3 border-t border-slate-200">
             <button
               onClick={() => onAddChecklist?.(task)}
               className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"

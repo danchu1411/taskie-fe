@@ -272,7 +272,10 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
   // Create Checklist Item Mutation
   const createChecklistItemMutation = useMutation({
     mutationFn: async ({ taskId, payload }: { taskId: string; payload: Partial<ChecklistItemRecord> }) => {
-      const response = await api.post<ChecklistItemRecord>(`/checklist-items/${taskId}`, payload);
+      // Fix: Use correct API endpoint like TodayPage
+      const response = await api.post(`/checklist-items/${taskId}/checklist`, { 
+        checklist: [payload] 
+      });
       return response.data;
     },
     onSuccess: () => {

@@ -526,7 +526,7 @@ export function mapTodayItems(payload: TaskListResponse | undefined): TodayItem[
  */
 export function buildScheduleLookup(
   scheduleEntries: ScheduleEntry[],
-  filterStatus: StatusValue = STATUS.PLANNED
+  filterStatus?: StatusValue
 ): Map<string, ScheduleEntry> {
   const scheduleLookup = new Map<string, ScheduleEntry>();
 
@@ -575,9 +575,13 @@ export function buildScheduleLookup(
     }
   };
 
-  // Build schedule lookup map
+  // Build schedule lookup map (include all entries if no filter specified)
   for (const entry of scheduleEntries) {
-    if (entry.status !== undefined && entry.status !== filterStatus) continue;
+    // If filterStatus is undefined, include all entries
+    // Otherwise, only include entries matching the filter status
+    if (filterStatus !== undefined && entry.status !== undefined && entry.status !== filterStatus) {
+      continue;
+    }
     register(entry);
   }
 

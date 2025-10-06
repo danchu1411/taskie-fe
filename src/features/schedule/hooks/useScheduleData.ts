@@ -153,7 +153,7 @@ export function useScheduleData(
   options: UseScheduleDataOptions = {}
 ): UseScheduleDataResult {
   const {
-    status = STATUS.PLANNED,
+    status, // No default - undefined means fetch all statuses
     page,
     pageSize,
     order = 'asc',
