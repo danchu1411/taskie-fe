@@ -1,12 +1,13 @@
 import React from "react";
-import type { TaskRecord, StatusValue } from "../lib";
+import type { TaskRecord, ChecklistItemRecord, StatusValue } from "../lib";
 import { STATUS, clsx } from "../lib";
 
 export interface TaskStatusModalProps {
   open: boolean;
-  task: TaskRecord | null;
+  task: TaskRecord | ChecklistItemRecord | null;
   onStatusSelect: (status: StatusValue) => void;
   onClose: () => void;
+  title?: string; // Optional custom title
 }
 
 export const TaskStatusModal = React.memo(function TaskStatusModal({
@@ -14,8 +15,13 @@ export const TaskStatusModal = React.memo(function TaskStatusModal({
   task,
   onStatusSelect,
   onClose,
+  title,
 }: TaskStatusModalProps) {
   if (!open || !task) return null;
+  
+  // Determine if this is a checklist item
+  const isChecklistItem = 'checklist_item_id' in task;
+  const displayTitle = title || (isChecklistItem ? 'Change Checklist Item Status' : 'Change Status');
 
   const statusOptions = [
     { value: STATUS.PLANNED, label: "Planned", description: "Task is planned but not started" },
@@ -28,7 +34,7 @@ export const TaskStatusModal = React.memo(function TaskStatusModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Change Status</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{displayTitle}</h3>
           <p className="text-sm text-slate-600">{task.title}</p>
         </div>
         

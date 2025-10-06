@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import api from "../../lib/api";
 import type { TaskListResponse } from "../../lib/types";
-import { useScheduleData, type ScheduleEntry } from "../../features/schedule/hooks/useScheduleData";
+import { useScheduleData } from "../../features/schedule/hooks/useScheduleData";
 import { CACHE_CONFIG, PAGINATION } from "../../features/schedule/constants/cacheConfig";
 
 type WorkItemInfo = {

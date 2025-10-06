@@ -27,6 +27,7 @@ export function getTaskDisplayStatus(task: TaskRecord): StatusValue {
 
 // Task-related interfaces
 export interface TaskRecord {
+  id?: string; // Backend may return 'id' instead of 'task_id'
   task_id: string;
   user_id: string;
   title: string;
@@ -47,6 +48,7 @@ export interface TaskRecord {
 }
 
 export interface ChecklistItemRecord {
+  id?: string; // Backend may return 'id' instead of 'checklist_item_id'
   checklist_item_id: string;
   task_id: string;
   title: string;

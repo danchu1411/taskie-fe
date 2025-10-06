@@ -21,12 +21,15 @@ export interface TaskCardProps {
   onDelete: (taskId: string) => void;
   onStatusChange: (task: TaskRecord) => void;
   onStart?: (task: TaskRecord) => void;
+  onSchedule?: (item: TaskRecord | ChecklistItemRecord) => void;
   onAddChecklist?: (task: TaskRecord) => void;
   onEditChecklistItem?: (item: ChecklistItemRecord) => void;
   onDeleteChecklistItem?: (itemId: string) => void;
   onChecklistItemStatusChange?: (itemId: string, newStatus: StatusValue) => void;
+  onChecklistItemOpenStatusModal?: (item: ChecklistItemRecord) => void;
   onChecklistItemReorder?: (itemId: string, targetOrder: number) => void;
   isUpdating?: boolean;
+  isChecklistItemUpdating?: (itemId: string) => boolean;
 }
 
 export const TaskCard = React.memo(function TaskCard({ 
@@ -35,12 +38,15 @@ export const TaskCard = React.memo(function TaskCard({
   onDelete, 
   onStatusChange,
   onStart,
+  onSchedule,
   onAddChecklist,
   onEditChecklistItem,
   onDeleteChecklistItem,
   onChecklistItemStatusChange,
+  onChecklistItemOpenStatusModal,
   onChecklistItemReorder,
-  isUpdating = false
+  isUpdating = false,
+  isChecklistItemUpdating
 }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const hasChecklist = task.checklist && task.checklist.length > 0;
@@ -180,7 +186,11 @@ export const TaskCard = React.memo(function TaskCard({
 
               {/* Status and Actions */}
               <div className="flex items-center gap-2">
-                <StatusBadge status={item.status} />
+                <StatusBadge 
+                  status={item.status} 
+                  onClick={() => onChecklistItemOpenStatusModal?.(item)}
+                  disabled={isChecklistItemUpdating?.(item.checklist_item_id)}
+                />
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
@@ -319,7 +329,21 @@ export const TaskCard = React.memo(function TaskCard({
           >
             Edit
           </button>
-            {/* Start button for tasks that can be scheduled */}
+
+          {/* Schedule button for atomic tasks */}
+          {onSchedule && canSchedule && (
+            <button
+              type="button"
+              onClick={() => onSchedule(task)}
+              className="rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200"
+              title={task.start_at ? "Reschedule" : "Schedule"}
+              aria-label="Schedule task"
+            >
+              {task.start_at ? "Reschedule" : "Schedule"}
+            </button>
+          )}
+
+          {/* Start button for tasks that can be scheduled */}
           {onStart && canSchedule && (
             <button
               type="button"

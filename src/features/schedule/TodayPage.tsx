@@ -16,7 +16,7 @@ import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, SystemError } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
-import { type ScheduleEntry, SCHEDULE_QUERY_KEY } from "./hooks/useScheduleData";
+import { SCHEDULE_QUERY_KEY } from "./hooks/useScheduleData";
 import useTodayTimer from "./useTodayTimer";
 import { getDefaultFocusDuration } from "./constants";
 import { DEFAULT_VALUES, TIMER_INTERVALS } from "./constants/cacheConfig";
@@ -544,6 +544,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         deadline: undefined,
         priority: DEFAULT_VALUES.DEFAULT_PRIORITY,
         status: STATUS.PLANNED,
+        derived_status: STATUS.PLANNED,
         is_atomic: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

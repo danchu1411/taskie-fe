@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useUpcomingSchedule, type ScheduleEntry } from "./hooks/useScheduleData";
+import { useUpcomingSchedule } from "./hooks/useScheduleData";
 
 type UpcommingProps = {
   className?: string;

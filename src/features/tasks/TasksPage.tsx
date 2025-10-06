@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import type { 
   TaskRecord, 
@@ -6,12 +7,17 @@ import type {
   StatusValue, 
   ChecklistItemRecord
 } from "../../lib";
+import { STATUS } from "../../lib";
 import { useTasksData } from "./hooks/useTasksData";
 import { useTasksMutations } from "./hooks/useTasksMutations";
+import { getDefaultFocusDuration } from "../schedule/constants";
+import { SCHEDULE_QUERY_KEY } from "../schedule/hooks/useScheduleData";
+import api from "../../lib/api";
 import { 
   NavigationBar, 
   TaskModal, 
   ChecklistItemModal,
+  ScheduleModal,
   SystemError
 } from "../../components/ui";
 import {
@@ -24,6 +30,7 @@ import {
 // Main Tasks Page Component
 export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TaskFilters>({
     search: "",
     status: 'all',
@@ -42,6 +49,18 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   const [editingChecklistItem, setEditingChecklistItem] = useState<ChecklistItemRecord | null>(null);
   const [checklistModalTaskId, setChecklistModalTaskId] = useState<string | null>(null);
+  
+  // Checklist item status modal state
+  const [checklistStatusModalOpen, setChecklistStatusModalOpen] = useState(false);
+  const [checklistStatusModalItem, setChecklistStatusModalItem] = useState<ChecklistItemRecord | null>(null);
+  const [pendingChecklistItemId, setPendingChecklistItemId] = useState<string | null>(null);
+
+  // Schedule modal state
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [schedulingItem, setSchedulingItem] = useState<TaskRecord | ChecklistItemRecord | null>(null);
+  const [scheduleStartAt, setScheduleStartAt] = useState("");
+  const [scheduleMinutes, setScheduleMinutes] = useState(getDefaultFocusDuration());
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
   // Data fetching
   const { tasksByStatus, tasks, isLoading, error, refetch } = useTasksData(user?.id || null, filters);
@@ -50,16 +69,63 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const {
     createTask,
     updateTask,
+    updateChecklistItem,
     deleteTask,
     createChecklistItem,
-    updateChecklistItem,
     deleteChecklistItem,
     reorderChecklistItem,
     changeTaskStatus,
     changeChecklistItemStatus,
     isCreating,
     isUpdating,
+    isUpdatingChecklist,
   } = useTasksMutations(user?.id || null);
+
+  // Schedule mutations
+  const scheduleMutation = useMutation<void, unknown, { workItemId: string; startAt: string; plannedMinutes: number }>({
+    mutationFn: async ({ workItemId, startAt, plannedMinutes }) => {
+      const payload = {
+        workItemId,
+        startAt,
+        plannedMinutes,
+        status: STATUS.PLANNED,
+      };
+      console.log('📤 POST /schedule-entries payload:', payload);
+      await api.post("/schedule-entries", payload);
+    },
+    onSuccess: () => {
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY, 
+        type: "active" 
+      });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
+      setScheduleModalOpen(false);
+      setSchedulingItem(null);
+      setIsEditingSchedule(false);
+    },
+  });
+
+  // const updateScheduleMutation = useMutation<void, unknown, { entryId: string; startAt: string; plannedMinutes: number }>({
+  //   mutationFn: async ({ entryId, startAt, plannedMinutes }) => {
+  //     console.log('📤 PATCH /schedule-entries/' + entryId, { startAt, plannedMinutes });
+  //     await api.patch(`/schedule-entries/${entryId}`, {
+  //       startAt,
+  //       plannedMinutes,
+  //     });
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.refetchQueries({ 
+  //       queryKey: SCHEDULE_QUERY_KEY, 
+  //       type: "active" 
+  //     });
+  //     queryClient.invalidateQueries({ queryKey: ["tasks"] });
+  //     queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
+  //     setScheduleModalOpen(false);
+  //     setSchedulingItem(null);
+  //     setIsEditingSchedule(false);
+  //   },
+  // });
 
   // Handlers
   const handleCreateTask = useCallback((taskData: Partial<TaskRecord>) => {
@@ -196,9 +262,109 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     changeChecklistItemStatus(itemId, newStatus);
   }, [changeChecklistItemStatus]);
 
+  const openChecklistStatusModal = useCallback((item: ChecklistItemRecord) => {
+    setChecklistStatusModalItem(item);
+    setChecklistStatusModalOpen(true);
+  }, []);
+
+  const handleChecklistStatusModalChange = useCallback((newStatus: StatusValue) => {
+    if (!checklistStatusModalItem) return;
+    
+    setPendingChecklistItemId(checklistStatusModalItem.checklist_item_id);
+    changeChecklistItemStatus(checklistStatusModalItem.checklist_item_id, newStatus);
+    setChecklistStatusModalOpen(false);
+    setChecklistStatusModalItem(null);
+    setPendingChecklistItemId(null);
+  }, [checklistStatusModalItem, changeChecklistItemStatus]);
+
   const handleChecklistItemReorder = useCallback((itemId: string, targetOrder: number) => {
     reorderChecklistItem(itemId, targetOrder);
   }, [reorderChecklistItem]);
+
+  // Schedule handlers
+  const openScheduleModal = useCallback((item: TaskRecord | ChecklistItemRecord) => {
+    console.log('📅 openScheduleModal called with item:', {
+      title: item.title,
+      start_at: item.start_at,
+      planned_minutes: item.planned_minutes,
+      isChecklistItem: 'checklist_item_id' in item
+    });
+    
+    setSchedulingItem(item);
+    
+    // Check if item already has schedule
+    const existingStartAt = item.start_at;
+    const existingMinutes = item.planned_minutes;
+    
+    if (existingStartAt && existingMinutes) {
+      // EDIT MODE: Item already has schedule
+      console.log('✏️ EDIT MODE - Loading existing schedule');
+      setIsEditingSchedule(true);
+      const utcDate = new Date(existingStartAt);
+      const year = utcDate.getFullYear();
+      const month = String(utcDate.getMonth() + 1).padStart(2, '0');
+      const day = String(utcDate.getDate()).padStart(2, '0');
+      const hours = String(utcDate.getHours()).padStart(2, '0');
+      const minutes = String(utcDate.getMinutes()).padStart(2, '0');
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      console.log('Existing schedule:', { startAt: localTimeString, minutes: existingMinutes });
+      setScheduleStartAt(localTimeString);
+      setScheduleMinutes(existingMinutes);
+    } else {
+      // CREATE MODE: Item doesn't have schedule
+      console.log('➕ CREATE MODE - Setting default schedule');
+      setIsEditingSchedule(false);
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+      setScheduleStartAt(localTimeString);
+      setScheduleMinutes(getDefaultFocusDuration());
+    }
+    
+    setScheduleModalOpen(true);
+  }, []);
+
+  const handleScheduleSave = useCallback(() => {
+    if (!schedulingItem) return;
+
+    const startAtDate = new Date(scheduleStartAt);
+    if (Number.isNaN(startAtDate.getTime())) {
+      console.error("Invalid start time");
+      return;
+    }
+
+    const isChecklistItem = 'checklist_item_id' in schedulingItem;
+    
+    // Get workItemId (checklist_item_id or task_id)
+    const workItemId = isChecklistItem 
+      ? schedulingItem.checklist_item_id 
+      : (schedulingItem as any).id || schedulingItem.task_id;
+    
+    console.log('💾 handleScheduleSave called:', {
+      isChecklistItem,
+      workItemId,
+      startAt: startAtDate.toISOString(),
+      planned_minutes: scheduleMinutes,
+    });
+    
+    // Always CREATE new schedule entry
+    // Backend will handle if one already exists (upsert or replace)
+    console.log('Creating/Updating schedule entry for:', workItemId);
+    scheduleMutation.mutate({
+      workItemId,
+      startAt: startAtDate.toISOString(),
+      plannedMinutes: scheduleMinutes,
+    });
+  }, [
+    schedulingItem, 
+    scheduleStartAt, 
+    scheduleMinutes, 
+    scheduleMutation
+  ]);
 
   const handleCloseModal = useCallback(() => {
     setModalOpen(false);
@@ -294,11 +460,14 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onDelete={handleDeleteTask}
           onStatusChange={openStatusModal}
           onStart={handleStart}
+          onSchedule={openScheduleModal}
           onAddChecklist={handleAddChecklist}
           onEditChecklistItem={handleEditChecklistItem}
           onDeleteChecklistItem={handleDeleteChecklistItem}
           onChecklistItemStatusChange={handleChecklistItemStatusChange}
+          onChecklistItemOpenStatusModal={openChecklistStatusModal}
           onChecklistItemReorder={handleChecklistItemReorder}
+          isChecklistItemUpdating={(itemId: string) => pendingChecklistItemId === itemId}
           onCreateTask={() => setModalOpen(true)}
         />
       ) : (
@@ -344,6 +513,35 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
         task={statusModalTask}
         onStatusSelect={handleStatusModalChange}
         onClose={() => setStatusModalOpen(false)}
+      />
+
+      {/* Checklist Item Status Modal */}
+      <TaskStatusModal
+        open={checklistStatusModalOpen}
+        task={checklistStatusModalItem}
+        onStatusSelect={handleChecklistStatusModalChange}
+        onClose={() => {
+          setChecklistStatusModalOpen(false);
+          setChecklistStatusModalItem(null);
+        }}
+        title="Change Checklist Item Status"
+      />
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        open={scheduleModalOpen}
+        item={schedulingItem}
+        startAt={scheduleStartAt}
+        minutes={scheduleMinutes}
+        onStartAtChange={setScheduleStartAt}
+        onMinutesChange={setScheduleMinutes}
+        onSave={handleScheduleSave}
+        onCancel={() => {
+          setScheduleModalOpen(false);
+          setSchedulingItem(null);
+        }}
+        loading={isUpdating || isUpdatingChecklist}
+        isEditMode={isEditingSchedule}
       />
       </div>
     </div>
