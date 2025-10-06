@@ -71,6 +71,7 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
       return tasksData.items;
     }
     
+    
     // Build lookup: work_item_id -> schedule entry
     const scheduleLookup = new Map<string, ScheduleEntry>();
     for (const entry of scheduleData) {
@@ -137,7 +138,7 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
     tasksQuery,
     tasksByStatus,
     flatList,
-    tasks: tasksData?.items || [],
+    tasks: mergedTasks, // Use mergedTasks instead of raw tasksData to include schedule info
     isLoading: tasksQuery.isLoading,
     error: tasksQuery.error,
     refetch: tasksQuery.refetch,

@@ -31,11 +31,11 @@ function statusLabel(value: StatusValue) {
 function priorityLabel(value: 1 | 2 | 3): string {
   switch (value) {
     case 1:
-      return "Want";
+      return "Must";    // Fix: 1 = Must (same as TasksPage)
     case 2:
-      return "Should";
+      return "Should";  // 2 = Should (same as TasksPage)
     case 3:
-      return "Must";
+      return "Want";    // Fix: 3 = Want (same as TasksPage)
     default:
       return "";
   }
@@ -44,11 +44,11 @@ function priorityLabel(value: 1 | 2 | 3): string {
 function getPriorityStyles(value: 1 | 2 | 3): string {
   switch (value) {
     case 1:
-      return "text-slate-500"; // Low priority - grey
+      return "text-red-600 font-semibold"; // Fix: 1 = Must (high priority - red, bold)
     case 2:
-      return "text-blue-600"; // Medium priority - blue
+      return "text-blue-600"; // 2 = Should (medium priority - blue)
     case 3:
-      return "text-red-600 font-semibold"; // High priority - red, bold
+      return "text-slate-500"; // Fix: 3 = Want (low priority - grey)
     default:
       return "text-slate-500";
   }
@@ -223,9 +223,9 @@ export const TodayTaskCard = memo(function TodayTaskCard({
           {item.priority && (
             <span className={`flex items-center gap-1 ${getPriorityStyles(item.priority)}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${
-                item.priority === 3 ? 'bg-red-500' : 
-                item.priority === 2 ? 'bg-blue-500' : 
-                'bg-slate-400'
+                item.priority === 1 ? 'bg-red-500' :    // Fix: 1 = Must (red)
+                item.priority === 2 ? 'bg-blue-500' :   // 2 = Should (blue)
+                'bg-slate-400'                          // Fix: 3 = Want (grey)
               }`}></span>
               {priorityLabel(item.priority)}
             </span>

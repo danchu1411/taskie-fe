@@ -147,13 +147,17 @@ export function normalizeWorkItem(
     "checklist_id",
   ]);
 
+  // Use derived_status for consistency with TasksPage
   const status =
+    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(workItemRecord, ["status"])) ??
     toStatus(readField(taskRecord, ["status"]));
 
+  // Use task priority for consistency with TasksPage
   const priority =
-    toPriority(readField(workItemRecord, ["priority"])) ??
-    toPriority(readField(taskRecord, ["priority", "effectivePriority"]));
+    toPriority(readField(taskRecord, ["priority", "effectivePriority"])) ??
+    toPriority(readField(workItemRecord, ["priority"]));
+
 
   const deadline =
     readField<string>(workItemRecord, ["deadline"]) ??
@@ -217,13 +221,17 @@ export function normalizeChecklist(
 
   const taskId = readField<string>(taskRecord, ["taskId", "task_id"]) ?? null;
 
+  // Use derived_status for consistency with TasksPage
   const status =
+    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(checklistRecord, ["status"])) ??
     toStatus(readField(taskRecord, ["status"]));
 
+  // Use task priority for consistency with TasksPage
   const priority =
-    toPriority(readField(checklistRecord, ["priority"])) ??
-    toPriority(readField(taskRecord, ["priority", "effectivePriority"]));
+    toPriority(readField(taskRecord, ["priority", "effectivePriority"])) ??
+    toPriority(readField(checklistRecord, ["priority"]));
+
 
   const deadline =
     readField<string>(checklistRecord, ["deadline"]) ??
@@ -260,7 +268,8 @@ export function normalizeTask(taskRecord: TaskRecord): TodayItem | null {
   const taskId = readField<string>(taskRecord, ["taskId", "task_id"]);
   if (!taskId) return null;
 
-  const status = toStatus(readField(taskRecord, ["status"]));
+  // Use derived_status for consistency with TasksPage
+  const status = toStatus(readField(taskRecord, ["derived_status"])) ?? toStatus(readField(taskRecord, ["status"]));
   const priority =
     toPriority(readField(taskRecord, ["priority", "effectivePriority"])) ?? null;
 

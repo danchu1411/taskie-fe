@@ -150,39 +150,21 @@ export const TaskCard = React.memo(function TaskCard({
               const newStatus = e.target.checked ? STATUS.DONE : STATUS.PLANNED;
               onChecklistItemStatusChange?.(item.checklist_item_id, newStatus);
             }}
-            className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0"
           />
 
           {/* Content */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 space-y-2">
+            {/* Title Row */}
             <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <h5 className={clsx(
-                  "text-sm font-medium leading-tight",
-                  item.status === STATUS.DONE 
-                    ? "line-through text-slate-500" 
-                    : "text-slate-900"
-                )}>
-                  {item.title}
-                </h5>
-                {/* Effective values */}
-                <div className="flex items-center gap-2 mt-2">
-                  {effectivePriority && (
-                    <PriorityBadge priority={effectivePriority} />
-                  )}
-
-                  {effectiveDeadline && (
-                    <div className="flex items-center gap-1">
-                      <DueDateBadge deadline={effectiveDeadline} />
-                      {hasDeadlineConflict && (
-                        <span className="text-xs text-red-500" title="Deadline conflict with task">
-                          ⚠️ conflict
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <h5 className={clsx(
+                "text-sm font-medium leading-tight flex-1",
+                item.status === STATUS.DONE 
+                  ? "line-through text-slate-500" 
+                  : "text-slate-900"
+              )}>
+                {item.title}
+              </h5>
 
               {/* Status and Actions */}
               <div className="flex items-center gap-2">
@@ -193,6 +175,17 @@ export const TaskCard = React.memo(function TaskCard({
                 />
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onSchedule && (
+                    <button
+                      onClick={() => onSchedule(item)}
+                      className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                      title="Schedule"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => onEditChecklistItem?.(item)}
                     className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
@@ -214,6 +207,38 @@ export const TaskCard = React.memo(function TaskCard({
                 </div>
               </div>
             </div>
+
+            {/* Schedule Info - if scheduled */}
+            {item.start_at && item.planned_minutes && (
+              <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 px-2.5 py-1.5 rounded-md">
+                <svg className="w-3.5 h-3.5 flex-shrink-0 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium text-indigo-900">
+                  {new Date(item.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(item.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className="text-indigo-400">·</span>
+                <span className="font-medium text-indigo-700">{item.planned_minutes}m</span>
+              </div>
+            )}
+
+            {/* Metadata Row */}
+            <div className="flex flex-wrap items-center gap-2">
+              {effectivePriority && (
+                <PriorityBadge priority={effectivePriority} />
+              )}
+
+              {effectiveDeadline && (
+                <div className="flex items-center gap-1">
+                  <DueDateBadge deadline={effectiveDeadline} />
+                  {hasDeadlineConflict && (
+                    <span className="text-xs text-red-500" title="Deadline conflict with task">
+                      ⚠️ conflict
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -221,149 +246,177 @@ export const TaskCard = React.memo(function TaskCard({
   }
 
   return (
-    <div className="group rounded-xl bg-white p-4 sm:p-6 shadow-sm border border-slate-200 transition-all duration-200 hover:shadow-md hover:border-slate-300">
-      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-        {/* Left: Main Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header: Status + Title + Type */}
-          <div className="flex items-start gap-3 mb-3">
-            <div className="flex items-center gap-2">
+    <div className="group rounded-xl bg-white shadow-sm border border-slate-200 transition-all duration-200 hover:shadow-md hover:border-slate-300 overflow-hidden">
+      {/* Top Bar - Meta Info */}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-slate-50/80 border-b border-slate-200">
+        <div className="flex items-center gap-3 flex-wrap">
+          <StatusBadge 
+            status={task.derived_status} 
+            onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
+            disabled={isUpdating || !task.is_atomic}
+          />
+          {needsStatusUpdate && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-amber-600 font-medium">→</span>
               <StatusBadge 
-                status={task.derived_status} 
-                onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
-                disabled={isUpdating || !task.is_atomic}
+                status={derivedTaskStatus} 
+                className="opacity-75"
               />
-              {needsStatusUpdate && (
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-amber-600 font-medium">
-                    →
-                  </span>
-                  <StatusBadge 
-                    status={derivedTaskStatus} 
-                    className="opacity-75"
-                  />
-                  <button
-                    onClick={() => {
-                      // TODO: Implement auto-update task status
-                      console.log('Auto-update task status to:', derivedTaskStatus);
-                    }}
-                    className="text-xs text-amber-600 hover:text-amber-800 transition-colors"
-                    title="Click to update task status automatically"
-                  >
-                    Update
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => {
+                  console.log('Auto-update task status to:', derivedTaskStatus);
+                }}
+                className="text-xs text-amber-600 hover:text-amber-800 transition-colors underline"
+                title="Click to update task status automatically"
+              >
+                Update
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-slate-900 text-base sm:text-lg leading-tight">
-                  {task.title}
-                </h3>
-                {needsStatusUpdate && (
-                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-700">
-                    Status needs update
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Description */}
-          {task.description && (
-            <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
-              {task.description}
-            </p>
           )}
-
-          {/* Info Row */}
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <PriorityBadge priority={task.priority ?? null} />
-            <DueDateBadge deadline={task.deadline} />
-            
-            {/* Scheduled Time */}
-            {canSchedule && task.start_at && (
-              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700">
-                Starts {new Date(task.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-
-            {/* Planned Duration */}
-            {canSchedule && task.planned_minutes && (
-              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
-                {task.planned_minutes}m planned
-              </span>
-            )}
-
-            {/* Checklist Progress (for container tasks) */}
-            {hasChecklist && (
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-              >
-                {expanded ? "▼" : "▶"}
-                {completedChecklist}/{totalChecklist} subtasks
-              </button>
-            )}
-
-            {/* Add Checklist */}
-            {!hasChecklist && onAddChecklist && (
-              <button
-                onClick={() => onAddChecklist(task)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
-              >
-                + Add Checklist
-              </button>
-            )}
-          </div>
+          <div className="h-4 w-px bg-slate-300" />
+          <PriorityBadge priority={task.priority ?? null} />
+          <DueDateBadge deadline={task.deadline} />
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex flex-wrap gap-2 opacity-100 sm:opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={() => onEdit(task)}
-            className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200"
-            title="Edit"
-            aria-label="Edit task"
-          >
-            Edit
-          </button>
-
-          {/* Schedule button for atomic tasks */}
-          {onSchedule && canSchedule && (
-            <button
-              type="button"
-              onClick={() => onSchedule(task)}
-              className="rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200"
-              title={task.start_at ? "Reschedule" : "Schedule"}
-              aria-label="Schedule task"
-            >
-              {task.start_at ? "Reschedule" : "Schedule"}
-            </button>
-          )}
-
-          {/* Start button for tasks that can be scheduled */}
+        {/* Quick Actions */}
+        <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 transition-opacity group-hover:opacity-100">
           {onStart && canSchedule && (
             <button
               type="button"
               onClick={() => onStart(task)}
-              className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex items-center gap-1 rounded-md bg-indigo-500 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-600"
               title="Start Timer"
-              aria-label="Start focus timer"
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               Start
             </button>
           )}
           <button
             type="button"
-            onClick={() => onDelete((task.task_id || (task as any).id))}
-            className="rounded-lg bg-red-100 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-200"
-            title="Delete"
-            aria-label="Delete task"
+            onClick={() => onEdit(task)}
+            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200"
+            title="Edit"
           >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete((task.task_id || (task as any).id))}
+            className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-100"
+            title="Delete"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
             Delete
           </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="p-4 sm:p-6">
+        {/* Title */}
+        <h3 className="font-semibold text-slate-900 text-lg sm:text-xl leading-tight mb-2">
+          {task.title}
+        </h3>
+        
+        {/* Description */}
+        {task.description && (
+          <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
+            {task.description}
+          </p>
+        )}
+
+        {/* Schedule Section - For Atomic Tasks */}
+        {canSchedule && (
+          <div className="mb-4">
+            {task.start_at && task.planned_minutes ? (
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-indigo-200">
+                <div className="flex items-center gap-2 flex-1">
+                  <svg className="w-5 h-5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-indigo-900">
+                      {new Date(task.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(task.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="text-xs text-indigo-400">·</span>
+                    <span className="text-sm font-medium text-indigo-700">
+                      {task.planned_minutes} minutes
+                    </span>
+                  </div>
+                </div>
+                {onSchedule && (
+                  <button
+                    type="button"
+                    onClick={() => onSchedule(task)}
+                    className="px-3 py-1.5 text-xs font-medium text-indigo-700 hover:text-indigo-900 transition-colors underline decoration-dotted"
+                  >
+                    Reschedule
+                  </button>
+                )}
+              </div>
+            ) : task.start_at ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-indigo-50 border border-indigo-200">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium text-indigo-800">
+                  Starts {new Date(task.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            ) : onSchedule ? (
+              <button
+                type="button"
+                onClick={() => onSchedule(task)}
+                className="flex items-center gap-2 p-3 rounded-lg border-2 border-dashed border-slate-300 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 transition-all w-full"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-sm font-medium">Schedule this task</span>
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {/* Checklist & Actions */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Checklist Progress */}
+          {hasChecklist && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors"
+            >
+              <span>{expanded ? "▼" : "▶"}</span>
+              <span>{completedChecklist}/{totalChecklist} subtasks</span>
+              <div className="w-16 bg-emerald-200 rounded-full h-1.5 ml-1">
+                <div 
+                  className="bg-emerald-600 h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${totalChecklist > 0 ? (completedChecklist / totalChecklist) * 100 : 0}%` }}
+                />
+              </div>
+            </button>
+          )}
+
+          {/* Add Checklist */}
+          {!hasChecklist && onAddChecklist && (
+            <button
+              onClick={() => onAddChecklist(task)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 hover:border-violet-300 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Checklist
+            </button>
+          )}
         </div>
       </div>
 
