@@ -495,8 +495,8 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
       ) : (
         <TaskDisplayBoardView
           tasks={tasks}
-          isUpdating={isUpdating}
-          pendingStatusId={pendingStatusId}
+          isUpdating={false}
+          pendingStatusId={null}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
           onStatusChange={openStatusModal}

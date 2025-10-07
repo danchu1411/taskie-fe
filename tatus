@@ -1,0 +1,43 @@
+warning: in the working copy of 'src/features/tasks/TasksPage.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/features/tasks/TasksPage.tsx b/src/features/tasks/TasksPage.tsx[m
+[1mindex 3aff5af..b6bfc30 100644[m
+[1m--- a/src/features/tasks/TasksPage.tsx[m
+[1m+++ b/src/features/tasks/TasksPage.tsx[m
+[36m@@ -43,7 +43,6 @@[m [mexport default function TasksPage({ onNavigate }: { onNavigate?: (path: string)[m
+   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);[m
+   const [statusModalOpen, setStatusModalOpen] = useState(false);[m
+   const [statusModalTask, setStatusModalTask] = useState<TaskRecord | null>(null);[m
+[31m-  const [pendingStatusId] = useState<string | null>(null);[m
+   [m
+   // Checklist item modal state[m
+   const [checklistModalOpen, setChecklistModalOpen] = useState(false);[m
+[36m@@ -77,7 +76,6 @@[m [mexport default function TasksPage({ onNavigate }: { onNavigate?: (path: string)[m
+     changeChecklistItemStatus,[m
+     isCreating,[m
+     isUpdating,[m
+[31m-    isUpdatingChecklist,[m
+   } = useTasksMutations(user?.id || null);[m
+ [m
+   // Schedule mutations - CREATE[m
+[36m@@ -476,8 +474,8 @@[m [mexport default function TasksPage({ onNavigate }: { onNavigate?: (path: string)[m
+         <TaskListView[m
+           tasks={tasks}[m
+           filters={filters}[m
+[31m-          isUpdating={isUpdating}[m
+[31m-          pendingStatusId={pendingStatusId}[m
+[32m+[m[32m          isUpdating={false}[m
+[32m+[m[32m          pendingStatusId={null}[m
+           onEdit={handleEditTask}[m
+           onDelete={handleDeleteTask}[m
+           onStatusChange={openStatusModal}[m
+[36m@@ -495,8 +493,8 @@[m [mexport default function TasksPage({ onNavigate }: { onNavigate?: (path: string)[m
+       ) : ([m
+         <TaskDisplayBoardView[m
+           tasks={tasks}[m
+[31m-          isUpdating={isUpdating}[m
+[31m-          pendingStatusId={pendingStatusId}[m
+[32m+[m[32m          isUpdating={false}[m
+[32m+[m[32m          pendingStatusId={null}[m
+           onEdit={handleEditTask}[m
+           onDelete={handleDeleteTask}[m
+           onStatusChange={openStatusModal}[m

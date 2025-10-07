@@ -36,6 +36,7 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
     // If task has checklist items, show each checklist item instead of the task
     if (task.checklist && task.checklist.length > 0) {
       console.log('✅ Task has checklist, showing checklist items');
+      const taskId = task.task_id || (task as any).id || "";
       for (const checklistItem of task.checklist) {
         displayItems.push({
           id: checklistItem.checklist_item_id,
@@ -47,7 +48,7 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
           deadline: checklistItem.deadline ?? task.deadline,
           startAt: checklistItem.start_at ?? null,
           plannedMinutes: checklistItem.planned_minutes ?? null,
-          taskId: task.task_id,
+          taskId: taskId,
           checklistItemId: checklistItem.checklist_item_id,
           originalTask: task,
           originalChecklistItem: checklistItem,
@@ -56,8 +57,9 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
     } else {
       console.log('❌ Task has no checklist, showing task itself');
       // If task has no checklist, show the task itself
+      const taskId = task.task_id || (task as any).id || "";
       displayItems.push({
-        id: task.task_id,
+        id: taskId,
         source: "task",
         title: task.title,
         parentTitle: null,
@@ -66,7 +68,7 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
         deadline: task.deadline,
         startAt: task.start_at ?? null,
         plannedMinutes: task.planned_minutes ?? null,
-        taskId: task.task_id,
+        taskId: taskId,
         checklistItemId: null,
         originalTask: task,
       });

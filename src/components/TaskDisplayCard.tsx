@@ -80,14 +80,16 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <div 
+            className="flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity flex-shrink-0"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             {onStart && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onStart();
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
                 className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
                 title="Start"
                 disabled={isUpdating}
@@ -104,7 +106,6 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
                   e.stopPropagation();
                   onSchedule();
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
                 className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
                 title="Schedule"
                 disabled={isUpdating}
@@ -119,7 +120,6 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
                 e.stopPropagation();
                 onEdit();
               }}
-              onPointerDown={(e) => e.stopPropagation()}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-all"
               title="Edit"
               disabled={isUpdating}
@@ -133,7 +133,6 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
                 e.stopPropagation();
                 onDelete();
               }}
-              onPointerDown={(e) => e.stopPropagation()}
               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
               title="Delete"
               disabled={isUpdating}
@@ -161,12 +160,14 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
         )}
 
         {/* Metadata Row */}
-        <div className="flex flex-wrap items-center gap-2" onPointerDown={(e) => e.stopPropagation()}>
-          <StatusBadge
-            status={item.status}
-            onClick={onStatusChange}
-            disabled={isUpdating}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <div onPointerDown={(e) => e.stopPropagation()}>
+            <StatusBadge
+              status={item.status}
+              onClick={onStatusChange}
+              disabled={isUpdating}
+            />
+          </div>
           
           {item.priority && <PriorityBadge priority={item.priority} />}
           

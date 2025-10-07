@@ -18,8 +18,7 @@ interface TaskDisplayBoardViewProps {
   onStatusChange: (task: TaskRecord) => void;
   onDragStatusChange?: (taskId: string, newStatus: StatusValue) => void;
   onChecklist?: (task: TaskRecord) => void;
-  onSchedule?: (task: TaskRecord) => void;
-  onStart?: (task: TaskRecord) => void;
+  onSchedule?: (task: TaskRecord | ChecklistItemRecord) => void;
   onChecklistItemStatusChange?: (item: ChecklistItemRecord) => void;
   onDragChecklistItemStatusChange?: (itemId: string, newStatus: StatusValue) => void;
 }
@@ -32,8 +31,7 @@ interface BoardColumnProps {
   onDelete: (taskId: string) => void;
   onStatusChange: (task: TaskRecord) => void;
   onChecklist?: (task: TaskRecord) => void;
-  onSchedule?: (task: TaskRecord) => void;
-  onStart?: (task: TaskRecord) => void;
+  onSchedule?: (task: TaskRecord | ChecklistItemRecord) => void;
   onChecklistItemStatusChange?: (item: ChecklistItemRecord) => void;
   isUpdating?: boolean;
   pendingStatusId?: string | null;
@@ -48,7 +46,6 @@ function BoardColumn({
   onStatusChange,
   onChecklist,
   onSchedule,
-  onStart,
   onChecklistItemStatusChange,
   isUpdating,
   pendingStatusId
@@ -112,10 +109,9 @@ function BoardColumn({
               onStatusChange={onStatusChange}
               onChecklist={onChecklist}
               onSchedule={onSchedule}
-              onStart={onStart}
+              
               onChecklistItemStatusChange={onChecklistItemStatusChange}
-              isUpdating={isUpdating}
-              isDragging={false}
+              isUpdating={isUpdating && pendingStatusId === item.id}
             />
           ))}
         </div>
@@ -131,21 +127,17 @@ function DraggableTaskCard({
   onStatusChange,
   onChecklist,
   onSchedule,
-  onStart,
   onChecklistItemStatusChange,
   isUpdating = false,
-  isDragging = false
 }: {
   item: TaskDisplayItem;
   onEdit: (task: TaskRecord) => void;
   onDelete: (taskId: string) => void;
   onStatusChange: (task: TaskRecord) => void;
   onChecklist?: (task: TaskRecord) => void;
-  onSchedule?: (task: TaskRecord) => void;
-  onStart?: (task: TaskRecord) => void;
+  onSchedule?: (task: TaskRecord | ChecklistItemRecord) => void;
   onChecklistItemStatusChange?: (item: ChecklistItemRecord) => void;
   isUpdating?: boolean;
-  isDragging?: boolean;
 }) {
   const { setNodeRef: setDraggableRef, listeners, attributes, isDragging: isDraggingCard, transform } = useDraggable({ 
     id: item.id, 
@@ -159,7 +151,6 @@ function DraggableTaskCard({
   
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    touchAction: 'none',
   };
 
   const handleEdit = () => {
@@ -206,12 +197,8 @@ function DraggableTaskCard({
   };
 
   const handleStart = () => {
-    if (item.source === "checklist" && item.originalChecklistItem) {
-      // For checklist items, we need to start the checklist item
-      if (onStart) {
-        onStart(item.originalChecklistItem);
-      }
-    } else if (item.originalTask) {
+    // Start only works for tasks, not checklist items
+    if (item.source === "task" && item.originalTask) {
       onStart?.(item.originalTask);
     }
   };
@@ -225,7 +212,10 @@ function DraggableTaskCard({
   return (
     <div 
       ref={setRefs} 
-      style={style} 
+      style={{
+        ...style,
+        opacity: isDraggingCard ? 0.5 : 1,
+      }}
       {...listeners} 
       {...attributes} 
       className="cursor-grab active:cursor-grabbing"
@@ -236,8 +226,9 @@ function DraggableTaskCard({
         onDelete={handleDelete}
         onStatusChange={handleStatusChange}
         onSchedule={handleSchedule}
+        
         isUpdating={isUpdating}
-        isDragging={isDraggingCard}
+        isDragging={false}
       />
     </div>
   );
@@ -339,7 +330,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
     else {
       const overItem = displayItems.find(item => item.id === overId);
       if (overItem) {
-        newStatus = overItem.status;
+        newStatus = overItem.status as StatusValue;
         console.log('🎯 Dropped on item:', { overItemId: overId, overItemTitle: overItem.title, newStatus });
       }
     }
@@ -368,11 +359,12 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
       }
     } else if (draggedItem.originalTask) {
       // Handle task status change via drag
-      console.log('📋 Updating task status:', draggedItem.originalTask.task_id, newStatus);
-      if (onDragStatusChange) {
-        onDragStatusChange(draggedItem.originalTask.task_id, newStatus);
+      const taskId = draggedItem.taskId || draggedItem.originalTask.task_id || (draggedItem.originalTask as any).id;
+      console.log('📋 Updating task status:', taskId, newStatus);
+      if (onDragStatusChange && taskId) {
+        onDragStatusChange(taskId, newStatus);
       } else {
-        console.log('❌ No onDragStatusChange callback');
+        console.log('❌ No onDragStatusChange callback or taskId');
       }
     }
   };
@@ -389,7 +381,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onStatusChange={onStatusChange}
           onChecklist={onChecklist}
           onSchedule={onSchedule}
-          onStart={onStart}
+          
           onChecklistItemStatusChange={onChecklistItemStatusChange}
           isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
@@ -404,7 +396,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onStatusChange={onStatusChange}
           onChecklist={onChecklist}
           onSchedule={onSchedule}
-          onStart={onStart}
+          
           onChecklistItemStatusChange={onChecklistItemStatusChange}
           isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
@@ -419,7 +411,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onStatusChange={onStatusChange}
           onChecklist={onChecklist}
           onSchedule={onSchedule}
-          onStart={onStart}
+          
           onChecklistItemStatusChange={onChecklistItemStatusChange}
           isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
@@ -434,7 +426,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onStatusChange={onStatusChange}
           onChecklist={onChecklist}
           onSchedule={onSchedule}
-          onStart={onStart}
+          
           onChecklistItemStatusChange={onChecklistItemStatusChange}
           isUpdating={isUpdating}
           pendingStatusId={pendingStatusId}
