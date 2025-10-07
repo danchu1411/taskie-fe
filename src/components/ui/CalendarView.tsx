@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { TaskListResponse } from "../../lib/types";
-import { useScheduleData } from "../../features/schedule/hooks/useScheduleData";
+import type { TaskListResponse, TaskRecord } from "../../lib/types";
+import { useScheduleData, SCHEDULE_QUERY_KEY } from "../../features/schedule/hooks/useScheduleData";
 import { CACHE_CONFIG, PAGINATION } from "../../features/schedule/constants/cacheConfig";
+import CalendarTaskModal from "./CalendarTaskModal";
 
 type WorkItemInfo = {
   title: string;
@@ -59,6 +60,9 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const today = new Date();
   const [cursor, setCursor] = useState<Date>(startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState<Date>(today);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [selectedDateForTask, setSelectedDateForTask] = useState<Date | null>(null);
+  const queryClient = useQueryClient();
 
   const from = useMemo(() => startOfMonth(cursor), [cursor]);
   const to = useMemo(() => endOfMonth(cursor), [cursor]);
@@ -118,9 +122,16 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     return set;
   }, [entries, workItemMap]);
 
-  // Group entries by yyyy-mm-dd
+  // Get all tasks for deadline mapping
+  const allTasks = useMemo(() => {
+    return tasksQ.data?.pages.flatMap((p) => p.items) ?? [];
+  }, [tasksQ.data?.pages]);
+
+  // Group entries by yyyy-mm-dd (scheduled tasks)
   const entriesByDate = useMemo(() => {
-    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string }>>();
+    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string; type: 'scheduled' | 'deadline' }>>();
+    
+    // Add scheduled entries
     for (const e of entries ?? []) {
       // Hide parent task entries if any child checklist has schedule entries
       if (e.work_item_id && parentIdsWithChildEntries.has(e.work_item_id)) {
@@ -132,11 +143,53 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const list = map.get(key) ?? [];
       const duration = e.planned_minutes ?? e.plannedMinutes ?? 0;
-      list.push({ title: info?.title || '(Untitled)', priority: info?.priority ?? null, time, duration, parent: info?.parentTitle ?? undefined });
+      list.push({ 
+        title: info?.title || '(Untitled)', 
+        priority: info?.priority ?? null, 
+        time, 
+        duration, 
+        parent: info?.parentTitle ?? undefined,
+        type: 'scheduled' as const
+      });
       map.set(key, list);
     }
+
+    // Add tasks with deadline but no schedule
+    for (const task of allTasks) {
+      if (task.deadline && !task.checklist?.length) {
+        // Only atomic tasks (no checklist)
+        const deadlineDate = new Date(task.deadline);
+        const key = fmt(deadlineDate);
+        
+        // Check if this task is already scheduled anywhere (not just on this date)
+        const isAlreadyScheduled = entries?.some(entry => 
+          entry.work_item_id === task.id
+        );
+        
+        if (!isAlreadyScheduled) {
+          const list = map.get(key) ?? [];
+          list.push({
+            title: task.title,
+            priority: task.priority ?? null,
+            time: 'Deadline',
+            duration: 0,
+            parent: undefined,
+            type: 'deadline' as const
+          });
+          map.set(key, list);
+          console.log(`Added deadline task: ${task.title} for date: ${key}`);
+        }
+      }
+    }
+
     return map;
-  }, [entries, workItemMap, parentIdsWithChildEntries]);
+  }, [entries, workItemMap, parentIdsWithChildEntries, allTasks]);
+
+  // Check if a date has any entries (scheduled or deadline tasks)
+  const hasEntries = useCallback((dateKey: string): boolean => {
+    const entries = entriesByDate.get(dateKey) ?? [];
+    return entries.length > 0;
+  }, [entriesByDate]);
 
   // Build month grid 6x7
   const monthInfo = useMemo(() => {
@@ -171,6 +224,43 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     io.observe(el);
     return () => io.disconnect();
   }, [tasksQ.hasNextPage, tasksQ.isFetchingNextPage, tasksQ.fetchNextPage]);
+
+  // Create task mutation
+  const createTaskMutation = useMutation({
+    mutationFn: async (taskData: Partial<TaskRecord>) => {
+      const response = await api.post<TaskRecord>("/tasks/create", taskData);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+      setTaskModalOpen(false);
+    },
+    onError: (error: any) => {
+      console.error("Failed to create task:", error);
+    },
+  });
+
+  // Handlers
+  const handleCreateTask = (date: Date) => {
+    setSelectedDateForTask(date);
+    setTaskModalOpen(true);
+  };
+
+  const handleSubmitTask = (taskData: Partial<TaskRecord>) => {
+    // Auto-set deadline to selected date
+    const taskWithDeadline = {
+      ...taskData,
+      deadline: selectedDateForTask ? selectedDateForTask.toISOString() : undefined,
+    };
+    createTaskMutation.mutate(taskWithDeadline);
+  };
+
+  const handleCloseTaskModal = () => {
+    setTaskModalOpen(false);
+    setSelectedDateForTask(null);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_1px_0_#e6e6e6] p-4 md:p-6">
@@ -212,8 +302,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
           const isSelected = date.toDateString() === selectedDate.toDateString();
           const list = entriesByDate.get(key) ?? [];
           const dots = list.slice(0,3);
-          const hasEntries = list.length > 0;
-          const tint = hasEntries && !outside ? dayTintClass(key) : '';
+        const hasEntriesForDate = hasEntries(key);
+        const tint = hasEntriesForDate && !outside ? dayTintClass(key) : '';
           return (
             <button
               key={key}
@@ -224,6 +314,26 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                 isSelected ? "ring-2 ring-slate-900/60" : "hover:bg-slate-50"
               ].join(" ")}
             >
+              {/* Add task button - top right corner (only for today and future dates) */}
+              {!outside && (() => {
+                const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                return currentDate >= todayDate;
+              })() && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCreateTask(date);
+                  }}
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 z-10"
+                  title="Add task to this day"
+                >
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              )}
+              
               <div className="flex items-center justify-between">
                 <span className={["text-xs", isToday? "font-semibold text-slate-900":"text-slate-600"].join(" ")}>{date.getDate()}</span>
                 {isToday && <span className="rounded-md bg-slate-900 text-white px-1.5 py-0.5 text-[10px]">Today</span>}
@@ -259,21 +369,38 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         <div className="mt-3 space-y-2">
           {(entriesByDate.get(fmt(selectedDate)) ?? [])
             .slice()
-            .sort((a,b)=> a.time.localeCompare(b.time))
+            .sort((a,b) => {
+              // Sort scheduled tasks by time, deadline tasks at the end
+              if (a.type === 'scheduled' && b.type === 'deadline') return -1;
+              if (a.type === 'deadline' && b.type === 'scheduled') return 1;
+              if (a.type === 'scheduled' && b.type === 'scheduled') return a.time.localeCompare(b.time);
+              return 0;
+            })
             .map((t, i) => (
-              <div key={i} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3">
+              <div key={i} className={`flex items-center justify-between rounded-xl border p-3 ${
+                t.type === 'deadline' 
+                  ? 'border-amber-200 bg-amber-50' 
+                  : 'border-slate-200 bg-white'
+              }`}>
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`h-2.5 w-2.5 rounded-full ${priorityDot(t.priority)}`}/>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate text-slate-900">{t.title}</div>
                     <div className="text-[11px] text-slate-500 flex items-center gap-3">
-                      <span>{t.time}</span>
-                      <span>{t.duration}m</span>
+                      <span className={t.type === 'deadline' ? 'text-amber-600 font-medium' : ''}>
+                        {t.type === 'deadline' ? '📅 Deadline' : t.time}
+                      </span>
+                      {t.type === 'scheduled' && <span>{t.duration}m</span>}
                       {t.parent && <span className="inline-flex items-center gap-1"><svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="1.5" d="M3 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>{t.parent}</span>}
                     </div>
                   </div>
                 </div>
-                <button className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 hover:bg-slate-50">Start Focus</button>
+                {t.type === 'scheduled' && (
+                  <button className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 hover:bg-slate-50">Start Focus</button>
+                )}
+                {t.type === 'deadline' && (
+                  <button className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-amber-100 px-3 text-xs font-medium text-amber-800 hover:bg-amber-200">Schedule</button>
+                )}
               </div>
             ))}
           {(entriesByDate.get(fmt(selectedDate)) ?? []).length === 0 && (
@@ -283,6 +410,15 @@ export default function CalendarView({ userId }: { userId: string | null | undef
           )}
         </div>
       </div>
+
+      {/* Calendar Task Modal */}
+      <CalendarTaskModal
+        isOpen={taskModalOpen}
+        onClose={handleCloseTaskModal}
+        onSubmit={handleSubmitTask}
+        selectedDate={selectedDateForTask}
+        isLoading={createTaskMutation.isPending}
+      />
     </div>
   );
 }
