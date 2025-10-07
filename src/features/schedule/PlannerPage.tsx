@@ -29,7 +29,7 @@ export default function PlannerPage({ onNavigate }: { onNavigate?: (path: string
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-300 opacity-75" />
                   <span className="relative inline-flex h-3.5 w-3.5 animate-spin rounded-full border-[3px] border-indigo-500 border-t-transparent" />
                 </span>
-                <span>Đang tải lịch...</span>
+                <span>Loading schedule...</span>
               </div>
             </div>
           }

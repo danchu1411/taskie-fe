@@ -292,6 +292,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   const [customDuration, setCustomDuration] = useState(getDefaultFocusDuration()); // minutes
   const [confirmStopOpen, setConfirmStopOpen] = useState(false);
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
 
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TodayItem | null>(null);
@@ -734,13 +735,36 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
   // Timer close confirmation handlers
   const handleTimerClose = useCallback(() => {
+    // Chỉ hỏi xác nhận nếu timer đã bắt đầu (đang chạy hoặc đã đếm lùi)
+    const hasProgress = timerRemain < timerDuration;
+    if (!timerRunning && !hasProgress) {
+      // Chưa bắt đầu: đóng ngay không hỏi
+      closeTimer();
+      return;
+    }
     setConfirmStopOpen(true);
-  }, []);
+  }, [timerRunning, timerRemain, timerDuration, closeTimer]);
+
+  // Guarded navigation: confirm when leaving page with active/progress timer
+  const guardedNavigate = useCallback((path: string) => {
+    const hasProgress = timerRemain < timerDuration;
+    if (timerRunning || hasProgress) {
+      setPendingNavPath(path);
+      setConfirmStopOpen(true);
+      return;
+    }
+    onNavigate?.(path);
+  }, [onNavigate, timerRunning, timerRemain, timerDuration]);
 
   const handleConfirmStop = useCallback(() => {
     closeTimer();
     setConfirmStopOpen(false);
-  }, [closeTimer]);
+    if (pendingNavPath) {
+      const target = pendingNavPath;
+      setPendingNavPath(null);
+      onNavigate?.(target);
+    }
+  }, [closeTimer, pendingNavPath, onNavigate]);
 
   const handleCancelStop = useCallback(() => {
     setConfirmStopOpen(false);
@@ -1131,7 +1155,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen bg-slate-50">
-      <NavigationBar onNavigate={onNavigate} activeNav="today" />
+      <NavigationBar onNavigate={guardedNavigate} activeNav="today" />
           
       <main className="mx-auto max-w-6xl px-6 py-12">
         {/* Calm Hero Section */}
