@@ -192,10 +192,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-md border border-slate-300 bg-white p-1 text-xs">
             <button className="h-8 px-2 rounded-md bg-slate-900 text-white">Month</button>
-            <button className="h-8 px-2 rounded-md hover:bg-slate-50 text-slate-700" disabled>Week</button>
             <button className="h-8 px-2 rounded-md hover:bg-slate-50 text-slate-700" disabled>Day</button>
           </div>
-          <button className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 hover:bg-slate-50">+ New task</button>
         </div>
       </div>
 
