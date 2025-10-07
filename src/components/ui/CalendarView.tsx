@@ -233,7 +233,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
 
       {/* Side panel for selected date */}
       <div
-        className="sticky bottom-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
+        className="sticky bottom-6 mt-4 rounded-2xl border border-slate-300 bg-slate-50 px-5 py-5 shadow-md"
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">
@@ -261,7 +261,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
               </div>
             ))}
           {(entriesByDate.get(fmt(selectedDate)) ?? []).length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/40 p-6 text-center text-sm text-slate-600">
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-6 text-center text-sm text-slate-600">
               No entries for this day.
             </div>
           )}
