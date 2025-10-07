@@ -232,7 +232,9 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       <div ref={sentinelRef} className="h-6" aria-hidden />
 
       {/* Side panel for selected date */}
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <div
+        className="sticky bottom-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">
             {prettyDate(selectedDate)}
