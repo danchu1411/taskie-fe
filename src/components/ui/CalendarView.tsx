@@ -359,14 +359,14 @@ export default function CalendarView({ userId }: { userId: string | null | undef
 
       {/* Side panel for selected date */}
       <div
-        className="sticky bottom-6 mt-4 rounded-2xl border border-slate-300 bg-slate-50 px-5 py-5 shadow-md"
+        className="sticky bottom-6 mt-4 w-[85%] mx-auto rounded-2xl border border-slate-300 bg-slate-50 px-5 py-5 shadow-md"
       >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">
             {prettyDate(selectedDate)}
           </h3>
         </div>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 h-20 overflow-y-auto space-y-2 pr-2">
           {(entriesByDate.get(fmt(selectedDate)) ?? [])
             .slice()
             .sort((a,b) => {
