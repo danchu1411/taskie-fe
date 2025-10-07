@@ -39,6 +39,22 @@ function priorityDot(priority: number | null | undefined): string {
   return 'bg-slate-400';
 }
 
+function dayTintClass(dateKey: string): string {
+  // Deterministic soft colors based on date key
+  const palette = [
+    'bg-rose-100',
+    'bg-amber-100',
+    'bg-emerald-100',
+    'bg-sky-100',
+    'bg-indigo-100',
+    'bg-fuchsia-100',
+  ];
+  let sum = 0;
+  for (let i = 0; i < dateKey.length; i++) sum = (sum + dateKey.charCodeAt(i)) % 1000;
+  const idx = sum % palette.length;
+  return palette[idx];
+}
+
 export default function CalendarView({ userId }: { userId: string | null | undefined }) {
   const today = new Date();
   const [cursor, setCursor] = useState<Date>(startOfMonth(today));
@@ -198,13 +214,15 @@ export default function CalendarView({ userId }: { userId: string | null | undef
           const isSelected = date.toDateString() === selectedDate.toDateString();
           const list = entriesByDate.get(key) ?? [];
           const dots = list.slice(0,3);
+          const hasEntries = list.length > 0;
+          const tint = hasEntries && !outside ? dayTintClass(key) : '';
           return (
             <button
               key={key}
               onClick={() => setSelectedDate(date)}
               className={[
                 "group relative h-24 rounded-lg border text-left p-2 transition",
-                outside ? "border-slate-200 bg-slate-50/40 text-slate-400" : "border-slate-200 bg-white",
+                outside ? "border-slate-200 bg-slate-50/40 text-slate-400" : `border-slate-200 ${tint || 'bg-white'}`,
                 isSelected ? "ring-2 ring-slate-900/60" : "hover:bg-slate-50"
               ].join(" ")}
             >
