@@ -196,12 +196,7 @@ function DraggableTaskCard({
     }
   };
 
-  const handleStart = () => {
-    // Start only works for tasks, not checklist items
-    if (item.source === "task" && item.originalTask) {
-      onStart?.(item.originalTask);
-    }
-  };
+  // removed start handler
 
   // Combine refs
   const setRefs = (element: HTMLDivElement | null) => {
@@ -226,7 +221,6 @@ function DraggableTaskCard({
         onDelete={handleDelete}
         onStatusChange={handleStatusChange}
         onSchedule={handleSchedule}
-        
         isUpdating={isUpdating}
         isDragging={false}
       />
@@ -244,7 +238,6 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
   onDragStatusChange,
   onChecklist,
   onSchedule,
-  onStart,
   onChecklistItemStatusChange,
   onDragChecklistItemStatusChange,
 }: TaskDisplayBoardViewProps) {
