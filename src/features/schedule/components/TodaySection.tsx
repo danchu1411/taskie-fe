@@ -16,9 +16,9 @@ interface TodaySectionProps {
   countText: string;
   items: TodayItem[];
   isLoading: boolean;
-  onStart: (item: TodayItem) => void;
+  onStart?: (item: TodayItem) => void;
   onSchedule: (item: TodayItem) => void;
-  onChecklist: (item: TodayItem) => void;
+  onChecklist?: (item: TodayItem) => void;
   onEdit: (item: TodayItem) => void;
   onStatusModal: (item: TodayItem) => void;
   onBack?: (item: TodayItem) => void;
@@ -132,10 +132,12 @@ export const TodaySection = memo(function TodaySection({
                     item={item}
                     isUpdating={updating}
                     onStatusChange={() => onStatusModal(item)}
-                    onEdit={item.source === "task" ? () => onEdit(item) : undefined}
-                    onChecklist={item.source === "task" ? () => onChecklist(item) : undefined}
+                    // ✅ Edit button luôn hiển thị - cho cả task và checklist items
+                    // Khi edit checklist item, mở modal edit của parent task (giống TasksPage)
+                    onEdit={() => onEdit(item)}
+                    onChecklist={item.source === "task" && onChecklist ? () => onChecklist(item) : undefined}
                     onSchedule={() => onSchedule(item)}
-                    onStart={() => onStart(item)}
+                    onStart={onStart ? () => onStart(item) : undefined}
                     onBack={onBack ? () => onBack(item) : undefined}
                   />
                 );

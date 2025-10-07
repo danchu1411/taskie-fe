@@ -123,15 +123,36 @@ export const TodayTaskCard = memo(function TodayTaskCard({
       style={style}
       {...attributes}
       {...listeners}
-      className="group rounded-lg bg-white p-4 shadow-sm border border-slate-200 transition-colors hover:border-slate-300 cursor-grab active:cursor-grabbing"
+      className="group cursor-grab active:cursor-grabbing rounded-lg bg-white p-4 shadow-sm border border-slate-200 transition-colors hover:border-slate-300"
     >
-      <div className="mb-3 flex items-start justify-between">
-        <StatusChip
-          status={item.status}
-          onOpenModal={onStatusChange}
-          disabled={isUpdating}
-        />
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="mb-3 flex items-start gap-2 relative">
+        {/* Drag Handle - Visual indicator chỉ, không cần listeners */}
+        <div 
+          className="flex-shrink-0 pt-1 text-slate-400"
+          title="Drag to reorder"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+            <circle cx="4" cy="4" r="1.5"/>
+            <circle cx="4" cy="8" r="1.5"/>
+            <circle cx="4" cy="12" r="1.5"/>
+            <circle cx="8" cy="4" r="1.5"/>
+            <circle cx="8" cy="8" r="1.5"/>
+            <circle cx="8" cy="12" r="1.5"/>
+          </svg>
+        </div>
+        
+        <div className="flex-1 flex items-start justify-between">
+          <div onPointerDown={(e) => e.stopPropagation()}>
+            <StatusChip
+              status={item.status}
+              onOpenModal={onStatusChange}
+              disabled={isUpdating}
+            />
+          </div>
+          <div 
+            className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
           {onEdit && (
             <button
               type="button"
@@ -192,6 +213,7 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               Back
             </button>
           )}
+          </div>
         </div>
       </div>
       

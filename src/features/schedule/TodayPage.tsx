@@ -13,7 +13,7 @@ import {
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import api from "../../lib/api";
 import { useAuth } from "../auth/AuthContext";
-import { NavigationBar, SystemError } from "../../components/ui";
+import { NavigationBar, SystemError, ChecklistItemModal } from "../../components/ui";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
 import { SCHEDULE_QUERY_KEY } from "./hooks/useScheduleData";
@@ -310,6 +310,9 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [editDeadline, setEditDeadline] = useState("");
   const [editPriority, setEditPriority] = useState<1 | 2 | 3 | null>(null);
 
+  // Checklist item modal state (giống TasksPage)
+  const [checklistItemModalOpen, setChecklistItemModalOpen] = useState(false);
+  const [editingChecklistItem, setEditingChecklistItem] = useState<ChecklistItemRecord | null>(null);
 
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusModalItem, setStatusModalItem] = useState<TodayItem | null>(null);
@@ -975,14 +978,68 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   }, [selectedTask, checklistItems, checklistMutation]);
 
   const openEditModal = useCallback((item: TodayItem) => {
-    if (item.source !== "task" || !item.taskId) return;
-    setEditingItem(item);
-    setEditTitle(item.title);
-    setEditDescription(""); // We don't have description in TodayItem, so start empty
-    setEditDeadline(item.deadline ? new Date(item.deadline).toISOString().slice(0, 16) : "");
-    setEditPriority(item.priority);
-    setEditModalOpen(true);
-  }, []);
+    // ✅ Phân biệt task vs checklist item (giống TasksPage)
+    if (item.source === "checklist" && item.checklistItemId) {
+      // Tìm RAW checklist item và parent task từ tasksQuery
+      // Vì TodayItem đã merge deadline/priority, cần lấy giá trị gốc
+      const parentTask = tasksQuery.data?.items.find(t => t.task_id === item.taskId);
+      const rawChecklistItem = parentTask?.checklist?.find(ci => 
+        ci.checklist_item_id === item.checklistItemId || 
+        (ci as any).id === item.checklistItemId  // Fallback cho 'id'
+      );
+      
+      console.log('🔍 Debug edit modal:', {
+        checklistItemId: item.checklistItemId,
+        taskId: item.taskId,
+        parentTask: parentTask ? { task_id: parentTask.task_id, checklist_count: parentTask.checklist?.length } : null,
+        rawChecklistItem: rawChecklistItem ? { id: rawChecklistItem.checklist_item_id, title: rawChecklistItem.title } : null,
+      });
+      
+      // Dùng RAW checklist item nếu tìm thấy, nếu không fallback sang TodayItem
+      const checklistItem: ChecklistItemRecord = rawChecklistItem ? {
+        checklist_item_id: item.checklistItemId,
+        task_id: item.taskId || "",
+        title: rawChecklistItem.title,
+        status: rawChecklistItem.status,
+        order_index: rawChecklistItem.order_index || 0,
+        deadline: rawChecklistItem.deadline || undefined,  // GỐC - chưa merge
+        priority: rawChecklistItem.priority || undefined,  // GỐC - chưa merge
+        created_at: rawChecklistItem.created_at || "",
+        updated_at: rawChecklistItem.updated_at || "",
+      } : {
+        // ⚠️ Fallback: Không tìm thấy raw, dùng TodayItem (đã merge)
+        // Checkbox sẽ không chính xác nhưng ít nhất modal vẫn mở được
+        checklist_item_id: item.checklistItemId,
+        task_id: item.taskId || "",
+        title: item.title,
+        status: item.status,
+        order_index: 0,
+        deadline: undefined,  // Để undefined để checkbox auto-tích
+        priority: undefined,  // Để undefined để checkbox auto-tích
+        created_at: "",
+        updated_at: "",
+      };
+      
+      setEditingChecklistItem(checklistItem);
+      
+      // Parent task deadline/priority
+      setEditingItem(parentTask ? {
+        ...item,
+        deadline: parentTask.deadline || null,
+        priority: parentTask.priority || null,
+      } : item);
+      
+      setChecklistItemModalOpen(true);
+    } else if (item.source === "task" && item.taskId) {
+      // Mở EditTaskModal cho task
+      setEditingItem(item);
+      setEditTitle(item.title);
+      setEditDescription(""); // We don't have description in TodayItem, so start empty
+      setEditDeadline(item.deadline ? new Date(item.deadline).toISOString().slice(0, 16) : "");
+      setEditPriority(item.priority);
+      setEditModalOpen(true);
+    }
+  }, [tasksQuery.data]);
 
   const saveTaskEdit = useCallback(() => {
     if (!editingItem?.taskId) return;
@@ -995,6 +1052,28 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       priority: editPriority || undefined,
     });
   }, [editingItem, editTitle, editDescription, editDeadline, editPriority, editTaskMutation]);
+
+  // Handler cho checklist item submit (giống TasksPage)
+  const handleChecklistItemSubmit = useCallback(async (data: Partial<ChecklistItemRecord>) => {
+    if (!editingChecklistItem) return;
+    
+    try {
+      await api.patch(`/checklist-items/${editingChecklistItem.checklist_item_id}`, {
+        title: data.title,
+        deadline: data.deadline,
+        priority: data.priority,
+      });
+      
+      // Refetch data
+      await queryClient.invalidateQueries({ queryKey: ['tasks', userId] });
+      await queryClient.refetchQueries({ queryKey: ['tasks', userId], type: 'active' });
+      
+      setChecklistItemModalOpen(false);
+      setEditingChecklistItem(null);
+    } catch (error) {
+      console.error('Failed to update checklist item:', error);
+    }
+  }, [editingChecklistItem, userId, queryClient]);
 
   const openStatusModal = useCallback((item: TodayItem) => {
     setStatusModalItem(item);
@@ -1184,12 +1263,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
             countText="text-green-600"
             items={completed}
             isLoading={isLoading}
-            onStart={openTimer}
+            onStart={undefined}
             onSchedule={openScheduleModal}
-            onChecklist={openChecklistModal}
+            onChecklist={undefined}
             onEdit={openEditModal}
             onStatusModal={openStatusModal}
-            onBack={(item) => handleStatusChange(item, STATUS.PLANNED)}
             isUpdating={(itemId) => statusMutation.isPending && pendingStatusId === itemId}
             className="lg:col-span-1"
           />
@@ -1198,16 +1276,21 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       </div>
       {/* Calm Quick Add */}
       <div className="fixed bottom-6 right-6 z-40">
-        <QuickAddPanel
-          open={quickOpen}
-          title={quickTitle}
-          onTitleChange={setQuickTitle}
-          onAdd={addQuickItem}
-          onCancel={() => setQuickOpen(false)}
-          error={quickError}
-          loading={quickAddMutation.isPending}
-          inputRef={quickRef}
-        />
+        {/* Panel - absolute positioned above the button */}
+        <div className="absolute bottom-20 right-0">
+          <QuickAddPanel
+            open={quickOpen}
+            title={quickTitle}
+            onTitleChange={setQuickTitle}
+            onAdd={addQuickItem}
+            onCancel={() => setQuickOpen(false)}
+            error={quickError}
+            loading={quickAddMutation.isPending}
+            inputRef={quickRef}
+          />
+        </div>
+        
+        {/* + Button - always stays at bottom-right corner */}
         <button
           type="button"
           onClick={() => {
@@ -1218,7 +1301,15 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
               }
             }, TIMER_INTERVALS.FOCUS_INPUT_DELAY_MS);
           }}
-          className="rounded-lg bg-blue-600 p-4 text-white transition-colors hover:bg-blue-700"
+          className={`
+            rounded-lg bg-blue-600 p-4 text-white shadow-lg
+            transition-all duration-300 ease-in-out
+            hover:bg-blue-700 hover:shadow-xl
+            ${quickOpen 
+              ? 'opacity-0 scale-75 pointer-events-none' 
+              : 'opacity-100 scale-100'
+            }
+          `}
         >
           <span className="text-2xl font-bold">+</span>
         </button>
@@ -1313,6 +1404,21 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         onSave={saveTaskEdit}
         onCancel={() => setEditModalOpen(false)}
         loading={editTaskMutation.isPending}
+      />
+
+      {/* Checklist Item Modal (giống TasksPage) */}
+      <ChecklistItemModal
+        isOpen={checklistItemModalOpen}
+        onClose={() => {
+          setChecklistItemModalOpen(false);
+          setEditingChecklistItem(null);
+          setEditingItem(null);
+        }}
+        onSubmit={handleChecklistItemSubmit}
+        item={editingChecklistItem}
+        taskDeadline={editingItem?.deadline || undefined}
+        taskPriority={editingItem?.priority || undefined}
+        isLoading={false}
       />
 
       <StatusPickerModal

@@ -14,10 +14,18 @@ interface QuickAddPanelProps {
 
 export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
   ({ open, title, onTitleChange, onAdd, onCancel, error, loading, inputRef }, ref) => {
-    if (!open) return null;
-
     return (
-      <div ref={ref} className="mb-4 w-80 rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
+      <div
+        ref={ref}
+        className={`
+          w-80 rounded-lg border border-slate-200 bg-white p-6 shadow-lg
+          transition-all duration-300 ease-in-out origin-bottom-right
+          ${open 
+            ? 'opacity-100 scale-100 translate-y-0' 
+            : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+          }
+        `}
+      >
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <span className="text-sm font-bold">+</span>
@@ -38,6 +46,7 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
             placeholder="What needs to be done?"
             size="lg"
             className="bg-slate-50 focus:bg-white"
+            disabled={!open}
           />
           <div className="flex gap-2">
             <Button
@@ -46,13 +55,14 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
               variant="secondary"
               size="md"
               className="flex-1"
+              disabled={!open}
             >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={() => onAdd(title)}
-              disabled={loading}
+              disabled={loading || !open}
               variant="primary"
               size="md"
               loading={loading}
