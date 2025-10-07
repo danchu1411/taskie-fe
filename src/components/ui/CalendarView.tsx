@@ -267,7 +267,6 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       {/* Header */}
       <div className="mb-4 md:mb-6 flex items_center justify-between">
         <div>
-          <p className="text-xs text-slate-500">Planner</p>
           <div className="flex items-center gap-3 mt-1">
             <button aria-label="Prev month" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth()-1, 1))} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white hover:bg-slate-50">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="1.5" d="M15 6l-6 6 6 6"/></svg>
@@ -382,10 +381,11 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                   ? 'border-amber-200 bg-amber-50' 
                   : 'border-slate-200 bg-white'
               }`}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`h-2.5 w-2.5 rounded-full ${priorityDot(t.priority)}`}/>
+                {/* Task Info */}
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <span className={`h-2.5 w-2.5 rounded-full mt-1.5 flex-shrink-0 ${priorityDot(t.priority)}`}/>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate text-slate-900">{t.title}</div>
+                    <div className="text-sm font-medium text-slate-900 mb-1">{t.title}</div>
                     <div className="text-[11px] text-slate-500 flex items-center gap-3">
                       <span className={t.type === 'deadline' ? 'text-amber-600 font-medium' : ''}>
                         {t.type === 'deadline' ? '📅 Deadline' : t.time}
@@ -395,12 +395,27 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                     </div>
                   </div>
                 </div>
-                {t.type === 'scheduled' && (
-                  <button className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 hover:bg-slate-50">Start Focus</button>
-                )}
-                {t.type === 'deadline' && (
-                  <button className="inline-flex h-8 items-center rounded-lg border border-amber-300 bg-amber-100 px-3 text-xs font-medium text-amber-800 hover:bg-amber-200">Schedule</button>
-                )}
+                
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1 ml-2">
+                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200" title="Schedule">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  
+                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50" title="Edit">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  
+                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 hover:bg-red-100" title="Delete">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           {(entriesByDate.get(fmt(selectedDate)) ?? []).length === 0 && (
