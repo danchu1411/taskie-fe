@@ -1154,40 +1154,63 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <NavigationBar onNavigate={guardedNavigate} activeNav="today" />
+        
+        {/* Hero Section with Background Image - Full width */}
+        <section className="relative mb-8 overflow-hidden">
+          {/* Background Image - chỉ cho hero section */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: 'url(/clear-lake-mountains-sunrays-water-reflection-4k.jpg)',
+              backgroundSize: 'cover'
+            }}
+          ></div>
           
-      <main className="mx-auto max-w-6xl px-6 py-12">
-        {/* Calm Hero Section */}
-        <section className="mb-16">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-4">
-              <div className="text-sm font-medium tracking-wider text-slate-500 uppercase">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl lg:text-6xl">
-                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0] ?? 'there'}
-              </h1>
-              <div className="h-1 w-24 bg-slate-300"></div>
-              <p className="text-lg font-medium text-slate-600">
-                Let's focus on what matters today.
-              </p>
-        </div>
-            
-            <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => timer.openTimer()}
-              className="rounded-lg bg-blue-600 px-8 py-4 text-white transition-colors hover:bg-blue-700"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg">⏱</span>
-                <span className="font-medium">Start Focus</span>
+          {/* Overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/50"></div>
+          
+          {/* Floating Elements */}
+          <div className="absolute top-8 left-8 w-24 h-24 bg-gradient-to-br from-white/10 to-blue-200/20 rounded-full blur-xl animate-pulse"></div>
+          <div className="absolute top-16 right-12 w-16 h-16 bg-gradient-to-br from-white/10 to-purple-200/20 rounded-full blur-lg animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-8 left-1/4 w-12 h-12 bg-gradient-to-br from-white/10 to-cyan-200/20 rounded-full blur-md animate-pulse" style={{animationDelay: '2s'}}></div>
+          
+          {/* Hero Content */}
+          <div className="relative z-10 py-12">
+            <div className="mx-auto max-w-6xl px-6">
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-4">
+                <div className="text-sm font-medium tracking-wider text-white/90 uppercase drop-shadow-sm">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl">
+                  Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0] ?? 'there'}
+                </h1>
+                <div className="h-1 w-24 bg-gradient-to-r from-white/80 to-white/60 rounded-full shadow-lg"></div>
+                <p className="text-lg font-medium text-white/95 drop-shadow-lg">
+                  Let's focus on what matters today.
+                </p>
               </div>
-            </button>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => timer.openTimer()}
+                  className="rounded-xl bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md px-8 py-4 text-white border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 hover:bg-white/30 hover:border-white/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">⏱</span>
+                    <span className="font-medium">Start Focus</span>
+                  </div>
+                </button>
+              </div>
+              </div>
             </div>
           </div>
         </section>
+          
+      <main className="mx-auto max-w-6xl px-6 py-6">
 
         {errorMessage && (
           <div className="mb-6">
