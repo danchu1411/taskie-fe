@@ -356,10 +356,11 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       {/* Sentinel for auto-loading next pages of tasks mapping */}
       <div ref={sentinelRef} className="h-6" aria-hidden />
 
-      {/* Side panel for selected date */}
-      <div
-        className="sticky bottom-6 mt-4 w-[85%] mx-auto rounded-2xl border border-slate-300 bg-slate-50 px-5 py-5 shadow-md"
-      >
+      {/* Side panel for selected date - only show if there are entries */}
+      {(entriesByDate.get(fmt(selectedDate)) ?? []).length > 0 && (
+        <div
+          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[85%] max-w-2xl rounded-2xl border border-slate-300 bg-white/95 backdrop-blur-md px-5 py-5 shadow-lg z-40 animate-slide-in-bottom"
+        >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">
             {prettyDate(selectedDate)}
@@ -424,7 +425,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
             </div>
           )}
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Calendar Task Modal */}
       <CalendarTaskModal

@@ -93,7 +93,7 @@ export const TodaySection = memo(function TodaySection({
 
   return (
     <DroppableColumn id={id} className={className}>
-      <div className="sticky top-24">
+      <div className="sticky top-24 z-40">
         <div className="mb-6 flex items-center gap-3">
           <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconBg} ${iconText}`}>
             <span className="text-sm">{icon}</span>
