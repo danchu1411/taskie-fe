@@ -5,6 +5,7 @@ import type {
   TaskRecord, 
   TaskFilters, 
   StatusValue, 
+  PriorityValue,
   ChecklistItemRecord
 } from "../../lib";
 import { STATUS } from "../../lib";
@@ -21,7 +22,6 @@ import {
   SystemError
 } from "../../components/ui";
 import {
-  TaskToolbar,
   TaskStatusModal,
   TaskListView
 } from "./components";
@@ -404,7 +404,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         <NavigationBar onNavigate={onNavigate} activeNav="tasks" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <SystemError
@@ -439,18 +439,203 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   }, [tasks, tasksByStatus]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <NavigationBar onNavigate={onNavigate} activeNav="tasks" />
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        <TaskToolbar
-          filters={filters}
-          onFilterChange={setFilters}
-          onCreate={() => setModalOpen(true)}
-          currentView={view}
-          onViewChange={(newView) => setView(newView)}
-          taskStats={taskStats}
-        />
+      
+        {/* Hero Section with Background Image */}
+        <section className="relative mb-4 overflow-hidden">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/clear-lake-mountains-sunrays-water-reflection-4k.jpg)',
+            backgroundSize: 'cover'
+          }}
+        ></div>
+        
+        {/* Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/50"></div>
+        
+        {/* Floating Elements */}
+        <div className="absolute top-8 left-8 w-24 h-24 bg-gradient-to-br from-white/10 to-blue-200/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-16 right-12 w-16 h-16 bg-gradient-to-br from-white/10 to-purple-200/20 rounded-full blur-lg animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-8 left-1/4 w-12 h-12 bg-gradient-to-br from-white/10 to-cyan-200/20 rounded-full blur-md animate-pulse" style={{animationDelay: '2s'}}></div>
+        
+        {/* Hero Content - Only Header */}
+        <div className="relative z-10 py-12">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-medium tracking-wider text-white/90 uppercase drop-shadow-sm mb-2">
+                  Task Management
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl mb-2">
+                  Tasks
+                </h1>
+                <p className="text-lg font-medium text-white/95 drop-shadow-lg">
+                  {taskStats ? `${taskStats.total} tasks` : "Manage your tasks"}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="rounded-xl bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md px-8 py-4 text-white border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 hover:bg-white/30 hover:border-white/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">+</span>
+                    <span className="font-medium">New Task</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <div className="mx-auto max-w-7xl px-6 py-4 space-y-6">
+        {/* Filters and View Toggle below wallpaper */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={filters.search}
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            
+            {/* Status Filter */}
+            <div className="flex gap-2">
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value as StatusValue | 'all' })}
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="all">All Status</option>
+                <option value="planned">Planned</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+                <option value="skipped">Skipped</option>
+              </select>
+              
+              {/* Priority Filter */}
+              <select
+                value={filters.priority || 'all'}
+                onChange={(e) => setFilters({ ...filters, priority: e.target.value as PriorityValue | 'all' })}
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="all">All Priority</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              
+              {/* View Toggle */}
+              <div className="flex bg-slate-100 rounded-lg p-1">
+                <button
+                  onClick={() => setView('list')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    view === 'list' 
+                      ? 'bg-white text-slate-900 shadow-sm' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  List
+                </button>
+                <button
+                  onClick={() => setView('board')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    view === 'board' 
+                      ? 'bg-white text-slate-900 shadow-sm' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Board
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        {/* Task Stats Cards */}
+        {taskStats && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-slate-600">Total</p>
+                  <p className="text-2xl font-bold text-slate-900">{taskStats.total}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-slate-600">Planned</p>
+                  <p className="text-2xl font-bold text-slate-900">{taskStats.planned}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-slate-600">In Progress</p>
+                  <p className="text-2xl font-bold text-slate-900">{taskStats.inProgress}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-slate-600">Done</p>
+                  <p className="text-2xl font-bold text-slate-900">{taskStats.done}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-slate-600">Skipped</p>
+                  <p className="text-2xl font-bold text-slate-900">{taskStats.skipped}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {isLoading ? (
