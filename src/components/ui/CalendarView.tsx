@@ -68,7 +68,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   // Modal states for sidebar entries
   const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [statusModalTask, setStatusModalTask] = useState<TaskRecord | null>(null);
+  const [statusModalTask] = useState<TaskRecord | null>(null);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [schedulingItem, setSchedulingItem] = useState<TaskRecord | null>(null);
   const [scheduleStartAt, setScheduleStartAt] = useState<Date | null>(null);
@@ -139,7 +139,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
 
   // Group entries by yyyy-mm-dd (scheduled tasks)
   const entriesByDate = useMemo(() => {
-    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string; type: 'scheduled' | 'deadline'; workItemId: string }>>();
+    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string; type: 'scheduled' | 'deadline'; workItemId: string; date: Date }>>();
     
     // Add scheduled entries
     for (const e of entries ?? []) {
@@ -160,7 +160,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         duration, 
         parent: info?.parentTitle ?? undefined,
         type: 'scheduled' as const,
-        workItemId: e.work_item_id || ''
+        workItemId: e.work_item_id || '',
+        date: d
       });
       map.set(key, list);
     }
@@ -187,7 +188,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
             duration: 0,
             parent: undefined,
             type: 'deadline' as const,
-            workItemId: taskId || ''
+            workItemId: taskId || '',
+            date: deadlineDate
           });
           map.set(key, list);
           console.log(`Added deadline task: ${task.title} for date: ${key}`);
@@ -289,16 +291,27 @@ export default function CalendarView({ userId }: { userId: string | null | undef
 
   // Schedule mutation
   const scheduleMutation = useMutation({
-    mutationFn: async ({ taskId, startAt, minutes }: { taskId: string; startAt: Date; minutes: number }) => {
-      const response = await api.post("/schedule/create", {
-        task_id: taskId,
-        start_at: startAt.toISOString(),
-        planned_minutes: minutes,
-      });
-      return response.data;
+    mutationFn: async ({ workItemId, startAt, plannedMinutes }: { workItemId: string; startAt: string; plannedMinutes: number }) => {
+      const payload = {
+        workItemId,
+        startAt,
+        plannedMinutes,
+        status: 'planned' as const,
+      };
+      console.log('📤 POST /schedule-entries payload:', payload);
+      await api.post("/schedule-entries", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+      queryClient.refetchQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY, 
+        type: "active" 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: SCHEDULE_QUERY_KEY,
+        refetchType: "none"
+      });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
       setScheduleModalOpen(false);
       setSchedulingItem(null);
     },
@@ -325,6 +338,16 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const handleCloseTaskModal = () => {
     setTaskModalOpen(false);
     setSelectedDateForTask(null);
+  };
+
+  // Helper to convert Date to datetime-local format
+  const toDateTimeLocalString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   // Helper to get TaskRecord from work_item_id
@@ -370,11 +393,19 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     setStatusModalOpen(false);
   }, [statusModalTask, updateTaskMutation]);
 
-  const handleOpenScheduleModal = useCallback((workItemId: string) => {
+  const handleOpenScheduleModal = useCallback((workItemId: string, date?: Date) => {
     const task = getTaskFromWorkItemId(workItemId);
     if (task) {
+      const scheduleDate = date || selectedDate;
+      console.log('📅 handleOpenScheduleModal:', { 
+        workItemId, 
+        date, 
+        selectedDate, 
+        scheduleDate,
+        dateTimeLocalString: toDateTimeLocalString(scheduleDate)
+      });
       setSchedulingItem(task);
-      setScheduleStartAt(selectedDate);
+      setScheduleStartAt(scheduleDate);
       setScheduleModalOpen(true);
     }
   }, [getTaskFromWorkItemId, selectedDate]);
@@ -382,13 +413,16 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const handleScheduleSave = useCallback(() => {
     if (!schedulingItem || !scheduleStartAt) return;
     
-    const taskId = (schedulingItem as any).id || schedulingItem.task_id;
-    if (!taskId) return;
+    const workItemId = (schedulingItem as any).id || schedulingItem.task_id;
+    if (!workItemId) return;
+    
+    const startAtString = scheduleStartAt.toISOString();
+    console.log('📅 handleScheduleSave:', { workItemId, startAtString, plannedMinutes: scheduleMinutes });
     
     scheduleMutation.mutate({
-      taskId,
-      startAt: scheduleStartAt,
-      minutes: scheduleMinutes
+      workItemId,
+      startAt: startAtString,
+      plannedMinutes: scheduleMinutes
     });
   }, [schedulingItem, scheduleStartAt, scheduleMinutes, scheduleMutation]);
 
@@ -530,7 +564,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1 ml-2">
                   <button 
-                    onClick={() => handleOpenScheduleModal(t.workItemId)}
+                    onClick={() => handleOpenScheduleModal(t.workItemId, t.date)}
                     className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200" 
                     title="Schedule"
                   >
@@ -606,7 +640,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       <ScheduleModal
         open={scheduleModalOpen}
         item={schedulingItem}
-        startAt={scheduleStartAt?.toISOString() || ''}
+        startAt={scheduleStartAt ? toDateTimeLocalString(scheduleStartAt) : ''}
         minutes={scheduleMinutes}
         onStartAtChange={(value) => setScheduleStartAt(new Date(value))}
         onMinutesChange={setScheduleMinutes}
