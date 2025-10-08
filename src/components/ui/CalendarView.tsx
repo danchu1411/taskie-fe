@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
-import type { TaskListResponse, TaskRecord } from "../../lib/types";
+import type { TaskListResponse, TaskRecord, StatusValue } from "../../lib/types";
 import { useScheduleData, SCHEDULE_QUERY_KEY } from "../../features/schedule/hooks/useScheduleData";
 import { CACHE_CONFIG, PAGINATION } from "../../features/schedule/constants/cacheConfig";
 import CalendarTaskModal from "./CalendarTaskModal";
+import { TaskModal, ScheduleModal, TaskStatusModal } from "./index";
 
 type WorkItemInfo = {
   title: string;
@@ -63,6 +64,15 @@ export default function CalendarView({ userId }: { userId: string | null | undef
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [selectedDateForTask, setSelectedDateForTask] = useState<Date | null>(null);
   const queryClient = useQueryClient();
+
+  // Modal states for sidebar entries
+  const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusModalTask, setStatusModalTask] = useState<TaskRecord | null>(null);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [schedulingItem, setSchedulingItem] = useState<TaskRecord | null>(null);
+  const [scheduleStartAt, setScheduleStartAt] = useState<Date | null>(null);
+  const [scheduleMinutes, setScheduleMinutes] = useState<number>(25);
 
   const from = useMemo(() => startOfMonth(cursor), [cursor]);
   const to = useMemo(() => endOfMonth(cursor), [cursor]);
@@ -129,7 +139,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
 
   // Group entries by yyyy-mm-dd (scheduled tasks)
   const entriesByDate = useMemo(() => {
-    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string; type: 'scheduled' | 'deadline' }>>();
+    const map = new Map<string, Array<{ title: string; priority: number | null; time: string; duration: number; parent?: string; type: 'scheduled' | 'deadline'; workItemId: string }>>();
     
     // Add scheduled entries
     for (const e of entries ?? []) {
@@ -149,7 +159,8 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         time, 
         duration, 
         parent: info?.parentTitle ?? undefined,
-        type: 'scheduled' as const
+        type: 'scheduled' as const,
+        workItemId: e.work_item_id || ''
       });
       map.set(key, list);
     }
@@ -168,13 +179,15 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         
         if (!isAlreadyScheduled) {
           const list = map.get(key) ?? [];
+          const taskId = (task as any).id || task.task_id;
           list.push({
             title: task.title,
             priority: task.priority ?? null,
             time: 'Deadline',
             duration: 0,
             parent: undefined,
-            type: 'deadline' as const
+            type: 'deadline' as const,
+            workItemId: taskId || ''
           });
           map.set(key, list);
           console.log(`Added deadline task: ${task.title} for date: ${key}`);
@@ -242,6 +255,58 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     },
   });
 
+  // Update task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, taskData }: { taskId: string; taskData: Partial<TaskRecord> }) => {
+      const response = await api.patch<TaskRecord>(`/tasks/${taskId}`, taskData);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+      setEditingTask(null);
+    },
+    onError: (error: any) => {
+      console.error("Failed to update task:", error);
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      await api.delete(`/tasks/${taskId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+    },
+    onError: (error: any) => {
+      console.error("Failed to delete task:", error);
+    },
+  });
+
+  // Schedule mutation
+  const scheduleMutation = useMutation({
+    mutationFn: async ({ taskId, startAt, minutes }: { taskId: string; startAt: Date; minutes: number }) => {
+      const response = await api.post("/schedule/create", {
+        task_id: taskId,
+        start_at: startAt.toISOString(),
+        planned_minutes: minutes,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+      setScheduleModalOpen(false);
+      setSchedulingItem(null);
+    },
+    onError: (error: any) => {
+      console.error("Failed to schedule task:", error);
+    },
+  });
+
   // Handlers
   const handleCreateTask = (date: Date) => {
     setSelectedDateForTask(date);
@@ -261,6 +326,71 @@ export default function CalendarView({ userId }: { userId: string | null | undef
     setTaskModalOpen(false);
     setSelectedDateForTask(null);
   };
+
+  // Helper to get TaskRecord from work_item_id
+  const getTaskFromWorkItemId = useCallback((workItemId: string) => {
+    const allTasks = tasksQ.data?.pages.flatMap((p) => p.items) ?? [];
+    return allTasks.find(t => {
+      const taskId = (t as any).id || t.task_id;
+      if (taskId === workItemId) return true;
+      // Check if it's a checklist item - if so, return the parent task
+      const checklistItem = t.checklist?.find(ci => ci.checklist_item_id === workItemId);
+      if (checklistItem) return true;
+      return false;
+    });
+  }, [tasksQ.data?.pages]);
+
+  // Modal handlers for sidebar entries
+  const handleEditTask = useCallback((workItemId: string) => {
+    console.log('handleEditTask:', { workItemId });
+    const task = getTaskFromWorkItemId(workItemId);
+    console.log('Found task:', { task, taskId: task ? ((task as any).id || task.task_id) : null });
+    if (task) setEditingTask(task);
+  }, [getTaskFromWorkItemId]);
+
+  const handleDeleteTask = useCallback((workItemId: string) => {
+    const task = getTaskFromWorkItemId(workItemId);
+    if (task) {
+      const taskId = (task as any).id || task.task_id;
+      if (taskId) deleteTaskMutation.mutate(taskId);
+    }
+  }, [getTaskFromWorkItemId, deleteTaskMutation]);
+
+
+  const handleStatusModalChange = useCallback((newStatus: StatusValue) => {
+    if (!statusModalTask) return;
+    
+    const taskId = (statusModalTask as any).id || statusModalTask.task_id;
+    if (!taskId) return;
+    
+    updateTaskMutation.mutate({
+      taskId,
+      taskData: { status: newStatus }
+    });
+    setStatusModalOpen(false);
+  }, [statusModalTask, updateTaskMutation]);
+
+  const handleOpenScheduleModal = useCallback((workItemId: string) => {
+    const task = getTaskFromWorkItemId(workItemId);
+    if (task) {
+      setSchedulingItem(task);
+      setScheduleStartAt(selectedDate);
+      setScheduleModalOpen(true);
+    }
+  }, [getTaskFromWorkItemId, selectedDate]);
+
+  const handleScheduleSave = useCallback(() => {
+    if (!schedulingItem || !scheduleStartAt) return;
+    
+    const taskId = (schedulingItem as any).id || schedulingItem.task_id;
+    if (!taskId) return;
+    
+    scheduleMutation.mutate({
+      taskId,
+      startAt: scheduleStartAt,
+      minutes: scheduleMinutes
+    });
+  }, [schedulingItem, scheduleStartAt, scheduleMinutes, scheduleMutation]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-[0_1px_0_#e6e6e6] p-4 md:p-6">
@@ -399,19 +529,31 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1 ml-2">
-                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200" title="Schedule">
+                  <button 
+                    onClick={() => handleOpenScheduleModal(t.workItemId)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-300 bg-blue-100 text-blue-800 hover:bg-blue-200" 
+                    title="Schedule"
+                  >
                     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </button>
                   
-                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50" title="Edit">
+                  <button 
+                    onClick={() => handleEditTask(t.workItemId)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50" 
+                    title="Edit"
+                  >
                     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                   
-                  <button className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 hover:bg-red-100" title="Delete">
+                  <button 
+                    onClick={() => handleDeleteTask(t.workItemId)}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-300 bg-red-50 text-red-600 hover:bg-red-100" 
+                    title="Delete"
+                  >
                     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -435,6 +577,46 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         onSubmit={handleSubmitTask}
         selectedDate={selectedDateForTask}
         isLoading={createTaskMutation.isPending}
+      />
+
+      {/* Edit Task Modal */}
+      <TaskModal
+        isOpen={!!editingTask}
+        onClose={() => setEditingTask(null)}
+        onSubmit={(taskData) => {
+          if (!editingTask) return;
+          const taskId = (editingTask as any).id || editingTask.task_id;
+          console.log('CalendarView updateTask:', { taskId, taskIdType: typeof taskId, editingTask, taskData });
+          if (!taskId) return;
+          updateTaskMutation.mutate({ taskId, taskData });
+        }}
+        task={editingTask}
+        isLoading={updateTaskMutation.isPending}
+      />
+
+      {/* Status Modal */}
+      <TaskStatusModal
+        open={statusModalOpen}
+        task={statusModalTask}
+        onStatusSelect={handleStatusModalChange}
+        onClose={() => setStatusModalOpen(false)}
+      />
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        open={scheduleModalOpen}
+        item={schedulingItem}
+        startAt={scheduleStartAt?.toISOString() || ''}
+        minutes={scheduleMinutes}
+        onStartAtChange={(value) => setScheduleStartAt(new Date(value))}
+        onMinutesChange={setScheduleMinutes}
+        onSave={handleScheduleSave}
+        onCancel={() => {
+          setScheduleModalOpen(false);
+          setSchedulingItem(null);
+        }}
+        loading={scheduleMutation.isPending}
+        isEditMode={false}
       />
     </div>
   );
