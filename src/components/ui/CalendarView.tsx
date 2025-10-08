@@ -287,9 +287,9 @@ export default function CalendarView({ userId }: { userId: string | null | undef
       </div>
 
       {/* Weekday header */}
-      <div className="mt-2 grid grid-cols-7 gap-1 text-[11px] text-slate-500">
+      <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] text-slate-500">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((w) => (
-          <div key={w} className="text-center py-1">{w}</div>
+          <div key={w} className="text-center py-0.5">{w}</div>
         ))}
       </div>
 
@@ -308,7 +308,7 @@ export default function CalendarView({ userId }: { userId: string | null | undef
               key={key}
               onClick={() => setSelectedDate(date)}
               className={[
-                "group relative h-24 rounded-lg border text-left p-2 transition",
+                "group relative h-20 rounded-lg border text-left p-2 transition",
                 outside ? "border-slate-200 bg-slate-50/40 text-slate-400" : `border-slate-200 ${tint || 'bg-white'}`,
                 isSelected ? "ring-2 ring-slate-900/60" : "hover:bg-slate-50"
               ].join(" ")}
@@ -337,15 +337,15 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                 <span className={["text-xs", isToday? "font-semibold text-slate-900":"text-slate-600"].join(" ")}>{date.getDate()}</span>
                 {isToday && <span className="rounded-md bg-slate-900 text-white px-1.5 py-0.5 text-[10px]">Today</span>}
               </div>
-              <div className="mt-2 space-y-1">
+              <div className="mt-1 space-y-0.5">
                 {dots.map((t, idx) => (
-                  <div key={idx} className="flex items-center gap-1 text-[11px] truncate">
-                    <span className={`h-1.5 w-1.5 rounded-full ${priorityDot(t.priority)}`} />
+                  <div key={idx} className="flex items-center gap-1 text-[10px] truncate">
+                    <span className={`h-1 w-1 rounded-full ${priorityDot(t.priority)}`} />
                     <span className="truncate text-slate-700">{t.title}</span>
                   </div>
                 ))}
                 {list.length > 3 && (
-                  <div className="text-[11px] text-slate-500">+{list.length-3} more</div>
+                  <div className="text-[10px] text-slate-500">+{list.length-3} more</div>
                 )}
               </div>
             </button>
