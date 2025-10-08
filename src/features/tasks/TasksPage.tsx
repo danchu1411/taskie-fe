@@ -469,12 +469,9 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 <div className="text-sm font-medium tracking-wider text-white/90 uppercase drop-shadow-sm mb-2">
                   Task Management
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl mb-2">
+                <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl">
                   Tasks
                 </h1>
-                <p className="text-lg font-medium text-white/95 drop-shadow-lg">
-                  {taskStats ? `${taskStats.total} tasks` : "Manage your tasks"}
-                </p>
               </div>
               
               <div className="flex items-center gap-4">

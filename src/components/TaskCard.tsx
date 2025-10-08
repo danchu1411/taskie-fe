@@ -268,10 +268,42 @@ export const TaskCard = React.memo(function TaskCard({
 
       {/* Main Content */}
       <div className="p-4 sm:p-6">
-        {/* Title */}
-        <h3 className="font-semibold text-slate-900 text-lg sm:text-xl leading-tight mb-2">
-                  {task.title}
-                </h3>
+        {/* Title Row */}
+        <div className="flex items-center gap-3 mb-2">
+          <h3 className="font-semibold text-slate-900 text-lg sm:text-xl leading-tight">
+            {task.title}
+          </h3>
+          
+          {/* Checklist Button */}
+          {hasChecklist && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors flex-shrink-0"
+            >
+              <span className="text-xs">{expanded ? "▼" : "▶"}</span>
+              <span>{completedChecklist}/{totalChecklist}</span>
+              <div className="w-12 bg-emerald-200 rounded-full h-1">
+                <div 
+                  className="bg-emerald-600 h-1 rounded-full transition-all duration-300"
+                  style={{ width: `${totalChecklist > 0 ? (completedChecklist / totalChecklist) * 100 : 0}%` }}
+                />
+              </div>
+            </button>
+          )}
+
+          {/* Add Checklist */}
+          {!hasChecklist && onAddChecklist && (
+            <button
+              onClick={() => onAddChecklist(task)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 hover:border-violet-300 transition-colors flex-shrink-0"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Checklist
+            </button>
+          )}
+        </div>
           
           {/* Description */}
           {task.description && (
@@ -333,43 +365,15 @@ export const TaskCard = React.memo(function TaskCard({
           </div>
         )}
 
-        {/* Checklist & Actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Checklist Progress */}
-          {hasChecklist && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors"
-            >
-              <span>{expanded ? "▼" : "▶"}</span>
-              <span>{completedChecklist}/{totalChecklist} subtasks</span>
-              <div className="w-16 bg-emerald-200 rounded-full h-1.5 ml-1">
-                <div 
-                  className="bg-emerald-600 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${totalChecklist > 0 ? (completedChecklist / totalChecklist) * 100 : 0}%` }}
-                />
-              </div>
-            </button>
-          )}
-
-          {/* Add Checklist */}
-          {!hasChecklist && onAddChecklist && (
-            <button
-              onClick={() => onAddChecklist(task)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 hover:border-violet-300 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Add Checklist
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Checklist Items */}
-      {hasChecklist && expanded && (
-        <div className="mt-4 border-t border-slate-200">
+      {hasChecklist && (
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          expanded 
+            ? 'max-h-screen opacity-100 mt-4 border-t border-slate-200' 
+            : 'max-h-0 opacity-0 mt-0'
+        }`}>
           {/* Header - with padding */}
           <div className="px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-3">
@@ -412,7 +416,7 @@ export const TaskCard = React.memo(function TaskCard({
             </button>
           </div>
         </div>
-      )}
+        )}
     </div>
   );
 });
