@@ -14,6 +14,7 @@ interface NavigationBarProps {
 export default function NavigationBar({ onNavigate, activeNav = "today" }: NavigationBarProps) {
   const { user, logout } = useAuth();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -38,6 +39,22 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [userDropdownOpen]);
+
+  // Close dropdown immediately when activeNav changes (route change)
+  useEffect(() => {
+    if (userDropdownOpen) {
+      setUserDropdownOpen(false);
+    }
+    // Reset navigating state when route changes
+    setIsNavigating(false);
+  }, [activeNav]);
+
+  // Close dropdown when component unmounts
+  useEffect(() => {
+    return () => {
+      setUserDropdownOpen(false);
+    };
+  }, []);
   const navigationItems = [
     { 
       id: "today", 
@@ -80,6 +97,15 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
   const handleNavigation = (navId: string) => {
     if (!onNavigate) return;
     
+    // Set navigating state and close dropdown immediately
+    setIsNavigating(true);
+    setUserDropdownOpen(false);
+    
+    // Reset navigating state after a short delay
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 100);
+    
     switch (navId) {
       case "today":
         onNavigate("/today");
@@ -102,7 +128,17 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
         {/* Logo */}
         <button
           type="button"
-          onClick={() => onNavigate?.("/today")}
+          onClick={() => {
+            setIsNavigating(true);
+            setUserDropdownOpen(false);
+            
+            // Reset navigating state after a short delay
+            setTimeout(() => {
+              setIsNavigating(false);
+            }, 100);
+            
+            onNavigate?.("/today");
+          }}
           className="text-2xl font-bold text-indigo-600"
         >
           Taskie
@@ -155,15 +191,19 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
             <button
               type="button"
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-medium transition-all duration-200 ${
+                userDropdownOpen 
+                  ? 'bg-indigo-700 scale-105 shadow-lg' 
+                  : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-105'
+              }`}
             >
               {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U"}
             </button>
             
             {/* Dropdown Menu */}
-            {userDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
-                <div className="py-1">
+            {userDropdownOpen && !isNavigating && (
+              <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50 animate-dropdown-in opacity-100 scale-100 translate-y-0 pointer-events-auto">
+              <div className="py-1">
                   {/* User Info */}
                   <div className="px-4 py-3 border-b border-slate-100">
                     <div className="text-sm font-medium text-slate-900">{user?.name || "Guest"}</div>
@@ -173,7 +213,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
                   {/* Menu Items */}
                   <button
                     type="button"
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors duration-150"
                   >
                     <div className="flex items-center gap-3">
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +225,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
                   
                   <button
                     type="button"
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors duration-150"
                   >
                     <div className="flex items-center gap-3">
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +240,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
                     >
                       <div className="flex items-center gap-3">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

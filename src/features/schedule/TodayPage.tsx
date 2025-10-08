@@ -712,7 +712,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       setEditingItem(null);
     },
   });
-  const handleStatusChange = useCallback(
+  const _handleStatusChange = useCallback(
     (item: TodayItem, nextStatus: StatusValue) => {
       statusMutation.mutate({ item, status: nextStatus });
     },

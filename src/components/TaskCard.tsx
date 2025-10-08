@@ -42,7 +42,7 @@ export const TaskCard = React.memo(function TaskCard({
   onAddChecklist,
   onEditChecklistItem,
   onDeleteChecklistItem,
-  onChecklistItemStatusChange,
+  onChecklistItemStatusChange: _onChecklistItemStatusChange,
   onChecklistItemOpenStatusModal,
   onChecklistItemReorder,
   isUpdating = false,

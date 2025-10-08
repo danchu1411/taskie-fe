@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:analyze": "npm run build && node scripts/analyze-bundle.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "bench:tasks": "node scripts/bench-tasks.js",
     "bench:fetch": "node scripts/bench-fetch.js",
-    "bench:all": "npm run bench:tasks && npm run bench:fetch"
+    "bench:all": "npm run bench:tasks && npm run bench:fetch",
+    "perf:analyze": "node scripts/analyze-bundle.js",
+    "perf:analyze:advanced": "node scripts/advanced-bundle-analysis.js",
+    "perf:monitor": "npm run dev -- --open",
+    "build:optimized": "npm run build && npm run perf:analyze:advanced"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -40,6 +45,7 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "terser": "^5.44.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2"

@@ -6,9 +6,14 @@
  */
 export const CACHE_CONFIG = {
   /** Time in ms before cached data is considered stale and needs refetching */
-  STALE_TIME: 5 * 60 * 1000, // 5 minutes
+  STALE_TIME: 10 * 60 * 1000, // 10 minutes (tăng từ 5 phút)
   /** Time in ms before unused data is garbage collected from cache */
-  GC_TIME: 10 * 60 * 1000, // 10 minutes
+  GC_TIME: 30 * 60 * 1000, // 30 minutes (tăng từ 10 phút)
+  /** Background refetch interval for critical data */
+  REFETCH_INTERVAL: 5 * 60 * 1000, // 5 minutes
+  /** Retry configuration */
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000, // 1 second
 } as const;
 
 /**
