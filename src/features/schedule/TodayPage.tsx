@@ -1156,7 +1156,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
-      <NavigationBar onNavigate={guardedNavigate} activeNav="today" />
+      {!isFullscreen && <NavigationBar onNavigate={guardedNavigate} activeNav="today" />}
         
         {/* Hero Section with Lazy Loading Wallpaper */}
         <WallpaperBackground

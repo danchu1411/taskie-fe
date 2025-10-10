@@ -14,7 +14,7 @@ export const ConfirmStopSessionModal = memo(function ConfirmStopSessionModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-slate-900">Stop focus session?</h3>
         <p className="mt-2 text-sm text-slate-500">

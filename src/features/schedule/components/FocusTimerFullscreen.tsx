@@ -49,7 +49,7 @@ export const FocusTimerFullscreen = memo(function FocusTimerFullscreen({
   };
   
   return (
-    <div className={`fixed inset-0 z-50 ${isDarkTheme ? 'bg-gray-900' : 'bg-white'}`}>
+    <div className={`fixed inset-0 z-[110] ${isDarkTheme ? 'bg-gray-900' : 'bg-white'}`}>
       <div className="flex h-full flex-col items-center justify-center">
         {/* Header */}
         <div className="mb-8 text-center">

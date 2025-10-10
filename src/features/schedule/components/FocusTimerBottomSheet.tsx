@@ -53,7 +53,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
     : "flex-1 bg-black/20 transition-opacity duration-300 opacity-0 pointer-events-none";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[110] flex flex-col justify-end">
       <div className={overlayClasses} onClick={onClose} />
 
       <div

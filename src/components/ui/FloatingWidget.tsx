@@ -85,7 +85,7 @@ export function FloatingWidget({
         left: widgetPosition.x, 
         top: widgetPosition.y, 
         position: 'fixed', 
-        zIndex: 50, 
+        zIndex: 110, 
         transform: isDragging && transform
           ? `translate(${transform.x}px, ${transform.y}px) scale(1.05) rotate(1deg)`
           : 'scale(1) rotate(0deg)', 
