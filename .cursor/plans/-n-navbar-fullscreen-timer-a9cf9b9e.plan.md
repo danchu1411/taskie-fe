@@ -1,62 +1,151 @@
-<!-- a9cf9b9e-7b52-4edc-87b8-315634396804 2a0f7fa4-a897-4798-b4fb-761f71621367 -->
-# Tự động hoàn thành task khi timer kết thúc
+<!-- a9cf9b9e-7b52-4edc-87b8-315634396804 a7af3d25-c129-4a99-ba5e-5d4b9fa35606 -->
+# Tối ưu TodayPage - Code Review & Improvements
 
-## Yêu cầu
+## Các vấn đề đã phát hiện:
 
-Khi đồng hồ Pomodoro chạy xong một task/checklist item cụ thể, tự động cập nhật status của item đó thành "Done".
+### 1. **Imports không sử dụng**
 
-## Phân tích hiện tại
+- `FocusTimerFullscreen` và `FocusTimerBottomSheet` đã được import nhưng không còn dùng (đã chuyển sang TimerManager)
+- Có thể loại bỏ để giảm bundle size
 
-### 1. Timer hook (`useTodayTimer.ts`)
+### 2. **Missing useMemo cho callbacks**
 
-- Dòng 68: `timerItemId` lưu ID của item đang focus
-- Dòng 90-93: `timerItem` tìm item từ `timerItemId`
-- Dòng 280-282: Khi all sessions complete, chỉ play sound và stop timer
+- `useTimerCallbacks` được gọi mỗi render với object mới
+- Nên wrap callbacks trong `useMemo` để tránh re-render không cần thiết
 
-### 2. TodayPage (`TodayPage.tsx`)
+### 3. **Duplicate destructuring**
 
-- Dòng 412-419: Timer được khởi tạo với callback `onStartFocus` để set status IN_PROGRESS
-- Dòng 442: `statusMutation` có sẵn để cập nhật status
+- Timer context được destructure 2 lần (dòng 430-431 và 437-458)
+- Nên gộp lại thành 1 lần
 
-## Giải pháp
+### 4. **Console.log statements**
 
-### Bước 1: Thêm callback `onComplete` vào `useTodayTimer`
+- Nhiều console.log debug statements còn sót lại trong production code
+- Nên loại bỏ hoặc wrap trong `if (__DEV__)` condition
 
-**File:** `src/features/schedule/useTodayTimer.ts`
+### 5. **Unused variables**
 
-1. Thêm `onComplete` vào `TodayTimerHookParams` interface (dòng ~10)
-2. Destructure `onComplete` từ params (dòng 60)
-3. Gọi `onComplete(timerItem)` khi timer kết thúc (dòng ~280-282)
+- `timerItems` được tạo nhưng không dùng trực tiếp
+- `customDuration` state không còn cần thiết sau khi chuyển sang TimerContext
 
-### Bước 2: Truyền callback từ TodayPage
+### 6. **Handler functions có thể memoize**
 
-**File:** `src/features/schedule/TodayPage.tsx`
+- `handleTimerClose`, `handleTaskSelect`, `guardedNavigate` có thể optimize với useCallback dependencies
 
-Thêm `onComplete` callback vào timer initialization (dòng 412-419):
+### 7. **StatusMutation callbacks**
+
+- Timer callbacks tìm kiếm items mỗi lần gọi
+- Có thể optimize bằng cách dùng Map lookup
+
+### 8. **Missing error boundaries**
+
+- Một số components lớn không có error boundary
+- Nên wrap critical sections
+
+### 9. **Large component**
+
+- TodayPageContent quá lớn (~1200 lines)
+- Có thể extract một số logic thành custom hooks
+
+### 10. **Keyboard shortcuts dependencies**
+
+- useTodayKeyboardShortcuts nhận quá nhiều dependencies
+- Có thể optimize bằng cách dùng refs
+
+## Các cải thiện đề xuất:
+
+### A. **Cleanup Imports** (Priority: High)
 
 ```typescript
-const timer = useTodayTimer({
-  items,
-  onStartFocus: (item) => {
-    if (item.status !== STATUS.IN_PROGRESS) {
-      statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
-    }
-  },
-  onComplete: (item) => {
-    if (item && item.status !== STATUS.DONE) {
-      statusMutation.mutate({ item, status: STATUS.DONE });
-    }
-  }
-});
+// Remove unused imports
+- import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
+- import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
 ```
 
-## Lưu ý
+### B. **Optimize Timer Callbacks** (Priority: High)
 
-- Chỉ auto-complete khi có `timerItem` (đang focus một item cụ thể)
-- Không auto-complete nếu timer chạy không gắn với item nào
-- Kiểm tra status trước khi mutate để tránh update không cần thiết
+```typescript
+// Memoize callbacks to prevent re-creation
+const timerCallbacks = useMemo(() => ({
+  onStartFocus: (item: TimerItem) => {
+    const todayItem = items.find(i => i.id === item.id);
+    if (todayItem && todayItem.status !== STATUS.IN_PROGRESS) {
+      statusMutation.mutate({ item: todayItem, status: STATUS.IN_PROGRESS });
+    }
+  },
+  onComplete: (item: TimerItem | null) => {
+    const todayItem = items.find(i => i.id === item?.id);
+    if (todayItem && todayItem.status !== STATUS.DONE) {
+      statusMutation.mutate({ item: todayItem, status: STATUS.DONE });
+    }
+  }
+}), [items, statusMutation]);
+
+useTimerCallbacks(timerCallbacks);
+```
+
+### C. **Consolidate Timer Context** (Priority: Medium)
+
+```typescript
+// Single destructure instead of two
+const timer = useTimerContext();
+const {
+  setItems,
+  timerOpen,
+  // ... all other props
+} = timer;
+```
+
+### D. **Remove Debug Logs** (Priority: Medium)
+
+- Remove or wrap console.log statements
+- Use proper logging library if needed
+
+### E. **Optimize Items Lookup** (Priority: Medium)
+
+```typescript
+// Create items Map for O(1) lookup
+const itemsMap = useMemo(() => 
+  new Map(items.map(item => [item.id, item])),
+  [items]
+);
+
+// Use in callbacks
+const todayItem = itemsMap.get(item.id);
+```
+
+### F. **Extract Custom Hooks** (Priority: Low)
+
+- Extract mutation logic into `useTodayMutations` hook
+- Extract modal state into `useTodayModals` hook
+- Reduce component complexity
+
+### G. **Remove Unused State** (Priority: Low)
+
+- Remove `customDuration` if not used
+- Clean up any other unused state variables
+
+## Implementation Priority:
+
+1. ✅ Cleanup imports (quick win)
+2. ✅ Optimize timer callbacks (performance impact)
+3. ✅ Consolidate destructuring (code quality)
+4. ⚠️ Remove debug logs (production ready)
+5. ⚠️ Optimize lookups (performance)
+6. 📝 Extract hooks (maintainability)
+
+## Expected Benefits:
+
+- 🚀 Reduced re-renders
+- 📦 Smaller bundle size
+- 🧹 Cleaner code
+- 🐛 Easier debugging
+- 🔧 Better maintainability
 
 ### To-dos
 
-- [ ] Thêm điều kiện ẩn NavigationBar khi isFullscreen === true trong TodayPage.tsx
-- [ ] Kiểm tra TasksPage và PlannerPage có cùng vấn đề không
+- [ ] Loại bỏ imports không dùng (FocusTimerFullscreen, FocusTimerBottomSheet)
+- [ ] Wrap timer callbacks trong useMemo để tránh re-creation
+- [ ] Gộp timer context destructuring thành 1 lần duy nhất
+- [ ] Tạo items Map để tối ưu lookup O(1)
+- [ ] Loại bỏ console.log debug statements
