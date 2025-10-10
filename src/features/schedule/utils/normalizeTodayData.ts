@@ -147,10 +147,10 @@ export function normalizeWorkItem(
     "checklist_id",
   ]);
 
-  // Use derived_status for consistency with TasksPage
+  // Use work item's own status first, then fallback to task
   const status =
-    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(workItemRecord, ["status"])) ??
+    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(taskRecord, ["status"]));
 
   // Use task priority for consistency with TasksPage
@@ -221,10 +221,10 @@ export function normalizeChecklist(
 
   const taskId = readField<string>(taskRecord, ["taskId", "task_id"]) ?? null;
 
-  // Use derived_status for consistency with TasksPage
+  // Use checklist item's own status first, then fallback to task
   const status =
-    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(checklistRecord, ["status"])) ??
+    toStatus(readField(taskRecord, ["derived_status"])) ??
     toStatus(readField(taskRecord, ["status"]));
 
   // Use task priority for consistency with TasksPage

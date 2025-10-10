@@ -415,6 +415,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       if (item.status !== STATUS.IN_PROGRESS) {
         statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
       }
+    },
+    onComplete: (item) => {
+      if (item && item.status !== STATUS.DONE) {
+        statusMutation.mutate({ item, status: STATUS.DONE });
+      }
     }
   });
   const timerItem = timer.timerItem;

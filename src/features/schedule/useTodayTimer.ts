@@ -9,6 +9,7 @@ type SessionType = "focus" | "short-break" | "long-break";
 export type TodayTimerHookParams = {
   items: TodayItem[];
   onStartFocus: (item: TodayItem) => void;
+  onComplete?: (item: TodayItem | null) => void;
 };
 
 export type TodayTimerHook = {
@@ -57,7 +58,7 @@ export type TodayTimerHook = {
 };
 
 export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
-  const { items, onStartFocus } = params;
+  const { items, onStartFocus, onComplete } = params;
 
   const [timerOpen, setTimerOpen] = useState(false);
   const [timerAnimating, setTimerAnimating] = useState(false);
@@ -91,6 +92,7 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
     () => items.find((item) => item.id === timerItemId) ?? null,
     [items, timerItemId]
   );
+
 
   const generateSessionPlan = useCallback((totalMinutes: number) => {
     const plan: Array<{ type: SessionType; duration: number }> = [];
@@ -280,6 +282,10 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
               // All sessions complete!
               timerSounds.playCompleteSound();
               setTimerRunning(false);
+              // Auto-complete the focused item
+              if (onComplete && timerItemRef.current) {
+                onComplete(timerItemRef.current);
+              }
             } else {
               // Simple mode (not custom)
               const shouldSkipBreaks = skipBreaksRef.current;
@@ -307,6 +313,10 @@ export function useTodayTimer(params: TodayTimerHookParams): TodayTimerHook {
               } else {
                 // Skip breaks enabled - stop after focus
             setTimerRunning(false);
+                // Auto-complete the focused item
+                if (onComplete && timerItemRef.current) {
+                  onComplete(timerItemRef.current);
+                }
               }
             }
             
