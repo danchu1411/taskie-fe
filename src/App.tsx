@@ -2,6 +2,8 @@
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./features/auth/AuthContext";
 import { SystemError } from "./components/ui";
+import { TimerProvider } from "./contexts/TimerContext";
+import { TimerManager } from "./components/TimerManager";
 import TaskieLanding from "./features/landing/TaskieLanding";
 import TaskieLogin from "./features/auth/TaskieLogin";
 import TaskieSignup from "./features/auth/TaskieSignup";
@@ -242,6 +244,29 @@ function NotFoundRoute() {
   return <Navigate to="/" replace />;
 }
 
+// Wrapper component to provide timer items
+function AppWithTimer() {
+  return (
+    <TimerProvider items={[]}>
+      <Routes>
+        <Route path="/" element={<LandingRoute />} />
+        <Route path="/login" element={<LoginRoute />} />
+        <Route path="/signup" element={<SignupRoute />} />
+        <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
+        <Route path="/reset-password" element={<ResetPasswordRoute />} />
+        <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
+        <Route path="/auth/success" element={<AuthSuccessRoute />} />
+        <Route path="/error" element={<ErrorRoute />} />
+        <Route path="/today" element={<TodayRoute />} />
+        <Route path="/tasks" element={<TasksRoute />} />
+        <Route path="/planner" element={<PlannerRoute />} />
+        <Route path="*" element={<NotFoundRoute />} />
+      </Routes>
+      <TimerManager />
+    </TimerProvider>
+  );
+}
+
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -254,22 +279,7 @@ function App() {
     }
   }, [auth.authError, auth.networkError, navigate, location.pathname]);
 
-  return (
-    <Routes>
-      <Route path="/" element={<LandingRoute />} />
-      <Route path="/login" element={<LoginRoute />} />
-      <Route path="/signup" element={<SignupRoute />} />
-      <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
-      <Route path="/reset-password" element={<ResetPasswordRoute />} />
-      <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
-      <Route path="/auth/success" element={<AuthSuccessRoute />} />
-      <Route path="/error" element={<ErrorRoute />} />
-      <Route path="/today" element={<TodayRoute />} />
-      <Route path="/tasks" element={<TasksRoute />} />
-      <Route path="/planner" element={<PlannerRoute />} />
-      <Route path="*" element={<NotFoundRoute />} />
-    </Routes>
-  );
+  return <AppWithTimer />;
 }
 
 export default App;

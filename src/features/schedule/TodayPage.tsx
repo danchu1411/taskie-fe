@@ -18,7 +18,7 @@ import { WallpaperBackground } from "../../components/WallpaperBackground";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
 import { useTodayData, type TodayItem, type StatusValue, type TaskListResponse, STATUS } from "./hooks/useTodayData";
 import { SCHEDULE_QUERY_KEY } from "./hooks/useScheduleData";
-import useTodayTimer from "./useTodayTimer";
+import { useTimerContext, useTimerCallbacks, type TimerItem } from "../../contexts/TimerContext";
 import { getDefaultFocusDuration } from "./constants";
 import { DEFAULT_VALUES, TIMER_INTERVALS } from "./constants/cacheConfig";
 import { QuickAddPanel } from "./components/QuickAddPanel";
@@ -269,6 +269,20 @@ interface StatusMutationPayload {
   item: TodayItem;
   status: StatusValue;
 }
+// Convert TodayItem to TimerItem
+function convertToTimerItem(item: TodayItem): TimerItem {
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    plannedMinutes: item.plannedMinutes,
+    source: item.source,
+    parentTitle: item.parentTitle,
+    taskId: item.taskId,
+    checklistItemId: item.checklistItemId,
+  };
+}
+
 function TodayPageContent({ onNavigate }: TodayPageProps) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -409,20 +423,17 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const { isLoading, isError, error, refetch } = tasksQuery;
   const { inProgress, planned, completed, doneCount, progressValue } = categories;
 
-  const timer = useTodayTimer({
-    items,
-    onStartFocus: (item) => {
-      if (item.status !== STATUS.IN_PROGRESS) {
-        statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
-      }
-    },
-    onComplete: (item) => {
-      if (item && item.status !== STATUS.DONE) {
-        statusMutation.mutate({ item, status: STATUS.DONE });
-      }
-    }
-  });
-  const timerItem = timer.timerItem;
+  // Convert items to TimerItems
+  const timerItems = useMemo(() => items.map(convertToTimerItem), [items]);
+  
+  // Use timer context
+  const timer = useTimerContext();
+  const { setItems } = timer;
+  
+  // Update timer provider with current items
+  useEffect(() => {
+    setItems(timerItems);
+  }, [timerItems, setItems]);
   const {
     timerOpen,
     timerAnimating,
@@ -443,7 +454,24 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
     exitFloatingMode,
     setTimerRunning,
     applyFloatingDelta,
+    openTimer,
   } = timer;
+  
+  // Set up timer callbacks
+  useTimerCallbacks({
+    onStartFocus: (item) => {
+      const todayItem = items.find(i => i.id === item.id);
+      if (todayItem && todayItem.status !== STATUS.IN_PROGRESS) {
+        statusMutation.mutate({ item: todayItem, status: STATUS.IN_PROGRESS });
+      }
+    },
+    onComplete: (item) => {
+      const todayItem = items.find(i => i.id === item?.id);
+      if (todayItem && todayItem.status !== STATUS.DONE) {
+        statusMutation.mutate({ item: todayItem, status: STATUS.DONE });
+      }
+    }
+  });
   const statusMutation = useMutation<void, unknown, StatusMutationPayload, StatusMutationContext>({
     mutationFn: async ({ item, status }) => {
       if (item.source === "task" && item.taskId) {
@@ -1188,7 +1216,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
-                    onClick={() => timer.openTimer()}
+                    onClick={() => openTimer()}
                     className="rounded-xl bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-md px-8 py-4 text-white border border-white/30 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 hover:bg-white/30 hover:border-white/50"
                   >
                     <div className="flex items-center gap-3">
@@ -1353,50 +1381,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           <span className="text-2xl font-bold">+</span>
         </button>
       </div>
-      {/* Floating Widget */}
-      {isFloating && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleFloatingDragEnd}
-        >
-          <FloatingWidget onRequestClose={handleTimerClose} />
-        </DndContext>
-      )}
-
-      {isFullscreen && (
-        <FocusTimerFullscreen
-          isDarkTheme={isDarkTheme}
-          currentSession={currentSession}
-          sessionPlan={sessionPlan}
-          timerRemain={timerRemain}
-          timerDuration={timerDuration}
-          timerRunning={timerRunning}
-          skipBreaks={skipBreaks}
-          onToggleRunning={() => setTimerRunning(!timerRunning)}
-          onEnterFloatingMode={enterFloatingMode}
-          onClose={handleTimerClose}
-          onToggleTheme={() => timer.setIsDarkTheme(!isDarkTheme)}
-        />
-      )}
-
-      {timerOpen && !isFullscreen && !isFloating && (
-        <FocusTimerBottomSheet
-          timerAnimating={timerAnimating}
-          timerItem={timerItem}
-          timerRunning={timerRunning}
-          timerRemain={timerRemain}
-          customDuration={customDuration}
-          skipBreaks={skipBreaks}
-          availableTasks={items}
-          onClose={handleTimerClose}
-          onSetCustomDuration={setCustomDuration}
-          onStartCustomDuration={startCustomDuration}
-          onSetTimerRunning={setTimerRunning}
-          onSkipBreaksChange={setSkipBreaks}
-          onTaskSelect={handleTaskSelect}
-        />
-      )}
 
       <ConfirmStopSessionModal
         open={confirmStopOpen}
