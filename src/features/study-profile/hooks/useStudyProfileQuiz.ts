@@ -3,6 +3,8 @@ import type { StudyProfile } from '../../../lib/types';
 import { QUIZ_QUESTIONS, aggregateAnswers, reverseMapProfile, validateAnswers } from '../utils/quizQuestions';
 import { useStudyProfileData } from './useStudyProfileData';
 
+export type LoadingState = 'idle' | 'saving' | 'success' | 'error';
+
 export interface QuizState {
   currentStep: number;
   answers: Record<string, number>;
@@ -31,6 +33,10 @@ export function useStudyProfileQuiz(existingProfile?: StudyProfile | null) {
     }
     return {};
   });
+
+  // Optimistic UI state
+  const [loadingState, setLoadingState] = useState<LoadingState>('idle');
+  const [optimisticError, setOptimisticError] = useState<Error | null>(null);
 
   const { saveProfile, isSaving, saveError } = useStudyProfileData();
 
@@ -74,6 +80,34 @@ export function useStudyProfileQuiz(existingProfile?: StudyProfile | null) {
     await saveProfile(profileData);
   }, [answers, validation.isValid, saveProfile]);
 
+  // Optimistic submission with rollback
+  const submitQuizOptimistic = useCallback(async () => {
+    if (!validation.isValid) {
+      setOptimisticError(new Error('Please complete all questions before submitting'));
+      setLoadingState('error');
+      throw new Error('Please complete all questions before submitting');
+    }
+
+    // Clear previous error
+    setOptimisticError(null);
+    
+    // Show saving state immediately
+    setLoadingState('saving');
+    
+    try {
+      const profileData = aggregateAnswers(answers);
+      await saveProfile(profileData);
+      
+      // Success confirmed
+      setLoadingState('success');
+    } catch (error) {
+      // Rollback on error
+      setLoadingState('error');
+      setOptimisticError(error as Error);
+      throw error;
+    }
+  }, [answers, validation.isValid, saveProfile]);
+
   const resetQuiz = useCallback(() => {
     setCurrentStep(0);
     setAnswers(existingProfile ? reverseMapProfile(existingProfile) : {});
@@ -100,6 +134,9 @@ export function useStudyProfileQuiz(existingProfile?: StudyProfile | null) {
     ...actions,
     isSaving,
     saveError,
+    loadingState,
+    optimisticError,
+    submitQuizOptimistic,
     currentQuestion: QUIZ_QUESTIONS[currentStep],
     totalQuestions: QUIZ_QUESTIONS.length
   };
