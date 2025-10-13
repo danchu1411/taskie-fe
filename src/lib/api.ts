@@ -1,6 +1,7 @@
 import axios from "axios";
 import { notifyUnauthorized } from "./auth-events";
 import { notifyNetworkError, isNetworkError } from "./network-events";
+import { navigateTo } from "./navigation-utils";
 
 type MaybeString = string | null | undefined;
 
@@ -109,6 +110,22 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         console.warn('Token refresh failed:', refreshError);
+      }
+    }
+
+    // Handle 403 Forbidden with STUDY_PROFILE_REQUIRED
+    if (error && error.response && error.response.status === 403) {
+      const errorData = error.response.data;
+      if (errorData?.code === 'STUDY_PROFILE_REQUIRED') {
+        // CRITICAL: Check current location to avoid loops
+        const currentPath = window.location.pathname;
+        const isAlreadyOnQuiz = currentPath.includes('/study-profile/quiz');
+        
+        if (!isAlreadyOnQuiz) {
+          // Store return URL for after quiz completion
+          const returnUrl = currentPath !== '/study-profile/quiz' ? currentPath : '/today';
+          navigateTo(`/study-profile/quiz?return=${encodeURIComponent(returnUrl)}`);
+        }
       }
     }
 

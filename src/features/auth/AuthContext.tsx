@@ -105,6 +105,7 @@ type AuthContextValue = {
   clearAuthError: () => void;
   setAuthError: (error: string | null) => void;
   clearNetworkError: () => void;
+  updateUserProfile: (updates: Partial<AuthUser>) => void; // ADD THIS
 };
 
 type AuthResponsePayload = {
@@ -289,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: {
           ...payload.user,
           emailVerified: Boolean(payload.user.emailVerified),
+          hasStudyProfile: Boolean(payload.user.hasStudyProfile), // ADD THIS
         },
         tokens: payload.tokens,
       };
@@ -467,6 +469,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNetworkError(null);
   }, []);
 
+  // Add method to update user profile
+  const updateUserProfile = useCallback((updates: Partial<AuthUser>) => {
+    if (!authState) return;
+    
+    const updatedUser = { ...authState.user, ...updates };
+    setAuthState({ ...authState, user: updatedUser });
+  }, [authState, setAuthState]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user: authState?.user ?? null,
@@ -490,6 +500,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAuthError,
       setAuthError: setAuthErrorManually,
       clearNetworkError,
+      updateUserProfile,
     }),
     [
       authState,
@@ -511,6 +522,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAuthError,
       setAuthErrorManually,
       clearNetworkError,
+      updateUserProfile,
     ],
   );
 

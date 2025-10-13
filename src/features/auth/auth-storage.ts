@@ -3,6 +3,7 @@ export type AuthUser = {
   email: string;
   name?: string | null;
   emailVerified?: boolean;
+  hasStudyProfile?: boolean;
 };
 
 export type AuthTokens = {
@@ -26,11 +27,24 @@ function normalizeUser(raw: Partial<AuthUser> | null | undefined): AuthUser | nu
   if (!raw) return null;
   const { id, email } = raw;
   if (!id || !email) return null;
+  const emailVerified =
+    Boolean(
+      (raw as Record<string, unknown>).emailVerified ??
+        (raw as Record<string, unknown>).email_verified ??
+        false,
+    );
+  const hasStudyProfile =
+    Boolean(
+      (raw as Record<string, unknown>).hasStudyProfile ??
+        (raw as Record<string, unknown>).has_study_profile ??
+        false,
+    );
   return {
     id: String(id),
     email: String(email).toLowerCase(),
     name: typeof raw.name === "string" ? raw.name : raw.name ?? null,
-    emailVerified: Boolean((raw as Record<string, unknown>).emailVerified ?? (raw as Record<string, unknown>).email_verified ?? false),
+    emailVerified,
+    hasStudyProfile,
   };
 }
 

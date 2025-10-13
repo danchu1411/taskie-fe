@@ -110,3 +110,40 @@ export interface TodayItem {
   taskId: string | null;
   checklistItemId: string | null;
 }
+
+// Study Profile Enums
+export const Chronotype = {
+  MorningWarrior: 0,
+  NightOwl: 1,
+  Flexible: 2
+} as const;
+
+export const FocusStyle = {
+  DeepFocus: 0,
+  SprintWorker: 1,
+  Multitasker: 2
+} as const;
+
+export const WorkStyle = {
+  DeadlineDriven: 0,
+  SteadyPacer: 1
+  // NO VALUE 2 - Database constraint
+} as const;
+
+export type Chronotype = typeof Chronotype[keyof typeof Chronotype];
+export type FocusStyle = typeof FocusStyle[keyof typeof FocusStyle];
+export type WorkStyle = typeof WorkStyle[keyof typeof WorkStyle];
+
+export interface StudyProfile {
+  user_id: string;
+  chronotype: Chronotype;
+  focusStyle: FocusStyle;
+  workStyle: WorkStyle;
+  updated_at: string;
+}
+
+export interface StudyProfileFormData {
+  chronotype: Chronotype;
+  focusStyle: FocusStyle;
+  workStyle: WorkStyle;
+}

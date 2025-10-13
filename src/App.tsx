@@ -12,6 +12,10 @@ import AuthSuccess from "./features/auth/AuthSuccess";
 import TodayPage from "./features/schedule/TodayPage";
 import PlannerPage from "./features/schedule/PlannerPage";
 import TasksPage from "./features/tasks/TasksPage";
+import { StudyProfileQuiz } from "./features/study-profile/StudyProfileQuiz";
+import { setNavigateFunction } from "./lib/navigation-utils";
+import { SettingsPage } from "./features/settings/SettingsPage";
+import { AISuggestionsPage } from "./features/ai-suggestions/AISuggestionsPage";
 
 type NavigateHandler = (path: string) => void;
 
@@ -32,6 +36,12 @@ function resolveAuthenticatedDestination(auth: AuthSnapshot) {
   if (auth.shouldPromptVerification && !auth.user?.emailVerified) {
     return "/auth/verify-email";
   }
+  
+  // NEW: Check study profile
+  if (auth.user?.hasStudyProfile === false) {
+    return "/study-profile/quiz";
+  }
+  
   return "/today";
 }
 
@@ -163,6 +173,36 @@ function PlannerRoute() {
   );
 }
 
+function StudyProfileQuizRoute() {
+  const navigate = useNavigationHandler();
+  
+  return (
+    <RequireAuthRoute allowUnverified={true}>
+      <StudyProfileQuiz onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
+function SettingsRoute() {
+  const navigate = useNavigationHandler();
+  
+  return (
+    <RequireAuthRoute>
+      <SettingsPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
+function AISuggestionsRoute() {
+  const navigate = useNavigationHandler();
+  
+  return (
+    <RequireAuthRoute>
+      <AISuggestionsPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
 function ErrorRoute() {
   const auth = useAuth();
   const navigate = useNavigationHandler();
@@ -247,6 +287,11 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Setup navigation function for API interceptors
+  useEffect(() => {
+    setNavigateFunction(navigate);
+  }, [navigate]);
+
   // Redirect to error route when auth or network error occurs
   useEffect(() => {
     if ((auth.authError || auth.networkError) && location.pathname !== '/error') {
@@ -264,6 +309,9 @@ function App() {
       <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
       <Route path="/auth/success" element={<AuthSuccessRoute />} />
       <Route path="/error" element={<ErrorRoute />} />
+      <Route path="/study-profile/quiz" element={<StudyProfileQuizRoute />} />
+      <Route path="/settings" element={<SettingsRoute />} />
+      <Route path="/ai-suggestions" element={<AISuggestionsRoute />} />
       <Route path="/today" element={<TodayRoute />} />
       <Route path="/tasks" element={<TasksRoute />} />
       <Route path="/planner" element={<PlannerRoute />} />
