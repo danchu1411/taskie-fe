@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { StudyProfileEnforcementBanner } from '../study-profile/components/StudyProfileEnforcementBanner';
+import AISuggestionsModal from '../../../components/AISuggestionsModal';
 
 interface AISuggestionsPageProps {
   onNavigate: (path: string) => void;
@@ -7,9 +9,24 @@ interface AISuggestionsPageProps {
 
 export function AISuggestionsPage({ onNavigate }: AISuggestionsPageProps) {
   const { user } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleTakeQuiz = () => {
     onNavigate('/study-profile/quiz');
+  };
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSuccess = (scheduleEntryId: string) => {
+    console.log('Schedule entry created:', scheduleEntryId);
+    // TODO: Refresh data or show success message
+    setIsModalOpen(false);
   };
 
   return (
@@ -35,10 +52,13 @@ export function AISuggestionsPage({ onNavigate }: AISuggestionsPageProps) {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <button className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
-              <div className="text-2xl mb-2">📝</div>
-              <h3 className="font-medium text-gray-800">Task Suggestions</h3>
-              <p className="text-sm text-gray-600">Generate new tasks based on your schedule</p>
+            <button 
+              onClick={handleOpenModal}
+              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <div className="text-2xl mb-2">🤖</div>
+              <h3 className="font-medium text-gray-800">AI Schedule Suggestions</h3>
+              <p className="text-sm text-gray-600">Get AI-powered schedule recommendations</p>
             </button>
             
             <button className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
@@ -102,6 +122,13 @@ export function AISuggestionsPage({ onNavigate }: AISuggestionsPageProps) {
           </div>
         </div>
       </div>
+      
+      {/* AI Suggestions Modal */}
+      <AISuggestionsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }
