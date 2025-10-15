@@ -1,0 +1,310 @@
+/* Slot Comparison Component Styles */
+.slot-comparison {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.comparison-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.close-button {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.comparison-content {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Slot Cards */
+.slot-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.slot-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.slot-card-1 {
+  border-left: 4px solid #3b82f6;
+}
+
+.slot-card-2 {
+  border-left: 4px solid #10b981;
+}
+
+.slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.slot-number {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+}
+
+.slot-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.detail-icon {
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.detail-value {
+  color: #374151;
+  flex: 1;
+}
+
+.metadata-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.adjustment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #92400e;
+  cursor: help;
+}
+
+/* Comparison Metrics */
+.comparison-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-width: 200px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.metric-value.match {
+  color: #10b981;
+}
+
+.metric-value.no-match {
+  color: #ef4444;
+}
+
+/* Comparison Footer */
+.comparison-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.recommendation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.recommendation-icon {
+  font-size: 16px;
+}
+
+.recommendation-text {
+  font-size: 13px;
+  color: #1e40af;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .comparison-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .comparison-metrics {
+    order: -1;
+    min-width: auto;
+  }
+  
+  .slot-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .slot-details {
+    gap: 6px;
+  }
+  
+  .detail-item {
+    font-size: 12px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .slot-comparison {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .comparison-header {
+    border-bottom-color: #374151;
+  }
+  
+  .comparison-header h3 {
+    color: #f9fafb;
+  }
+  
+  .close-button {
+    background: #374151;
+    border-color: #4b5563;
+    color: #d1d5db;
+  }
+  
+  .close-button:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+  }
+  
+  .slot-card {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .slot-card:hover {
+    border-color: #6b7280;
+  }
+  
+  .slot-number {
+    color: #f9fafb;
+  }
+  
+  .detail-value {
+    color: #f9fafb;
+  }
+  
+  .comparison-metrics {
+    background: #374151;
+    border-color: #4b5563;
+  }
+  
+  .metric-label {
+    color: #9ca3af;
+  }
+  
+  .metric-value {
+    color: #f9fafb;
+  }
+  
+  .comparison-footer {
+    border-top-color: #374151;
+  }
+  
+  .recommendation {
+    background: #1e3a8a;
+    border-color: #3b82f6;
+  }
+  
+  .recommendation-text {
+    color: #93c5fd;
+  }
+}

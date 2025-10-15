@@ -20,7 +20,7 @@ const FallbackUI: FC<FallbackUIProps> = ({
     if (aiSuggestion.fallback_auto_mode?.reason) {
       return aiSuggestion.fallback_auto_mode.reason;
     }
-    return aiSuggestion.reason || 'Không tìm được khung giờ phù hợp';
+    return aiSuggestion.reason || 'No suitable time slots found';
   };
 
   // Get common reasons for empty suggestions
@@ -33,12 +33,12 @@ const FallbackUI: FC<FallbackUIProps> = ({
     const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
     
     if (hoursUntilDeadline < aiSuggestion.manual_input.duration_minutes / 60) {
-      reasons.push('Deadline quá gần so với thời lượng cần thiết');
+      reasons.push('Deadline too close for required duration');
     }
     
     // Check if duration is too long
     if (aiSuggestion.manual_input.duration_minutes > 180) {
-      reasons.push('Thời lượng quá dài (hơn 3 giờ)');
+      reasons.push('Duration too long (over 3 hours)');
     }
     
     // Check if preferred window is too narrow
@@ -47,14 +47,14 @@ const FallbackUI: FC<FallbackUIProps> = ({
       const windowDuration = (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60);
       
       if (windowDuration < aiSuggestion.manual_input.duration_minutes) {
-        reasons.push('Khung giờ ưu tiên quá hẹp');
+        reasons.push('Preferred time window too narrow');
       }
     }
     
     // Default reasons if none match
     if (reasons.length === 0) {
-      reasons.push('Lịch của bạn quá đầy trong khoảng thời gian yêu cầu');
-      reasons.push('Không có khung giờ trống phù hợp với thói quen học');
+      reasons.push('Your schedule is too full during the requested time period');
+      reasons.push('No suitable time slots match your study habits');
     }
     
     return reasons;
@@ -66,7 +66,7 @@ const FallbackUI: FC<FallbackUIProps> = ({
     
     // Suggest shorter duration
     if (aiSuggestion.manual_input.duration_minutes > 120) {
-      suggestions.push('Thử giảm thời lượng xuống 1-2 giờ');
+      suggestions.push('Try reducing duration to 1-2 hours');
     }
     
     // Suggest extending deadline
@@ -75,18 +75,18 @@ const FallbackUI: FC<FallbackUIProps> = ({
     const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
     
     if (hoursUntilDeadline < 24) {
-      suggestions.push('Thử gia hạn deadline thêm 1-2 ngày');
+      suggestions.push('Try extending deadline by 1-2 days');
     }
     
     // Suggest removing preferred window
     if (aiSuggestion.manual_input.preferred_window) {
-      suggestions.push('Thử bỏ khung giờ ưu tiên để có nhiều lựa chọn hơn');
+      suggestions.push('Try removing preferred time window for more options');
     }
     
     // Default suggestions
     if (suggestions.length === 0) {
-      suggestions.push('Thử điều chỉnh thời lượng hoặc deadline');
-      suggestions.push('Kiểm tra lại lịch trình hiện tại');
+      suggestions.push('Try adjusting duration or deadline');
+      suggestions.push('Check your current schedule');
     }
     
     return suggestions;
@@ -102,10 +102,10 @@ const FallbackUI: FC<FallbackUIProps> = ({
       <div className="fallback-header">
         <div className="fallback-icon">😔</div>
         <h2 className="fallback-title">
-          Không tìm được khung giờ phù hợp
+          No suitable time slots found
         </h2>
         <p className="fallback-subtitle">
-          AI không thể tìm được khung giờ phù hợp cho yêu cầu của bạn
+          AI couldn't find suitable time slots for your request
         </p>
       </div>
 
@@ -175,10 +175,10 @@ const FallbackUI: FC<FallbackUIProps> = ({
       <div className="help-section">
         <div className="help-header">
           <span className="help-icon">❓</span>
-          <span className="help-title">Cần hỗ trợ?</span>
+          <span className="help-title">Need Help?</span>
         </div>
         <p className="help-text">
-          Nếu vẫn gặp khó khăn, bạn có thể thử chế độ tự động hoặc liên hệ hỗ trợ.
+          If you still have difficulties, you can try auto mode or contact support.
         </p>
       </div>
     </div>

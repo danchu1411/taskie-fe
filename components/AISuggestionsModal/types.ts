@@ -1,4 +1,114 @@
-// AI Suggestions Modal - TypeScript Interfaces
+// Backend API Response Types
+export interface BackendSuggestionResponse {
+  message: string;
+  data: {
+    suggestion: {
+      suggestion_id: string;
+      items: BackendSuggestionItem[];
+      confidence: number;
+      reason: string;
+      fallback_auto_mode?: {
+        enabled: boolean;
+        reason: string;
+      };
+      created_at: string;
+      updated_at: string;
+    };
+  };
+  meta: {
+    cost: number;
+    tokens: number;
+    latency_ms: number;
+  };
+}
+
+export interface BackendSuggestionItem {
+  item_type: 0 | 1; // 0: task, 1: checklist
+  title: string;
+  description: string;
+  estimated_minutes: number;
+  deadline?: string;
+  suggested_slots?: BackendSuggestedSlot[];
+  metadata: {
+    source?: 'manual_input' | 'auto_suggestion';
+    adjusted_duration?: boolean;
+    adjusted_deadline?: boolean;
+    duration_adjustment_reason?: string;
+    deadline_adjustment_reason?: string;
+  };
+}
+
+export interface BackendSuggestedSlot {
+  suggested_start_at: string; // ISO 8601 UTC
+  planned_minutes: number;
+  confidence: number; // 0.0-1.0 (NOT 0-2)
+  reason: string;
+  original_index: number; // Transform thành slot_index
+}
+
+// Backend Validation Error Types
+export interface BackendValidationError {
+  message: string;
+  errors: {
+    title?: string;
+    description?: string;
+    duration_minutes?: string;
+    deadline?: string;
+    preferred_window?: string;
+    target_task_id?: string;
+  };
+}
+
+// Backend Rate Limit Error Types
+export interface BackendRateLimitError {
+  message: string;
+  retryAfter?: number; // From response body (if any)
+  // Headers will be parsed separately
+}
+
+// Slot Selection Enhancement Types
+export interface SlotComparison {
+  slot1: SuggestedSlot;
+  slot2: SuggestedSlot;
+  comparison: {
+    timeDifference: number; // minutes
+    confidenceDifference: number;
+    durationMatch: boolean;
+    deadlineProximity: number; // minutes to deadline
+  };
+}
+
+export interface SlotFilter {
+  minConfidence?: number;
+  maxConfidence?: number;
+  timeRange?: {
+    start: string;
+    end: string;
+  };
+  durationRange?: {
+    min: number;
+    max: number;
+  };
+  showAdjustedOnly?: boolean;
+  showHighConfidenceOnly?: boolean;
+}
+
+export interface SlotSortOption {
+  field: 'confidence' | 'time' | 'duration' | 'deadline_proximity';
+  direction: 'asc' | 'desc';
+  label: string;
+}
+
+export interface SlotSelectionState {
+  selectedSlotIndex: number | null;
+  comparisonMode: boolean;
+  comparingSlots: number[];
+  filters: SlotFilter;
+  sortBy: SlotSortOption;
+  viewMode: 'grid' | 'list' | 'comparison';
+}
+
+// Frontend Types
 
 export interface ManualInput {
   title: string;                    // ≤120 chars, required
@@ -13,8 +123,15 @@ export interface SuggestedSlot {
   slot_index: number;
   suggested_start_at: string;      // UTC ISO format
   planned_minutes: number;
-  confidence: number;              // 0-2 scale
+  confidence: number;              // 0.0-1.0 scale (NOT 0-2)
   reason: string;
+  metadata?: {
+    adjusted_duration?: boolean;
+    adjusted_deadline?: boolean;
+    duration_adjustment_reason?: string;
+    deadline_adjustment_reason?: string;
+    source?: 'manual_input' | 'auto_suggestion';
+  };
 }
 
 export interface HistorySuggestion extends AISuggestion {
@@ -61,6 +178,8 @@ export interface UseFormValidationReturn {
     isSubmitting: boolean;
     hasErrors: boolean;
   };
+  setBackendErrors: (backendErrors: Record<string, string>) => void;
+  clearAllErrors: () => void;
 }
 
 export interface UseAISuggestionsReturn {

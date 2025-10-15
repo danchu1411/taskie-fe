@@ -2,11 +2,84 @@
 
 ## Overview
 
-Tài liệu này cung cấp các ví dụ thực tế về cách sử dụng AI Suggestions API, bao gồm request/response examples cho các use cases phổ biến.
+Tài liệu này cung cấp các ví dụ thực tế về cách sử dụng AI Suggestions API, bao gồm request/response examples cho các use cases phổ biến và **Manual Input Mode** mới.
 
 ---
 
-## Example 1: Generate Task Suggestions
+## New Feature: Manual Input Mode
+
+### Overview
+Manual Input Mode cho phép frontend gửi một task/checklist item cụ thể và nhận về slot suggestions từ AI.
+
+### Request Format
+```javascript
+const response = await fetch('/api/ai-suggestions/generate', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    suggestionType: 0,  // Task suggestions
+    manual_input: {
+      title: "Study React Hooks",
+      description: "Learn about useState, useEffect, and custom hooks",
+      duration_minutes: 90,
+      deadline: "2024-01-20T18:00:00Z",
+      preferred_window: ["2024-01-15T08:00:00Z", "2024-01-15T20:00:00Z"],
+      target_task_id: "optional-parent-task-id"  // For checklist items
+    },
+    timezone: 'Asia/Ho_Chi_Minh'
+  })
+});
+```
+
+### Response Format
+```javascript
+{
+  "message": "Suggestion generated successfully",
+  "data": {
+    "suggestion": {
+      "suggestion_id": "uuid",
+      "suggestion_type": 0,
+      "status": 0,
+      "items": [
+        {
+          "item_type": 0,
+          "title": "Study React Hooks",
+          "description": "Learn about useState, useEffect, and custom hooks",
+          "estimated_minutes": 90,
+          "deadline": "2024-01-20T18:00:00Z",
+          "suggested_slots": [
+            {
+              "suggested_start_at": "2024-01-15T09:00:00Z",
+              "planned_minutes": 90,
+              "confidence": 0.85,
+              "reason": "Morning slot matches your chronotype and duration",
+              "original_index": 0
+            }
+          ],
+          "metadata": {
+            "source": "manual_input"
+          }
+        }
+      ],
+      "confidence": 0.85,
+      "reason": "Optimal morning slot suggested based on your chronotype",
+      "created_at": "2024-01-15T08:30:00Z"
+    }
+  },
+  "meta": {
+    "cost": 0.0001,
+    "tokens": 150,
+    "latency_ms": 2500
+  }
+}
+```
+
+---
+
+## Example 1: Generate Task Suggestions (Auto Mode)
 
 ### Scenario
 User muốn AI đề xuất các task mới dựa trên lịch trình và thời gian rảnh của họ.
@@ -420,15 +493,35 @@ async function getSuggestionHistory(status = 0, page = 0) {
 ### Scenario
 User muốn accept một suggestion để tạo tasks/checklist items từ suggestions.
 
-### Accept Suggestion
+### Accept Suggestion (Basic)
 ```javascript
-const response = await fetch(`/api/ai-suggestions/${suggestionId}/status`, {
-  method: 'PATCH',
+const response = await fetch(`/api/ai-suggestions/${suggestionId}/accept`, {
+  method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwtToken}`,
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({ status: 1 })  // 1 = accepted
+  body: JSON.stringify({ 
+    status: 'accepted'
+  })
+});
+
+const data = await response.json();
+```
+
+### Accept Suggestion with Slot Selection (NEW)
+```javascript
+const response = await fetch(`/api/ai-suggestions/${suggestionId}/accept`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ 
+    status: 'accepted',
+    selected_slot_index: 0,  // Index of selected slot
+    schedule_entry_id: 'uuid' // Optional: existing schedule entry ID
+  })
 });
 
 const data = await response.json();
@@ -437,21 +530,32 @@ const data = await response.json();
 ### Response
 ```javascript
 {
-  "suggestion_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": 1,
-  "updated_at": "2025-01-01T00:10:00Z"
+  "message": "Suggestion accepted successfully",
+  "data": {
+    "suggestion_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "accepted",
+    "created_items": [
+      {
+        "item_id": "uuid",
+        "item_type": 0,
+        "title": "Study React Hooks",
+        "scheduled_at": "2024-01-15T09:00:00Z"
+      }
+    ],
+    "updated_at": "2025-01-01T00:10:00Z"
+  }
 }
 ```
 
 ### Reject Suggestion
 ```javascript
-const response = await fetch(`/api/ai-suggestions/${suggestionId}/status`, {
-  method: 'PATCH',
+const response = await fetch(`/api/ai-suggestions/${suggestionId}/dismiss`, {
+  method: 'POST',
   headers: {
     'Authorization': `Bearer ${jwtToken}`,
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({ status: 2 })  // 2 = rejected
+  body: JSON.stringify({})
 });
 
 const data = await response.json();
@@ -459,14 +563,22 @@ const data = await response.json();
 
 ### Frontend Implementation
 ```javascript
-async function acceptSuggestion(suggestionId) {
+async function acceptSuggestion(suggestionId, selectedSlotIndex = null, scheduleEntryId = null) {
   try {
-    await api.patch(`/api/ai-suggestions/${suggestionId}/status`, {
-      status: 1  // Accept
-    });
+    const payload = { status: 'accepted' };
+    
+    if (selectedSlotIndex !== null) {
+      payload.selected_slot_index = selectedSlotIndex;
+    }
+    
+    if (scheduleEntryId) {
+      payload.schedule_entry_id = scheduleEntryId;
+    }
+    
+    await api.post(`/api/ai-suggestions/${suggestionId}/accept`, payload);
     
     // Update UI to show accepted state
-    updateSuggestionStatus(suggestionId, 1);
+    updateSuggestionStatus(suggestionId, 'accepted');
     showMessage('Suggestion accepted successfully');
     
   } catch (error) {
@@ -476,13 +588,11 @@ async function acceptSuggestion(suggestionId) {
 
 async function rejectSuggestion(suggestionId) {
   try {
-    await api.patch(`/api/ai-suggestions/${suggestionId}/status`, {
-      status: 2  // Reject
-    });
+    await api.post(`/api/ai-suggestions/${suggestionId}/dismiss`, {});
     
     // Update UI to show rejected state
-    updateSuggestionStatus(suggestionId, 2);
-    showMessage('Suggestion rejected');
+    updateSuggestionStatus(suggestionId, 'dismissed');
+    showMessage('Suggestion dismissed');
     
   } catch (error) {
     handleError(error);
@@ -681,17 +791,25 @@ const AISuggestions = () => {
     }
   };
 
-  const acceptSuggestion = async (suggestionId) => {
+  const acceptSuggestion = async (suggestionId, selectedSlotIndex = null, scheduleEntryId = null) => {
     try {
-      await api.patch(`/api/ai-suggestions/${suggestionId}/status`, {
-        status: 1
-      });
+      const payload = { status: 'accepted' };
+      
+      if (selectedSlotIndex !== null) {
+        payload.selected_slot_index = selectedSlotIndex;
+      }
+      
+      if (scheduleEntryId) {
+        payload.schedule_entry_id = scheduleEntryId;
+      }
+      
+      await api.post(`/api/ai-suggestions/${suggestionId}/accept`, payload);
       
       // Update local state
       setSuggestions(prev => 
         prev.map(s => 
           s.suggestion_id === suggestionId 
-            ? { ...s, status: 1 }
+            ? { ...s, status: 'accepted' }
             : s
         )
       );

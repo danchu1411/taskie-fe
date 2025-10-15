@@ -1,26 +1,68 @@
+import React, { useState } from 'react';
 import type { AISuggestion, ManualInput } from './types';
 import SuggestionCard from './SuggestionCard';
+import SlotFilters from './SlotFilters';
+import SlotComparison from './SlotComparison';
+import useSlotSelection from './hooks/useSlotSelection';
 import './styles/SuggestionsDisplay.css';
+import './styles/SlotFilters.css';
+import './styles/SlotComparison.css';
 
 interface SuggestionsDisplayProps {
   manualInput: ManualInput;
   aiSuggestion: AISuggestion;
   selectedSlotIndex?: number;
-  lockedSlots?: Set<number>;
   onSlotSelect: (slotIndex: number) => void;
-  onSlotLock: (slotIndex: number) => void;
-  onSlotUnlock: (slotIndex: number) => void;
+  showFilters?: boolean;
+  showComparison?: boolean;
 }
 
 const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
   manualInput,
   aiSuggestion,
   selectedSlotIndex,
-  lockedSlots = new Set(),
   onSlotSelect,
-  onSlotLock,
-  onSlotUnlock
+  showFilters = true,
+  showComparison = true
 }) => {
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  
+  const {
+    selectedSlotIndex: internalSelectedSlot,
+    comparisonMode,
+    comparingSlots,
+    filters,
+    sortBy,
+    viewMode,
+    filteredSlots,
+    sortedSlots,
+    slotComparison,
+    selectSlot,
+    toggleComparisonMode,
+    addToComparison,
+    removeFromComparison,
+    clearComparison,
+    updateFilters,
+    setSortBy,
+    setViewMode,
+    resetSelection
+  } = useSlotSelection(aiSuggestion.suggested_slots);
+
+  // Use external selectedSlotIndex if provided, otherwise use internal state
+  const currentSelectedSlot = selectedSlotIndex !== undefined ? selectedSlotIndex : internalSelectedSlot;
+
+  const handleSlotSelect = (slotIndex: number) => {
+    if (comparisonMode) {
+      if (comparingSlots.includes(slotIndex)) {
+        removeFromComparison(slotIndex);
+      } else if (comparingSlots.length < 2) {
+        addToComparison(slotIndex);
+      }
+    } else {
+      selectSlot(slotIndex);
+      onSlotSelect(slotIndex);
+    }
+  };
   const formatDateTime = (isoString: string) => {
     const date = new Date(isoString);
     return date.toLocaleString('vi-VN', {
@@ -34,13 +76,13 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) {
-      return `${minutes} phút`;
+      return `${minutes} min`;
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return remainingMinutes > 0 
-      ? `${hours}h ${remainingMinutes}phút`
-      : `${hours} giờ`;
+      ? `${hours}h ${remainingMinutes}min`
+      : `${hours}h`;
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -76,34 +118,34 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
         {/* Manual Input Column */}
         <div className="manual-input-column">
           <div className="column-header">
-            <h3>📝 Bạn nhập</h3>
+            <h3>📝 Your Input</h3>
           </div>
           <div className="input-summary">
             <div className="input-field">
-              <label>Tiêu đề:</label>
+              <label>Title:</label>
               <span className="input-value">{manualInput.title}</span>
             </div>
             
             {manualInput.description && (
               <div className="input-field">
-                <label>Mô tả:</label>
+                <label>Description:</label>
                 <span className="input-value">{manualInput.description}</span>
               </div>
             )}
             
             <div className="input-field">
-              <label>Thời lượng:</label>
+              <label>Duration:</label>
               <span className="input-value">{formatDuration(manualInput.duration_minutes)}</span>
             </div>
             
             <div className="input-field">
-              <label>Hạn chót:</label>
+              <label>Deadline:</label>
               <span className="input-value">{formatDateTime(manualInput.deadline)}</span>
             </div>
             
             {manualInput.preferred_window && (
               <div className="input-field">
-                <label>Khung giờ ưa thích:</label>
+                <label>Preferred time window:</label>
                 <span className="input-value">
                   {formatDateTime(manualInput.preferred_window[0])} - {formatDateTime(manualInput.preferred_window[1])}
                 </span>
@@ -122,40 +164,92 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
         {/* AI Suggestions Column */}
         <div className="ai-suggestions-column">
           <div className="column-header">
-            <h3>🤖 AI đề xuất ({aiSuggestion.suggested_slots.length} gợi ý)</h3>
-            <div className="overall-confidence">
-              <span className="confidence-indicator">
-                {getConfidenceIcon(aiSuggestion.confidence)}
-              </span>
-              <span className="confidence-text">
-                {getConfidenceText(aiSuggestion.confidence)}
-              </span>
+            <h3>🤖 AI Suggestions ({sortedSlots.length} suggestions)</h3>
+            <div className="header-controls">
+              <div className="overall-confidence">
+                <span className="confidence-indicator">
+                  {getConfidenceIcon(aiSuggestion.confidence)}
+                </span>
+                <span className="confidence-text">
+                  {getConfidenceText(aiSuggestion.confidence)}
+                </span>
+              </div>
+              
+              {showFilters && (
+                <button 
+                  className="filter-toggle"
+                  onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                  type="button"
+                >
+                  🔍 Filters
+                </button>
+              )}
+              
+              {showComparison && (
+                <button 
+                  className={`comparison-toggle ${comparisonMode ? 'active' : ''}`}
+                  onClick={toggleComparisonMode}
+                  type="button"
+                >
+                  {comparisonMode ? '📊 Exit Compare' : '📊 Compare'}
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Filters Panel */}
+          {showFilters && showFiltersPanel && (
+            <SlotFilters
+              filters={filters}
+              sortBy={sortBy}
+              onFiltersChange={updateFilters}
+              onSortChange={setSortBy}
+              onReset={resetSelection}
+            />
+          )}
+
+          {/* Comparison Mode */}
+          {comparisonMode && (
+            <div className="comparison-mode-info">
+              <p>Select up to 2 slots to compare them side by side</p>
+              {comparingSlots.length > 0 && (
+                <div className="comparing-slots">
+                  Comparing: {comparingSlots.map(index => `Slot ${index + 1}`).join(', ')}
+                  <button onClick={clearComparison} className="clear-comparison">Clear</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Slot Comparison */}
+          {slotComparison && (
+            <SlotComparison
+              comparison={slotComparison}
+              onClose={clearComparison}
+            />
+          )}
           
           <div className="suggestions-list">
-            {aiSuggestion.suggested_slots.length > 0 ? (
-              aiSuggestion.suggested_slots.map((slot, index) => (
+            {sortedSlots.length > 0 ? (
+              sortedSlots.map((slot, index) => (
                 <SuggestionCard
                   key={slot.slot_index}
                   slot={slot}
                   index={index}
-                  isSelected={selectedSlotIndex === slot.slot_index}
-                  isLocked={lockedSlots.has(slot.slot_index)}
-                  onSelect={() => onSlotSelect(slot.slot_index)}
-                  onLock={() => onSlotLock(slot.slot_index)}
-                  onUnlock={() => onSlotUnlock(slot.slot_index)}
+                  isSelected={currentSelectedSlot === slot.slot_index}
+                  isComparing={comparisonMode && comparingSlots.includes(slot.slot_index)}
+                  onSelect={() => handleSlotSelect(slot.slot_index)}
                 />
               ))
             ) : (
               <div className="no-suggestions">
                 <div className="no-suggestions-icon">🤔</div>
-                <h4>Không tìm thấy khung giờ phù hợp</h4>
+                <h4>No suitable time slots found</h4>
                 <p>{aiSuggestion.reason}</p>
                 {aiSuggestion.fallback_auto_mode.enabled && (
                   <div className="fallback-info">
                     <span className="fallback-icon">🔄</span>
-                    <span>Chế độ tự động đã được kích hoạt</span>
+                    <span>Auto mode has been activated</span>
                   </div>
                 )}
               </div>

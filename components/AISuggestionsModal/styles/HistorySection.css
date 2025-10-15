@@ -291,172 +291,123 @@
 }
 
 .suggestion-item {
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  transition: all 0.2s ease;
-  position: relative;
+  @apply bg-white border border-slate-200 rounded-lg p-4 mb-3 transition-all duration-200 shadow-sm;
 }
 
 .suggestion-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-  transform: translateY(-1px);
+  @apply border-blue-300 shadow-md -translate-y-0.5;
 }
 
 .suggestion-item.pending {
-  border-left: 4px solid #f59e0b;
+  @apply border-l-4 border-l-amber-500 bg-amber-50;
 }
 
 .suggestion-item.accepted {
-  border-left: 4px solid #10b981;
+  @apply border-l-4 border-l-emerald-500 bg-emerald-50;
 }
 
 .suggestion-item.rejected {
-  border-left: 4px solid #ef4444;
+  @apply border-l-4 border-l-red-500 bg-red-50;
 }
 
 .suggestion-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
+  @apply flex justify-between items-center mb-3;
 }
 
 .suggestion-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.title-icon {
-  font-size: 16px;
+  @apply flex items-center gap-2 flex-1;
 }
 
 .title-text {
-  font-weight: 600;
-  color: #374151;
-  font-size: 16px;
+  @apply font-semibold text-slate-900 text-base leading-tight;
 }
 
 .suggestion-date {
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 500;
+  @apply text-slate-600 text-xs font-medium bg-slate-100 px-2 py-1 rounded whitespace-nowrap;
 }
 
 .suggestion-content {
-  margin-bottom: 16px;
+  @apply flex justify-between items-end mb-3;
 }
 
 .suggestion-details {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
+  @apply flex gap-3 flex-wrap;
 }
 
 .detail-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.detail-icon {
-  font-size: 14px;
+  @apply flex items-center gap-1 text-slate-600 text-sm bg-slate-100 px-2 py-1 rounded border border-slate-200;
 }
 
 .detail-text {
-  font-weight: 500;
+  @apply font-medium;
 }
 
 .suggestion-status {
-  display: flex;
-  justify-content: flex-end;
+  @apply flex-shrink-0;
 }
 
 .status-badge {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  @apply px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide whitespace-nowrap;
 }
 
 .status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+  @apply bg-amber-500 text-white;
 }
 
 .status-badge.accepted {
-  background: #d1fae5;
-  color: #065f46;
+  @apply bg-emerald-500 text-white;
 }
 
 .status-badge.rejected {
-  background: #fee2e2;
-  color: #991b1b;
+  @apply bg-red-500 text-white;
 }
 
 .suggestion-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  @apply flex gap-2 flex-wrap justify-end;
 }
 
 .action-button {
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  @apply border-none px-3 py-1.5 rounded text-xs font-semibold cursor-pointer transition-all duration-200 uppercase tracking-wide;
+}
+
+.action-button:hover {
+  @apply -translate-y-0.5 opacity-90;
+}
+
+.action-button:active {
+  @apply translate-y-0;
 }
 
 .view-button {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  @apply bg-slate-100 text-slate-700 border border-slate-300;
 }
 
 .view-button:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
+  @apply bg-slate-200 border-slate-400;
 }
 
 .accept-button {
-  background: #10b981;
-  color: white;
+  @apply bg-emerald-600 text-white;
 }
 
 .accept-button:hover {
-  background: #059669;
-  transform: translateY(-1px);
+  @apply bg-emerald-700;
 }
 
 .reject-button {
-  background: #ef4444;
-  color: white;
+  @apply bg-red-600 text-white;
 }
 
 .reject-button:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
+  @apply bg-red-700;
 }
 
 .reopen-button {
-  background: #667eea;
-  color: white;
+  @apply bg-blue-600 text-white;
 }
 
 .reopen-button:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
+  @apply bg-blue-700;
 }
 
 /* Pagination */

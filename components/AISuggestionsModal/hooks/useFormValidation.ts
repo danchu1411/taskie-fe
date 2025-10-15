@@ -16,40 +16,50 @@ const useFormValidation = (): UseFormValidationReturn => {
 
   // Validation functions
   const validateTitle = useCallback((title: string): string | undefined => {
-    if (!title.trim()) return 'Tiêu đề là bắt buộc';
-    if (title.length > 120) return 'Tiêu đề không được quá 120 ký tự';
+    if (!title.trim()) return 'Title is required';
+    if (title.length < 1) return 'Title must be at least 1 character';
+    if (title.length > 120) return 'Title must not exceed 120 characters';
     return undefined;
   }, []);
 
   const validateDescription = useCallback((description: string): string | undefined => {
     if (description && description.length > 500) {
-      return 'Mô tả không được quá 500 ký tự';
+      return 'Description must not exceed 500 characters';
     }
     return undefined;
   }, []);
 
   const validateDuration = useCallback((duration: number): string | undefined => {
-    if (!duration || duration < 15 || duration > 180) {
-      return 'Thời lượng phải từ 15 đến 180 phút';
-    }
-    if (duration % 15 !== 0) {
-      return 'Thời lượng phải là bội số của 15 phút';
-    }
+    if (duration < 15) return 'Duration must be at least 15 minutes';
+    if (duration > 180) return 'Duration must not exceed 180 minutes';
+    if (duration % 15 !== 0) return 'Duration must be a multiple of 15 minutes';
     return undefined;
   }, []);
 
   const validateDeadline = useCallback((deadline: string): string | undefined => {
-    if (!deadline) return 'Deadline là bắt buộc';
+    if (!deadline) return 'Deadline is required';
     
-    const deadlineDate = new Date(deadline);
-    const now = new Date();
-    
-    if (isNaN(deadlineDate.getTime())) {
-      return 'Deadline không hợp lệ';
-    }
-    
-    if (deadlineDate <= now) {
-      return 'Deadline phải là thời gian trong tương lai';
+    try {
+      const deadlineDate = new Date(deadline);
+      const now = new Date();
+      
+      if (isNaN(deadlineDate.getTime())) {
+        return 'Invalid deadline format. Please use ISO 8601 format';
+      }
+      
+      if (deadlineDate <= now) {
+        return 'Deadline must be in the future';
+      }
+      
+      // Check if deadline is too far in the future (optional business rule)
+      const maxDeadline = new Date();
+      maxDeadline.setFullYear(maxDeadline.getFullYear() + 1);
+      if (deadlineDate > maxDeadline) {
+        return 'Deadline must be within 1 year from now';
+      }
+      
+    } catch (error) {
+      return 'Invalid deadline format';
     }
     
     return undefined;
@@ -58,18 +68,33 @@ const useFormValidation = (): UseFormValidationReturn => {
   const validatePreferredWindow = useCallback((window: [string, string] | undefined): string | undefined => {
     if (!window) return undefined;
     
-    const [start, end] = window;
-    if (!start || !end) return 'Vui lòng chọn cả thời gian bắt đầu và kết thúc';
-    
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return 'Thời gian không hợp lệ';
-    }
-    
-    if (startDate >= endDate) {
-      return 'Thời gian bắt đầu phải trước thời gian kết thúc';
+    try {
+      const [start, end] = window;
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return 'Invalid preferred window format. Please use ISO 8601 format';
+      }
+      
+      if (startDate >= endDate) {
+        return 'Start time must be before end time';
+      }
+      
+      // Check if window is reasonable (at least 1 hour, max 24 hours)
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      
+      if (durationHours < 1) {
+        return 'Preferred window must be at least 1 hour';
+      }
+      
+      if (durationHours > 24) {
+        return 'Preferred window must not exceed 24 hours';
+      }
+      
+    } catch (error) {
+      return 'Invalid preferred window format';
     }
     
     return undefined;
@@ -77,9 +102,19 @@ const useFormValidation = (): UseFormValidationReturn => {
 
   const validateTargetTask = useCallback((taskId: string | undefined): string | undefined => {
     if (taskId && taskId.trim().length === 0) {
-      return 'Task ID không được để trống';
+      return 'Task ID cannot be empty';
     }
     return undefined;
+  }, []);
+
+  // Handle backend validation errors
+  const setBackendErrors = useCallback((backendErrors: Record<string, string>) => {
+    setErrors(backendErrors);
+  }, []);
+
+  // Clear all errors
+  const clearAllErrors = useCallback(() => {
+    setErrors({});
   }, []);
 
   // Update field with validation
@@ -203,7 +238,9 @@ const useFormValidation = (): UseFormValidationReturn => {
     validateForm,
     submitForm,
     resetForm,
-    getFormSummary
+    getFormSummary,
+    setBackendErrors,
+    clearAllErrors
   };
 };
 

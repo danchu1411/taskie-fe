@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { AcceptRequest, AcceptResponse, AcceptError } from '../services/acceptService';
-import { acceptService } from '../services/acceptService';
+import { getAcceptService } from '../services/acceptService';
 
 export interface UseAcceptFlowReturn {
   // State
@@ -46,7 +46,7 @@ export const useAcceptFlow = (): UseAcceptFlowReturn => {
       };
 
       console.log('Accepting suggestion:', { suggestionId, request });
-      const response = await acceptService.acceptSuggestion(suggestionId, request);
+      const response = await getAcceptService().acceptSuggestion(suggestionId, request);
       
       setLastResponse(response);
       console.log('Accept successful:', response);

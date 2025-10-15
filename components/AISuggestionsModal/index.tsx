@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ManualInputForm from './ManualInputForm';
 import SuggestionsDisplay from './SuggestionsDisplay';
-import ConfirmationState from './ConfirmationState';
+// import ConfirmationState from './ConfirmationState'; // Not used in current implementation
 import FallbackUI from './FallbackUI';
 import HistorySection from './HistorySection';
 import AnalyticsDashboard from './AnalyticsDashboard';
@@ -12,6 +12,11 @@ import useAISuggestions from './hooks/useAISuggestions';
 import useModalState from './hooks/useModalState';
 import useAcceptFlow from './hooks/useAcceptFlow';
 import useAnalytics from './hooks/useAnalytics';
+import useFormValidation from './hooks/useFormValidation';
+import { serviceManager } from './hooks/useAISuggestions';
+import { realAISuggestionsService } from './services/realAISuggestionsService';
+import { acceptServiceManager } from './services/acceptService';
+import { realAcceptService } from './services/realAcceptService';
 import './styles/AISuggestionsModal.css';
 
 interface AISuggestionsModalProps {
@@ -25,6 +30,14 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  // Service toggle - switch to real API when environment variable is set
+  useEffect(() => {
+    if (process.env.REACT_APP_USE_REAL_API === 'true') {
+      serviceManager.switchService(realAISuggestionsService);
+      acceptServiceManager.switchService(realAcceptService);
+    }
+  }, []);
+
   const {
     generateSuggestions,
     isLoading: apiLoading,
@@ -92,6 +105,20 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     setService: setAnalyticsService
   } = useAnalytics();
 
+  const {
+    // Form validation functions
+    formData: validationFormData,
+    errors: validationErrors,
+    isValid: isFormValid,
+    updateField: updateValidationField,
+    validateForm: validateFormData,
+    submitForm: submitFormData,
+    resetForm: resetValidationForm,
+    getFormSummary: getValidationSummary,
+    setBackendErrors,
+    clearAllErrors
+  } = useFormValidation();
+
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -108,6 +135,8 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
       document.body.style.overflow = 'hidden';
       // Track modal opened
       trackModalOpened();
+      // Reset modal to form step when opened
+      goToForm();
     }
 
     return () => {
@@ -138,11 +167,20 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
       
       console.log('API call completed:', result);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting form:', error);
+      
+      // Handle validation errors from backend
+      if (error.status === 400 && error.validationErrors) {
+        console.log('Backend validation errors:', error.validationErrors);
+        setBackendErrors(error.validationErrors);
+        goToForm(); // Go back to form to show validation errors
+        return;
+      }
+      
       // Track error
-      await trackError(apiError || 'Có lỗi xảy ra khi tạo gợi ý', 'form_submission');
-      goToError(apiError || 'Có lỗi xảy ra khi tạo gợi ý');
+      await trackError(apiError || 'Error occurred while generating suggestions', 'form_submission');
+      goToError(apiError || 'Error occurred while generating suggestions');
     }
   };
 
@@ -156,7 +194,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
       }
     } catch (error) {
       console.error('Retry failed:', error);
-      goToError(apiError || 'Có lỗi xảy ra khi thử lại');
+      goToError(apiError || 'Error occurred while retrying');
     }
   };
 
@@ -168,18 +206,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
 
   // Handle slot selection
   const handleSlotSelect = (slotIndex: number) => {
-    if (modalState.lockedSlots.has(slotIndex)) return; // Can't select locked slots
     setSelectedSlot(slotIndex);
-  };
-
-  // Handle slot locking
-  const handleSlotLock = (slotIndex: number) => {
-    lockSlot(slotIndex);
-  };
-
-  // Handle slot unlocking
-  const handleSlotUnlock = (slotIndex: number) => {
-    unlockSlot(slotIndex);
   };
 
   // Handle accept suggestion
@@ -199,21 +226,17 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
       // Track suggestion accepted
       await trackSuggestionAccepted(modalState.aiSuggestion, modalState.selectedSlotIndex!);
       
-      goToConfirmation(response.schedule_entry_id);
-      
-      // Auto-transition to success after 3 seconds
-      setTimeout(() => {
-        goToSuccess();
-        if (onSuccess) {
-          onSuccess(response.schedule_entry_id);
-        }
-      }, 3000);
+      // Close modal immediately after successful accept
+      if (onSuccess) {
+        onSuccess(response.schedule_entry_id);
+      }
+      onClose();
       
     } catch (error) {
       console.error('Accept failed:', error);
       // Track error
-      await trackError(acceptError || 'Có lỗi xảy ra khi chấp nhận gợi ý', 'accept_suggestion');
-      goToError(acceptError || 'Có lỗi xảy ra khi chấp nhận gợi ý');
+      await trackError(acceptError || 'Error occurred while accepting suggestion', 'accept_suggestion');
+      goToError(acceptError || 'Error occurred while accepting suggestion');
     }
   };
 
@@ -222,19 +245,15 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     try {
       const response = await retryAccept();
       if (response) {
-        goToConfirmation(response.schedule_entry_id);
-        
-        // Auto-transition to success after 3 seconds
-        setTimeout(() => {
-          goToSuccess();
-          if (onSuccess) {
-            onSuccess(response.schedule_entry_id);
-          }
-        }, 3000);
+        // Close modal immediately after successful retry accept
+        if (onSuccess) {
+          onSuccess(response.schedule_entry_id);
+        }
+        onClose();
       }
     } catch (error) {
       console.error('Retry accept failed:', error);
-      goToError(acceptError || 'Có lỗi xảy ra khi thử lại');
+      goToError(acceptError || 'Error occurred while retrying');
     }
   };
 
@@ -317,31 +336,13 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
       <div className="ai-suggestions-modal-container">
                 <div className="ai-suggestions-modal-header">
                   <h2 className="ai-suggestions-modal-title">
-                    🤖 AI Sắp lịch
+                    🤖 AI Scheduling
                   </h2>
                   <div className="header-actions">
-                    {!isStep('history') && !isStep('analytics') && (
-                      <button
-                        className="history-button"
-                        onClick={goToHistory}
-                        aria-label="Xem lịch sử"
-                      >
-                        📚 Lịch sử
-                      </button>
-                    )}
-                    {!isStep('history') && !isStep('analytics') && (
-                      <button
-                        className="analytics-button"
-                        onClick={goToAnalytics}
-                        aria-label="Xem analytics"
-                      >
-                        📊 Analytics
-                      </button>
-                    )}
                     <button 
                       className="ai-suggestions-modal-close"
                       onClick={onClose}
-                      aria-label="Đóng modal"
+                      aria-label="Close modal"
                     >
                       ✕
                     </button>
@@ -351,7 +352,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
         <div className="ai-suggestions-modal-content">
           {isStep('error') ? (
             <div className="error-state">
-              <h3>❌ Lỗi</h3>
+              <h3>❌ Error</h3>
               <p>{modalState.error || acceptError}</p>
               <div className="error-actions">
                 {(modalState.error || acceptError) && (
@@ -360,22 +361,22 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
                     className="retry-button"
                     disabled={isAccepting || modalState.isLoading}
                   >
-                    {isAccepting || modalState.isLoading ? '🔄 Đang thử lại...' : '🔄 Thử lại'}
+                    {isAccepting || modalState.isLoading ? '🔄 Retrying...' : '🔄 Retry'}
                   </button>
                 )}
                 <button 
                   onClick={handleBackToForm}
                   className="back-button"
                 >
-                  ← Quay lại
+                  ← Back
                 </button>
               </div>
             </div>
           ) : isStep('loading') ? (
             <div className="loading-state">
-              <div className="loading-spinner">🔄</div>
-              <h3>Đang tạo gợi ý...</h3>
-              <p>AI đang phân tích lịch trình và tìm khung giờ phù hợp</p>
+              <div className="loading-spinner"></div>
+              <h3>Generating suggestions...</h3>
+              <p>AI is analyzing your schedule and finding suitable time slots</p>
             </div>
           ) : isStep('suggestions') && modalState.aiSuggestion ? (
             modalState.aiSuggestion.suggested_slots.length > 0 ? (
@@ -384,17 +385,14 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
                   manualInput={modalState.aiSuggestion.manual_input}
                   aiSuggestion={modalState.aiSuggestion}
                   selectedSlotIndex={modalState.selectedSlotIndex}
-                  lockedSlots={modalState.lockedSlots}
                   onSlotSelect={handleSlotSelect}
-                  onSlotLock={handleSlotLock}
-                  onSlotUnlock={handleSlotUnlock}
                 />
                 <div className="suggestions-actions">
                   <button 
                     onClick={handleBackToForm}
                     className="back-button"
                   >
-                    ← Quay lại
+                    ← Back
                   </button>
                   {hasSelectedSlot() && (
                     <button 
@@ -402,7 +400,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
                       onClick={handleAcceptSuggestion}
                       disabled={isAccepting}
                     >
-                      {isAccepting ? '🔄 Đang chấp nhận...' : '✅ Chấp nhận gợi ý'}
+                      {isAccepting ? '🔄 Accepting...' : '✅ Accept Suggestion'}
                     </button>
                   )}
                 </div>
@@ -427,34 +425,12 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
             <AnalyticsDashboard
               onClose={() => goToForm()}
             />
-          ) : isStep('confirmation') && modalState.aiSuggestion && modalState.scheduleEntryId ? (
-            <ConfirmationState
-              aiSuggestion={modalState.aiSuggestion}
-              selectedSlotIndex={modalState.selectedSlotIndex!}
-              scheduleEntryId={modalState.scheduleEntryId}
-              onOpenSchedule={handleOpenSchedule}
-              onCreateNew={handleCreateNew}
-              onClose={onClose}
-              autoCloseDelay={3000}
-            />
-          ) : isStep('success') ? (
-            <div className="success-state">
-              <div className="success-icon">🎉</div>
-              <h3>Hoàn thành!</h3>
-              <p>Lịch trình đã được tạo và lưu thành công</p>
-              <div className="success-actions">
-                <button 
-                  onClick={onClose}
-                  className="primary-button"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
           ) : (
             <ManualInputForm 
               onSubmit={handleFormSubmit}
               isLoading={modalState.isLoading}
+              validationErrors={validationErrors}
+              onClearErrors={clearAllErrors}
             />
           )}
         </div>

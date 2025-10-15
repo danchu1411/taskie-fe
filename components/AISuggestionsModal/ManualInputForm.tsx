@@ -1,39 +1,60 @@
-import React from 'react';
-import type { ManualInput } from './types';
+import React, { useEffect } from 'react';
+import type { ManualInput, FormErrors } from './types';
 import useFormValidation from './hooks/useFormValidation';
 import './styles/Form.css';
 
 interface ManualInputFormProps {
   onSubmit: (data: ManualInput) => void;
   isLoading?: boolean;
+  validationErrors?: FormErrors;
+  onClearErrors?: () => void;
 }
 
 const ManualInputForm: React.FC<ManualInputFormProps> = ({
   onSubmit,
-  isLoading = false
+  isLoading = false,
+  validationErrors,
+  onClearErrors
 }) => {
   const {
     formData,
     errors,
     isValid,
     updateField,
-    submitForm
+    submitForm,
+    setBackendErrors,
+    clearAllErrors
   } = useFormValidation();
+
+  // Handle external validation errors from backend
+  useEffect(() => {
+    if (validationErrors && Object.keys(validationErrors).length > 0) {
+      setBackendErrors(validationErrors);
+    }
+  }, [validationErrors, setBackendErrors]);
+
+  // Clear errors when user starts typing
+  const handleFieldChange = (field: keyof ManualInput, value: any) => {
+    updateField(field, value);
+    if (onClearErrors) {
+      onClearErrors();
+    }
+  };
 
   // Duration options (15-minute increments)
   const durationOptions = [
-    { value: 15, label: '15 phút' },
-    { value: 30, label: '30 phút' },
-    { value: 45, label: '45 phút' },
-    { value: 60, label: '1 giờ' },
-    { value: 75, label: '1 giờ 15 phút' },
-    { value: 90, label: '1 giờ 30 phút' },
-    { value: 105, label: '1 giờ 45 phút' },
-    { value: 120, label: '2 giờ' },
-    { value: 135, label: '2 giờ 15 phút' },
-    { value: 150, label: '2 giờ 30 phút' },
-    { value: 165, label: '2 giờ 45 phút' },
-    { value: 180, label: '3 giờ' }
+    { value: 15, label: '15 min' },
+    { value: 30, label: '30 min' },
+    { value: 45, label: '45 min' },
+    { value: 60, label: '1h' },
+    { value: 75, label: '1h 15min' },
+    { value: 90, label: '1h 30min' },
+    { value: 105, label: '1h 45min' },
+    { value: 120, label: '2h' },
+    { value: 135, label: '2h 15min' },
+    { value: 150, label: '2h 30min' },
+    { value: 165, label: '2h 45min' },
+    { value: 180, label: '3h' }
   ];
 
   // Handle form submission
@@ -63,20 +84,20 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
   return (
     <form className="manual-input-form" onSubmit={handleSubmit}>
       <div className="form-section">
-        <h3 className="form-section-title">📝 Thông tin buổi học</h3>
+        <h3 className="form-section-title">📝 Session Information</h3>
         
         {/* Title Field */}
         <div className="form-field">
           <label htmlFor="title" className="form-label">
-            Tiêu đề <span className="required">*</span>
+            Title <span className="required">*</span>
           </label>
           <input
             id="title"
             type="text"
             className={`form-input ${errors.title ? 'error' : ''}`}
             value={formData.title}
-            onChange={(e) => updateField('title', e.target.value)}
-            placeholder="Ví dụ: Ôn Toán chương 2"
+            onChange={(e) => handleFieldChange('title', e.target.value)}
+            placeholder="Example: Math Chapter 2 Review"
             maxLength={120}
           />
           <div className="form-field-footer">
@@ -90,14 +111,14 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
         {/* Description Field */}
         <div className="form-field">
           <label htmlFor="description" className="form-label">
-            Mô tả
+            Description
           </label>
           <textarea
             id="description"
             className={`form-textarea ${errors.description ? 'error' : ''}`}
             value={formData.description || ''}
             onChange={(e) => updateField('description', e.target.value)}
-            placeholder="Mô tả chi tiết về buổi học (tùy chọn)"
+            placeholder="Detailed description of the session (optional)"
             maxLength={500}
             rows={3}
           />
@@ -112,7 +133,7 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
         {/* Duration Field */}
         <div className="form-field">
           <label htmlFor="duration" className="form-label">
-            Thời lượng <span className="required">*</span>
+            Duration <span className="required">*</span>
           </label>
           <select
             id="duration"
@@ -146,13 +167,13 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
       </div>
 
       <div className="form-section">
-        <h3 className="form-section-title">⏰ Khung giờ ưu tiên (Tùy chọn)</h3>
+        <h3 className="form-section-title">⏰ Preferred Time Window (Optional)</h3>
         
         {/* Preferred Window Fields */}
         <div className="form-field-group">
           <div className="form-field">
             <label htmlFor="preferred-start" className="form-label">
-              Thời gian bắt đầu
+              Start Time
             </label>
             <input
               id="preferred-start"
@@ -170,7 +191,7 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
           
           <div className="form-field">
             <label htmlFor="preferred-end" className="form-label">
-              Thời gian kết thúc
+              End Time
             </label>
             <input
               id="preferred-end"
@@ -192,25 +213,6 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
         )}
       </div>
 
-      <div className="form-section">
-        <h3 className="form-section-title">🎯 Liên kết với Task (Tùy chọn)</h3>
-        
-        {/* Target Task Field */}
-        <div className="form-field">
-          <label htmlFor="target-task" className="form-label">
-            Task liên quan
-          </label>
-          <input
-            id="target-task"
-            type="text"
-            className="form-input"
-            value={formData.target_task_id || ''}
-            onChange={(e) => updateField('target_task_id', e.target.value || undefined)}
-            placeholder="ID của task liên quan (nếu có)"
-          />
-        </div>
-      </div>
-
       {/* Submit Button */}
       <div className="form-actions">
         <button
@@ -221,11 +223,11 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
           {isLoading ? (
             <>
               <span className="loading-spinner"></span>
-              Đang tạo gợi ý...
+              Generating suggestions...
             </>
           ) : (
             <>
-              🤖 Tạo gợi ý AI
+              🤖 Generate
             </>
           )}
         </button>

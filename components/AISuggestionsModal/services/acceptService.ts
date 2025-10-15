@@ -143,8 +143,8 @@ export const mockAcceptService = new MockAISuggestionsAcceptService();
 export const realAcceptService = new RealAISuggestionsAcceptService();
 export const acceptServiceManager = new AISuggestionsAcceptServiceManager(mockAcceptService);
 
-// Export default service
-export const acceptService = acceptServiceManager.getService();
+// Export getter function to get current service (supports switching)
+export const getAcceptService = () => acceptServiceManager.getService();
 
-// Explicit exports for TypeScript
-export type { AcceptRequest, AcceptResponse, AcceptError };
+// Export default service for backward compatibility (will be deprecated)
+export const acceptService = acceptServiceManager.getService();

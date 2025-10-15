@@ -46,14 +46,15 @@ const useAISuggestions = (): UseAISuggestionsReturn => {
       console.error('❌ Error generating suggestions:', err);
       
       // Handle different error types
-      let errorMessage = 'Có lỗi xảy ra khi tạo gợi ý';
+      let errorMessage = 'Error occurred while generating suggestions';
       
       if (err.status === 429) {
-        errorMessage = 'Bạn đã sử dụng hết lượt gợi ý. Vui lòng thử lại sau.';
+        errorMessage = 'Rate limit exceeded. Please try again later.';
       } else if (err.status === 400) {
-        errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+        errorMessage = 'Validation failed. Please check your input.';
+        // Validation errors will be handled by the calling component
       } else if (err.status === 503) {
-        errorMessage = 'AI service đang bận. Vui lòng thử lại sau.';
+        errorMessage = 'AI service is currently unavailable. Please try again later.';
       } else if (err.message) {
         errorMessage = err.message;
       }

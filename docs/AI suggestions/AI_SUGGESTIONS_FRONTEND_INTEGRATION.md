@@ -2,7 +2,75 @@
 
 ## Overview
 
-Tài liệu này cung cấp best practices và patterns để integrate AI Suggestions API vào frontend applications, bao gồm state management, UI/UX recommendations, và performance optimizations.
+Tài liệu này cung cấp best practices và patterns để integrate AI Suggestions API vào frontend applications, bao gồm state management, UI/UX recommendations, performance optimizations, và **Manual Input Mode** mới.
+
+---
+
+## New Features for Frontend
+
+### 1. Manual Input Mode
+Cho phép user nhập task/checklist cụ thể và nhận slot suggestions từ AI.
+
+#### Implementation Example
+```typescript
+interface ManualInput {
+  title: string;
+  description?: string;
+  duration_minutes: number; // 15-180, multiple of 15
+  deadline?: string; // ISO 8601
+  preferred_window?: [string, string]; // [start, end] ISO 8601
+  target_task_id?: string; // For checklist items
+}
+
+// API Call
+const generateSuggestionWithManualInput = async (manualInput: ManualInput) => {
+  const response = await fetch('/api/ai-suggestions/generate', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${jwtToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      suggestionType: manualInput.target_task_id ? 1 : 0, // Checklist if has parent task
+      manual_input: manualInput,
+      timezone: userTimezone
+    })
+  });
+  
+  return response.json();
+};
+```
+
+### 2. Enhanced Response Format
+```typescript
+interface SuggestionItem {
+  item_type: 0 | 1;
+  title: string;
+  description: string;
+  estimated_minutes: number;
+  deadline?: string;
+  suggested_slots?: SuggestedSlot[]; // NEW: Slot suggestions
+  metadata: {
+    source?: 'manual_input' | 'auto_suggestion';
+    adjusted_duration?: boolean;
+    original_duration?: number;
+    [key: string]: any;
+  };
+}
+
+interface SuggestedSlot {
+  suggested_start_at: string; // ISO 8601
+  planned_minutes: number;
+  confidence: number; // 0.0-1.0
+  reason: string;
+  original_index: number; // For frontend mapping
+}
+```
+
+### 3. Improved Confidence Scores
+- **Context-aware**: Confidence dựa trên context quality
+- **Realistic range**: 0.1-1.0 với meaningful distribution
+- **Manual input boost**: Manual input có confidence cao hơn
 
 ---
 

@@ -21,7 +21,7 @@ import {
   ScheduleModal,
   SystemError
 } from "../../components/ui";
-import AISuggestionsModal from "../../../components/AISuggestionsModal/index.tsx";
+import AISuggestionsModal from "../../../components/AISuggestionsModal";
 import {
   TaskStatusModal,
   TaskListView
@@ -416,9 +416,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     
     // Close modal
     setAiSuggestionsModalOpen(false);
-    
-    // Show success message
-    alert(`✅ AI suggestion accepted! Schedule entry created: ${scheduleEntryId}`);
   }, [queryClient, user?.id]);
 
   const handleAISuggestionsClose = useCallback(() => {
@@ -506,7 +503,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg">🤖</span>
-                    <span className="font-medium">AI Sắp lịch</span>
+                    <span className="font-medium">AI Scheduling</span>
                   </div>
                 </button>
                 

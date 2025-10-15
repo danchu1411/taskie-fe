@@ -125,24 +125,56 @@ const HistorySection: FC<HistorySectionProps> = ({
 
   // Format duration
   const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes} phút`;
+    if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    if (remainingMinutes === 0) return `${hours} giờ`;
-    return `${hours}h ${remainingMinutes}phút`;
+    if (remainingMinutes === 0) return `${hours}h`;
+    return `${hours}h ${remainingMinutes}min`;
   };
 
   // Get status info
   const getStatusInfo = (status: number) => {
     switch (status) {
       case 0:
-        return { text: 'Đang chờ', icon: '⏳', color: 'pending' };
+        return { 
+          text: 'Pending', 
+          icon: (
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ), 
+          color: 'pending' 
+        };
       case 1:
-        return { text: 'Đã chấp nhận', icon: '✅', color: 'accepted' };
+        return { 
+          text: 'Accepted', 
+          icon: (
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ), 
+          color: 'accepted' 
+        };
       case 2:
-        return { text: 'Đã từ chối', icon: '❌', color: 'rejected' };
+        return { 
+          text: 'Rejected', 
+          icon: (
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ), 
+          color: 'rejected' 
+        };
       default:
-        return { text: 'Không xác định', icon: '❓', color: 'unknown' };
+        return { 
+          text: 'Unknown', 
+          icon: (
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ), 
+          color: 'unknown' 
+        };
     }
   };
 
@@ -150,13 +182,13 @@ const HistorySection: FC<HistorySectionProps> = ({
   const getConfidenceInfo = (confidence: number) => {
     switch (confidence) {
       case 2:
-        return { text: 'Cao', icon: '🟢', color: 'high' };
+        return { text: 'High', icon: '🟢', color: 'high' };
       case 1:
-        return { text: 'Trung bình', icon: '🟡', color: 'medium' };
+        return { text: 'Medium', icon: '🟡', color: 'medium' };
       case 0:
-        return { text: 'Thấp', icon: '🔴', color: 'low' };
+        return { text: 'Low', icon: '🔴', color: 'low' };
       default:
-        return { text: 'Không xác định', icon: '⚪', color: 'unknown' };
+        return { text: 'Unknown', icon: '⚪', color: 'unknown' };
     }
   };
 
@@ -165,12 +197,12 @@ const HistorySection: FC<HistorySectionProps> = ({
       {/* Header */}
       <div className="history-header">
         <h2 className="history-title">
-          📚 Lịch sử gợi ý
+          📚 Suggestion History
         </h2>
         <button
           className="history-close"
           onClick={onClose}
-          aria-label="Đóng lịch sử"
+          aria-label="Close history"
         >
           ✕
         </button>
@@ -182,7 +214,7 @@ const HistorySection: FC<HistorySectionProps> = ({
           <div className="search-box">
             <input
               type="text"
-              placeholder="Tìm kiếm gợi ý..."
+              placeholder="Search suggestions..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="search-input"
@@ -194,7 +226,7 @@ const HistorySection: FC<HistorySectionProps> = ({
             className="filter-toggle"
             onClick={() => setShowFilters(!showFilters)}
           >
-            🔧 Bộ lọc
+            🔧 Filters
           </button>
         </div>
 
@@ -205,25 +237,25 @@ const HistorySection: FC<HistorySectionProps> = ({
                 className={`status-filter ${selectedStatus === undefined ? 'active' : ''}`}
                 onClick={() => handleStatusFilter(undefined)}
               >
-                Tất cả
+                All
               </button>
               <button
                 className={`status-filter ${selectedStatus === 0 ? 'active' : ''}`}
                 onClick={() => handleStatusFilter(0)}
               >
-                ⏳ Đang chờ
+                ⏳ Pending
               </button>
               <button
                 className={`status-filter ${selectedStatus === 1 ? 'active' : ''}`}
                 onClick={() => handleStatusFilter(1)}
               >
-                ✅ Đã chấp nhận
+                ✅ Accepted
               </button>
               <button
                 className={`status-filter ${selectedStatus === 2 ? 'active' : ''}`}
                 onClick={() => handleStatusFilter(2)}
               >
-                ❌ Đã từ chối
+                ❌ Rejected
               </button>
             </div>
             
@@ -231,7 +263,7 @@ const HistorySection: FC<HistorySectionProps> = ({
               className="clear-filters"
               onClick={handleClearFilters}
             >
-              🗑️ Xóa bộ lọc
+              🗑️ Clear Filters
             </button>
           </div>
         )}
@@ -246,7 +278,7 @@ const HistorySection: FC<HistorySectionProps> = ({
             className="retry-button"
             onClick={() => refreshHistory()}
           >
-            🔄 Thử lại
+            🔄 Retry
           </button>
           <button
             className="clear-error-button"
@@ -261,7 +293,7 @@ const HistorySection: FC<HistorySectionProps> = ({
       {isLoading && suggestions.length === 0 && (
         <div className="history-loading">
           <div className="loading-spinner">🔄</div>
-          <p>Đang tải lịch sử...</p>
+          <p>Loading history...</p>
         </div>
       )}
 
@@ -269,13 +301,13 @@ const HistorySection: FC<HistorySectionProps> = ({
       {!isLoading && suggestions.length === 0 && !error && (
         <div className="history-empty">
           <div className="empty-icon">📭</div>
-          <h3>Chưa có gợi ý nào</h3>
-          <p>Bạn chưa tạo gợi ý nào hoặc không có gợi ý phù hợp với bộ lọc.</p>
+          <h3>No suggestions yet</h3>
+          <p>You haven't created any suggestions or no suggestions match the current filters.</p>
           <button
             className="create-new-button"
             onClick={() => onClose()}
           >
-            🆕 Tạo gợi ý mới
+            🆕 Create New Suggestion
           </button>
         </div>
       )}
@@ -295,7 +327,9 @@ const HistorySection: FC<HistorySectionProps> = ({
               >
                 <div className="suggestion-header">
                   <div className="suggestion-title">
-                    <span className="title-icon">📝</span>
+                    <svg className="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                     <span className="title-text">{suggestion.manual_input.title}</span>
                   </div>
                   <div className="suggestion-date">
@@ -307,19 +341,25 @@ const HistorySection: FC<HistorySectionProps> = ({
                   {firstSlot && (
                     <div className="suggestion-details">
                       <div className="detail-item">
-                        <span className="detail-icon">📅</span>
+                        <svg className="h-3 w-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <span className="detail-text">
                           {formatTime(firstSlot.suggested_start_at)}
                         </span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-icon">⏱️</span>
+                        <svg className="h-3 w-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <span className="detail-text">
                           {formatDuration(firstSlot.planned_minutes)}
                         </span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-icon">{confidenceInfo.icon}</span>
+                        <svg className="h-3 w-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <span className="detail-text">
                           {confidenceInfo.text}
                         </span>
@@ -339,7 +379,11 @@ const HistorySection: FC<HistorySectionProps> = ({
                     className="action-button view-button"
                     onClick={() => handleViewSuggestion(suggestion)}
                   >
-                    👁️ Xem
+                    <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View
                   </button>
                   
                   {suggestion.status === 0 && (
@@ -348,13 +392,19 @@ const HistorySection: FC<HistorySectionProps> = ({
                         className="action-button accept-button"
                         onClick={() => handleAcceptSuggestion(suggestion)}
                       >
-                        ✅ Chấp nhận
+                        <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Accept
                       </button>
                       <button
                         className="action-button reject-button"
                         onClick={() => handleRejectSuggestion(suggestion)}
                       >
-                        ❌ Từ chối
+                        <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Reject
                       </button>
                     </>
                   )}
@@ -364,7 +414,10 @@ const HistorySection: FC<HistorySectionProps> = ({
                       className="action-button reopen-button"
                       onClick={() => handleReopenSuggestion(suggestion)}
                     >
-                      🔄 Tạo lại
+                      <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Recreate
                     </button>
                   )}
                 </div>
