@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { ManualInput, AISuggestion } from '../types';
+import type { ManualInput, AISuggestion } from '../types';
 
 export type ModalStep = 'form' | 'loading' | 'suggestions' | 'confirmation' | 'success' | 'error' | 'history' | 'analytics';
 

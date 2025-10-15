@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ConfirmationState from './ConfirmationState';
-import { AISuggestion } from './types';
+import type { AISuggestion } from './types';
 
 const TestConfirmationState: React.FC = () => {
   const [testResults, setTestResults] = useState<string[]>([]);

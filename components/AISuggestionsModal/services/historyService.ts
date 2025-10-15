@@ -1,4 +1,4 @@
-import { AISuggestion } from '../types';
+import type { AISuggestion } from '../types';
 
 export interface HistoryRequest {
   page?: number;

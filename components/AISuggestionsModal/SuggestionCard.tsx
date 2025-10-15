@@ -1,5 +1,4 @@
-import React from 'react';
-import { SuggestedSlot } from './types';
+import type { SuggestedSlot } from './types';
 import './styles/SuggestionCard.css';
 
 interface SuggestionCardProps {

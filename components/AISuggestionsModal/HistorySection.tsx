@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { AISuggestion } from './types';
+import { useState, useEffect } from 'react';
+import type { FC } from 'react';
+import type { AISuggestion } from './types';
 import useHistory from './hooks/useHistory';
 import useAnalytics from './hooks/useAnalytics';
 import './styles/HistorySection.css';
@@ -12,7 +13,7 @@ interface HistorySectionProps {
   onClose: () => void;
 }
 
-const HistorySection: React.FC<HistorySectionProps> = ({
+const HistorySection: FC<HistorySectionProps> = ({
   onViewSuggestion,
   onReopenSuggestion,
   onAcceptSuggestion,

@@ -1,5 +1,5 @@
 // Test Analytics Implementation
-const { MockAnalyticsService, AnalyticsServiceManager } = require('./utils/analytics.js');
+const { MockAnalyticsService, AnalyticsServiceManager } = require('./utils/analytics.ts');
 
 function testAnalyticsService() {
   console.log('✅ Testing Analytics Service...\n');

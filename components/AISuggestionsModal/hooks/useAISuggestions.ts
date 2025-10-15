@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ManualInput, AISuggestion, UseAISuggestionsReturn, AISuggestionsService } from '../types';
+import type { ManualInput, AISuggestion, UseAISuggestionsReturn, AISuggestionsService } from '../types';
 import { mockAISuggestionsService } from '../services/mockAISuggestionsService';
 
 // Service abstraction for easy backend switch

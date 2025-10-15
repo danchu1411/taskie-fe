@@ -17,6 +17,10 @@ export interface SuggestedSlot {
   reason: string;
 }
 
+export interface HistorySuggestion extends AISuggestion {
+  // Additional fields for history display
+}
+
 export interface AISuggestion {
   id: string;
   suggestion_type: number;

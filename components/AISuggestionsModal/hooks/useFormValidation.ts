@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ManualInput, FormErrors, UseFormValidationReturn } from '../types';
+import type { ManualInput, FormErrors, UseFormValidationReturn } from '../types';
 
 const useFormValidation = (): UseFormValidationReturn => {
   const [formData, setFormData] = useState<ManualInput>({

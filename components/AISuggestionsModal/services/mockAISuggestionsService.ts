@@ -1,4 +1,4 @@
-import { ManualInput, AISuggestion, SuggestedSlot } from '../types';
+import type { ManualInput, AISuggestion, SuggestedSlot } from '../types';
 
 // Mock AI Suggestions Service
 class MockAISuggestionsService {
@@ -7,7 +7,7 @@ class MockAISuggestionsService {
   }
 
   // Generate realistic suggestions based on input
-  private generateSuggestions(input: ManualInput): SuggestedSlot[] {
+  private generateSuggestedSlots(input: ManualInput): SuggestedSlot[] {
     const suggestions: SuggestedSlot[] = [];
     const deadline = new Date(input.deadline);
     const now = new Date();
@@ -143,7 +143,7 @@ class MockAISuggestionsService {
     }
     
     const shouldReturnEmpty = this.shouldReturnEmptySuggestions(input);
-    const suggestions = shouldReturnEmpty ? [] : this.generateSuggestions(input);
+    const suggestions = shouldReturnEmpty ? [] : this.generateSuggestedSlots(input);
     const fallbackAutoMode = this.generateFallbackAutoMode(input);
     
     const response: AISuggestion = {

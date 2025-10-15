@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import useAnalytics from '../hooks/useAnalytics';
+import useAnalytics from './hooks/useAnalytics';
 import './styles/AnalyticsDashboard.css';
 
 interface AnalyticsDashboardProps {
@@ -7,7 +7,7 @@ interface AnalyticsDashboardProps {
 }
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onClose }) => {
-  const { getAnalytics, clearAnalytics, setService } = useAnalytics();
+  const { getAnalytics, clearAnalytics } = useAnalytics();
   const [analytics, setAnalytics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

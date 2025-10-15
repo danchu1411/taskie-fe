@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useModalState from './hooks/useModalState';
-import { ManualInput, AISuggestion } from './types';
+import type { ManualInput, AISuggestion } from './types';
 
 const TestModalState: React.FC = () => {
   const {

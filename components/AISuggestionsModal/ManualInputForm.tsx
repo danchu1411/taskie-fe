@@ -1,6 +1,6 @@
 import React from 'react';
-import { ManualInput } from '../types';
-import useFormValidation from '../hooks/useFormValidation';
+import type { ManualInput } from './types';
+import useFormValidation from './hooks/useFormValidation';
 import './styles/Form.css';
 
 interface ManualInputFormProps {
@@ -17,7 +17,6 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
     errors,
     isValid,
     updateField,
-    validateForm,
     submitForm
   } = useFormValidation();
 

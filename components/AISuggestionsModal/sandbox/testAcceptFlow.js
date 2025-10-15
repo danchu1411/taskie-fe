@@ -1,5 +1,5 @@
 // Test Accept Flow Implementation
-const { mockAcceptService, realAcceptService, acceptServiceManager } = require('./services/acceptService.js');
+const { mockAcceptService, realAcceptService, acceptServiceManager } = require('./services/acceptService.ts');
 
 async function testAcceptFlow() {
   console.log('✅ Testing Accept Flow Implementation...\n');

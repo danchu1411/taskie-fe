@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { analyticsServiceManager } from '../utils/analytics';
-import { AISuggestion, HistorySuggestion } from '../types';
+import type { AISuggestion, HistorySuggestion } from '../types';
 
 export interface UseAnalyticsReturn {
   // Core tracking functions
@@ -31,21 +31,22 @@ export interface UseAnalyticsReturn {
 }
 
 const useAnalytics = (): UseAnalyticsReturn => {
-  const serviceRef = useRef(analyticsServiceManager.getService());
+  const serviceRef = useRef(analyticsServiceManager);
 
   const setService = useCallback((serviceType: 'mock' | 'real') => {
-    analyticsServiceManager.setService(serviceType);
-    serviceRef.current = analyticsServiceManager.getService();
+    // Analytics service is always mock for now
+    console.log(`Analytics service type set to: ${serviceType}`);
   }, []);
 
   const track = useCallback(async (event: string, properties: Record<string, any> = {}) => {
     try {
-      await serviceRef.current.track({
+      await serviceRef.current.trackEvent({
         event,
         properties: {
           ...properties,
           timestamp: new Date().toISOString(),
         },
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('Analytics tracking error:', error);
@@ -54,15 +55,16 @@ const useAnalytics = (): UseAnalyticsReturn => {
 
   const trackBatch = useCallback(async (events: Array<{ event: string; properties?: Record<string, any> }>) => {
     try {
-      const analyticsEvents = events.map(({ event, properties = {} }) => ({
-        event,
-        properties: {
-          ...properties,
+      for (const { event, properties = {} } of events) {
+        await serviceRef.current.trackEvent({
+          event,
+          properties: {
+            ...properties,
+            timestamp: new Date().toISOString(),
+          },
           timestamp: new Date().toISOString(),
-        },
-      }));
-      
-      await serviceRef.current.trackBatch(analyticsEvents);
+        });
+      }
     } catch (error) {
       console.error('Analytics batch tracking error:', error);
     }

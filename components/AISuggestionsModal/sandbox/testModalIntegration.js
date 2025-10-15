@@ -1,5 +1,5 @@
 // Test Modal Integration with SuggestionsDisplay
-const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.js');
+const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.ts');
 
 async function testModalIntegration() {
   console.log('🔗 Testing Modal Integration with SuggestionsDisplay...\n');

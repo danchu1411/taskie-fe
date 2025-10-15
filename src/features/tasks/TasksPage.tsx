@@ -21,6 +21,7 @@ import {
   ScheduleModal,
   SystemError
 } from "../../components/ui";
+import AISuggestionsModal from "../../../components/AISuggestionsModal/index.tsx";
 import {
   TaskStatusModal,
   TaskListView
@@ -61,6 +62,9 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   const [scheduleStartAt, setScheduleStartAt] = useState("");
   const [scheduleMinutes, setScheduleMinutes] = useState(getDefaultFocusDuration());
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+
+  // AI Suggestions modal state
+  const [aiSuggestionsModalOpen, setAiSuggestionsModalOpen] = useState(false);
 
   // Data fetching
   const { tasksByStatus, tasks, isLoading, error, refetch } = useTasksData(user?.id || null, filters);
@@ -401,6 +405,26 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     }
   }, [editingTask, handleUpdateTask, handleCreateTask]);
 
+  // AI Suggestions handlers
+  const handleAISuggestionsSuccess = useCallback((scheduleEntryId: string) => {
+    console.log('AI Suggestion accepted, schedule entry created:', scheduleEntryId);
+    
+    // Refresh tasks data
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["today-tasks", user?.id] });
+    queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
+    
+    // Close modal
+    setAiSuggestionsModalOpen(false);
+    
+    // Show success message
+    alert(`✅ AI suggestion accepted! Schedule entry created: ${scheduleEntryId}`);
+  }, [queryClient, user?.id]);
+
+  const handleAISuggestionsClose = useCallback(() => {
+    setAiSuggestionsModalOpen(false);
+  }, []);
+
 
   if (error) {
     return (
@@ -475,6 +499,17 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
               </div>
               
               <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setAiSuggestionsModalOpen(true)}
+                  className="rounded-xl bg-gradient-to-r from-blue-500/80 to-indigo-600/80 backdrop-blur-md px-8 py-4 text-white border border-blue-400/30 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 hover:from-blue-600/90 hover:to-indigo-700/90 hover:border-blue-500/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🤖</span>
+                    <span className="font-medium">AI Sắp lịch</span>
+                  </div>
+                </button>
+                
                 <button
                   type="button"
                   onClick={() => setModalOpen(true)}
@@ -749,7 +784,16 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
         loading={scheduleMutation.isPending || updateScheduleMutation.isPending}
         isEditMode={isEditingSchedule}
       />
+
+      {/* AI Suggestions Modal */}
+      <AISuggestionsModal
+        isOpen={aiSuggestionsModalOpen}
+        onClose={handleAISuggestionsClose}
+        onSuccess={handleAISuggestionsSuccess}
+      />
       </div>
     </div>
   );
 }
+
+

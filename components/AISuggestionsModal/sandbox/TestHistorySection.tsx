@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import HistorySection from './HistorySection';
-import { AISuggestion } from './types';
+import type { AISuggestion } from './types';
 
 const TestHistorySection: React.FC = () => {
   const [testResults, setTestResults] = useState<string[]>([]);

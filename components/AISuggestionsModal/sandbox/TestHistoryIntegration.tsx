@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AISuggestionsModal from './index';
-import { AISuggestion } from './types';
+import type { AISuggestion } from './types';
 
 const TestHistoryIntegration: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

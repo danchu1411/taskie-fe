@@ -1,0 +1,90 @@
+[33mc15892b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m515dd0a[m HEAD@{1}: commit: done
+[33mc15892b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{2}: commit: .
+[33m52e504c[m HEAD@{3}: commit: change weighted voting system for the quiz aggregation logic
+[33mc7ccdb0[m HEAD@{4}: commit: add ai docs
+[33mdb8e4f5[m HEAD@{5}: reset: moving to db8e4f52ee132a76a1732287151b2e16998ec3e8
+[33mc895129[m[33m ([m[1;31morigin/release/v2[m[33m, [m[1;32mbackup/before-reset[m[33m)[m HEAD@{6}: checkout: moving from be2bbabda717622af31d4cf46ddc8585a2f7d03e to main
+[33mbe2bbab[m HEAD@{7}: checkout: moving from 23ced777337cf6e4d17ab792a45d2277119002e9 to be2bbabda717622af31d4cf46ddc8585a2f7d03e
+[33m23ced77[m HEAD@{8}: commit: .
+[33mb46c2ad[m HEAD@{9}: checkout: moving from c895129e5d7e7fe8ecb93dd55842496a264cdcc3 to b46c2adf0d7faeb89f46b6d1fca1dbbe473dcf13
+[33mc895129[m[33m ([m[1;31morigin/release/v2[m[33m, [m[1;32mbackup/before-reset[m[33m)[m HEAD@{10}: checkout: moving from release/v2 to c895129e5d7e7fe8ecb93dd55842496a264cdcc3
+[33m42f1103[m[33m ([m[1;32mrelease/v2[m[33m)[m HEAD@{11}: commit: cant fix timmer
+[33mb46c2ad[m HEAD@{12}: commit: delete debuging for timmer
+[33mc895129[m[33m ([m[1;31morigin/release/v2[m[33m, [m[1;32mbackup/before-reset[m[33m)[m HEAD@{13}: checkout: moving from main to release/v2
+[33mc895129[m[33m ([m[1;31morigin/release/v2[m[33m, [m[1;32mbackup/before-reset[m[33m)[m HEAD@{14}: commit: prepare for branching version 2
+[33mbe2bbab[m HEAD@{15}: checkout: moving from main to main
+[33mbe2bbab[m HEAD@{16}: commit: refactor timmer to become global componenet
+[33mdb8e4f5[m HEAD@{17}: commit: mark task/taskchecklist as completed if timmer run out
+[33m9cb0001[m HEAD@{18}: commit: fix nav bar overlay in timmer fullscreen and widget mode
+[33m068a764[m HEAD@{19}: commit: add logic handler for these buttons
+[33mcb46228[m HEAD@{20}: commit: add modal for delete, and edit entries
+[33mb4b21e0[m HEAD@{21}: commit: decrease size òf calendar view
+[33m6619320[m HEAD@{22}: commit: hide side entries when there ís no entries
+[33m03202f8[m HEAD@{23}: commit: optimized wallpaper
+[33m1346df5[m HEAD@{24}: commit: add transition drop down to checklist list
+[33m62817d9[m HEAD@{25}: commit: integrate wallpaper to tasks page
+[33m1b0b441[m HEAD@{26}: commit: add wallpaper and adjust background
+[33mc4491d9[m HEAD@{27}: reset: moving to origin/main
+[33m48d3d44[m HEAD@{28}: reset: moving to 48d3d44
+[33mc4491d9[m HEAD@{29}: commit: optimized bundle and add transtion for logo
+[33md663954[m HEAD@{30}: commit: add button layout
+[33m3525f46[m HEAD@{31}: commit: adjust side panel side
+[33m46c0c69[m HEAD@{32}: commit: add new task modal for calendar
+[33me7e6d80[m HEAD@{33}: commit: Gỡ button new task cungf chế độ week
+[33m4691f01[m HEAD@{34}: commit: add color in calendar view to indicate task
+[33m48d3d44[m HEAD@{35}: commit: tô backgroudn cho side bar
+[33m4b4085d[m HEAD@{36}: commit: Add sticky side for schedule
+[33m30d24dc[m HEAD@{37}: commit: exist confirm when user navigate to others pagepage
+[33m07626d7[m HEAD@{38}: commit: add lazyload and loading/guard for planner pagepage
+[33mc8a8882[m HEAD@{39}: commit: fix
+[33m37009f4[m HEAD@{40}: reset: moving to HEAD
+[33m37009f4[m HEAD@{41}: commit: fix bug
+[33m8d0998d[m HEAD@{42}: commit: fix bug in tasks page
+[33mb58908f[m HEAD@{43}: commit: fix bug
+[33m626e2c1[m HEAD@{44}: commit: fix bug
+[33m0eb153a[m HEAD@{45}: commit: improve UI for tasks page
+[33mee96d86[m HEAD@{46}: commit: add sound duration
+[33m78a2ed1[m HEAD@{47}: commit: add sound for pomodoro
+[33m0fb0577[m HEAD@{48}: commit: fix bug
+[33mf730f3a[m HEAD@{49}: commit: replace number òf priority to string
+[33m01399ba[m HEAD@{50}: commit: sửa lỗi đồng bộ task
+[33m224e269[m HEAD@{51}: commit: fix bug
+[33m07d4bde[m HEAD@{52}: commit: fix bug
+[33m0b424ca[m HEAD@{53}: commit: Timer duration based on task's planned minutes
+[33m8d1b5de[m HEAD@{54}: commit: ađd confirm pop up for timmer modal
+[33m0c5ceb4[m HEAD@{55}: commit: refactor authentication
+[33mde5e2d6[m HEAD@{56}: commit: add login by google
+[33m3756b75[m HEAD@{57}: commit: add refresh token
+[33m11efb99[m HEAD@{58}: commit: clean up & build
+[33m5cd3543[m HEAD@{59}: commit: Tách List/Board view
+[33m71b018c[m HEAD@{60}: commit: tách Status modal & empty state
+[33m5e28c5c[m HEAD@{61}: commit: Toolbar + filters component
+[33mbd787b5[m HEAD@{62}: commit: Tách taskcard + check list tại tasksPage
+[33ma7a440a[m HEAD@{63}: commit: Hook dữ liệu + mutation cho tasks page
+[33m1ffab76[m HEAD@{64}: commit: Chạy lại build và dọn import
+[33mbc5fefd[m HEAD@{65}: commit: Tách timer fullscreen/modal
+[33maa9b31a[m HEAD@{66}: commit: Tách modals
+[33m180bc70[m HEAD@{67}: commit: Tách QuickAdd panel
+[33m749419a[m HEAD@{68}: commit: 548944
+[33med3a2f0[m HEAD@{69}: commit: add error page and routes
+[33mab8f2e3[m HEAD@{70}: commit: refactor today page
+[33m1dfe6df[m HEAD@{71}: commit: v:
+[33m776f329[m HEAD@{72}: commit: m
+[33mcc3eec8[m HEAD@{73}: commit: add tasks page
+[33mc31b7ee[m HEAD@{74}: commit: update
+[33m3699166[m HEAD@{75}: commit: Add today page
+[33m6df99d8[m HEAD@{76}: commit: add overlay screen for authentication perform
+[33m6797851[m HEAD@{77}: commit: add notification for reset pass
+[33mdad8fbf[m HEAD@{78}: commit: Fix bug redirect to landing page after login
+[33m259404f[m HEAD@{79}: commit: sign up and verification
+[33m1e357c2[m HEAD@{80}: commit: add login methods
+[33m20161be[m HEAD@{81}: commit: welcome page
+[33mba3bf55[m HEAD@{82}: commit: Test connection with api by schedule entries
+[33m5c914dd[m HEAD@{83}: commit: cover query client into main component
+[33mab4852b[m HEAD@{84}: commit: add react-query lib
+[33m8e4feee[m HEAD@{85}: commit: Set up HTTP api
+[33m26becfb[m HEAD@{86}: commit: Add axios library
+[33mbdbed24[m HEAD@{87}: commit: add .env file and ignore
+[33m8e0f810[m HEAD@{88}: Branch: renamed refs/heads/master to refs/heads/main
+[33m8e0f810[m HEAD@{90}: commit (initial): First commit

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import FallbackUI from './FallbackUI';
-import { AISuggestion } from './types';
+import type { AISuggestion } from './types';
 
 const TestFallbackUI: React.FC = () => {
   const [testResults, setTestResults] = useState<string[]>([]);

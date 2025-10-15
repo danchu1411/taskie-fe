@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import SuggestionsDisplay from './SuggestionsDisplay';
-import { ManualInput, AISuggestion } from './types';
+import SuggestionsDisplay from '../SuggestionsDisplay';
+import type { ManualInput, AISuggestion } from '../types';
 
 const TestSuggestionsDisplay: React.FC = () => {
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | undefined>(undefined);

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ManualInputForm from './ManualInputForm';
 import SuggestionsDisplay from './SuggestionsDisplay';
@@ -6,7 +6,8 @@ import ConfirmationState from './ConfirmationState';
 import FallbackUI from './FallbackUI';
 import HistorySection from './HistorySection';
 import AnalyticsDashboard from './AnalyticsDashboard';
-import { ManualInput, AISuggestion } from './types';
+import type { FC, MouseEvent } from 'react';
+import type { ManualInput, AISuggestion } from './types';
 import useAISuggestions from './hooks/useAISuggestions';
 import useModalState from './hooks/useModalState';
 import useAcceptFlow from './hooks/useAcceptFlow';
@@ -19,7 +20,7 @@ interface AISuggestionsModalProps {
   onSuccess?: (scheduleEntryId: string) => void;
 }
 
-const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
+const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
   isOpen,
   onClose,
   onSuccess
@@ -34,16 +35,6 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
   } = useAISuggestions();
 
   const {
-    // State
-    currentStep,
-    manualInput,
-    aiSuggestion,
-    selectedSlotIndex,
-    lockedSlots,
-    error,
-    isLoading,
-    scheduleEntryId,
-    
     // Actions
     goToForm,
     goToLoading,
@@ -68,6 +59,9 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
     hasSelectedSlot
   } = useModalState();
 
+  // Get current state
+  const modalState = getState();
+
   const {
     // Accept Flow State
     isAccepting,
@@ -83,6 +77,7 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
   const {
     // Analytics tracking functions
+    track,
     trackSuggestionGenerated,
     trackSuggestionAccepted,
     trackSuggestionRejected,
@@ -122,7 +117,7 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
   }, [isOpen, onClose, trackModalOpened, trackModalClosed]);
 
   // Handle backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
@@ -173,7 +168,7 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
   // Handle slot selection
   const handleSlotSelect = (slotIndex: number) => {
-    if (lockedSlots.has(slotIndex)) return; // Can't select locked slots
+    if (modalState.lockedSlots.has(slotIndex)) return; // Can't select locked slots
     setSelectedSlot(slotIndex);
   };
 
@@ -189,20 +184,20 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
   // Handle accept suggestion
   const handleAcceptSuggestion = async () => {
-    if (!hasSelectedSlot() || !aiSuggestion) return;
+    if (!hasSelectedSlot() || !modalState.aiSuggestion) return;
     
     try {
       console.log('Starting accept flow:', {
-        suggestionId: aiSuggestion.id,
-        selectedSlotIndex
+        suggestionId: modalState.aiSuggestion.id,
+        selectedSlotIndex: modalState.selectedSlotIndex
       });
       
-      const response = await acceptSuggestion(aiSuggestion.id, selectedSlotIndex!);
+      const response = await acceptSuggestion(modalState.aiSuggestion.id, modalState.selectedSlotIndex!);
       
       console.log('Accept successful:', response);
       
       // Track suggestion accepted
-      await trackSuggestionAccepted(aiSuggestion, selectedSlotIndex!);
+      await trackSuggestionAccepted(modalState.aiSuggestion, modalState.selectedSlotIndex!);
       
       goToConfirmation(response.schedule_entry_id);
       
@@ -245,8 +240,8 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
   // Handle open schedule
   const handleOpenSchedule = () => {
-    if (onSuccess && scheduleEntryId) {
-      onSuccess(scheduleEntryId);
+    if (onSuccess && modalState.scheduleEntryId) {
+      onSuccess(modalState.scheduleEntryId);
     }
     onClose();
   };
@@ -261,41 +256,49 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
 
   // Handle view suggestion from history
   const handleViewSuggestion = (suggestion: AISuggestion) => {
-    // TODO: Implement view suggestion details
     console.log('Viewing suggestion:', suggestion);
+    // Set the suggestion and go to suggestions view
+    goToSuggestions(suggestion);
     // Track history viewed
     trackHistoryViewed();
   };
 
   // Handle reopen suggestion from history
   const handleReopenSuggestion = (suggestion: AISuggestion) => {
-    // TODO: Implement reopen suggestion
     console.log('Reopening suggestion:', suggestion);
+    // Set the suggestion data and go to form for editing
+    setManualInput(suggestion.manual_input);
+    goToForm();
     // Track suggestion reopened
     trackSuggestionReopened(suggestion as any);
-    goToForm();
   };
 
   // Handle accept suggestion from history
   const handleAcceptSuggestionFromHistory = (suggestion: AISuggestion) => {
-    // TODO: Implement accept suggestion from history
-    console.log('Accepting suggestion:', suggestion);
+    console.log('Accepting suggestion from history:', suggestion);
+    // Set the suggestion and trigger accept flow
+    goToSuggestions(suggestion);
+    setSelectedSlot(0); // Default to first slot
+    handleAcceptSuggestion();
     // Track suggestion accepted
     trackSuggestionAccepted(suggestion, 0);
   };
 
   // Handle reject suggestion from history
   const handleRejectSuggestion = (suggestion: AISuggestion) => {
-    // TODO: Implement reject suggestion from history
     console.log('Rejecting suggestion:', suggestion);
     // Track suggestion rejected
     trackSuggestionRejected(suggestion, 'rejected_from_history');
+    // Close modal or go back to history
+    goToHistory();
   };
 
   // Handle switch to auto mode
   const handleSwitchToAutoMode = () => {
-    // TODO: Implement auto mode in Phase 2
     console.log('Switching to auto mode...');
+    // Track auto mode switch
+    track('auto_mode_enabled', { source: 'fallback_ui' });
+    // For now, just close modal - auto mode will be implemented later
     onClose();
   };
 
@@ -349,15 +352,15 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
           {isStep('error') ? (
             <div className="error-state">
               <h3>❌ Lỗi</h3>
-              <p>{error || acceptError}</p>
+              <p>{modalState.error || acceptError}</p>
               <div className="error-actions">
-                {(error || acceptError) && (
+                {(modalState.error || acceptError) && (
                   <button 
                     onClick={acceptError ? handleRetryAccept : handleRetry}
                     className="retry-button"
-                    disabled={isAccepting || isLoading}
+                    disabled={isAccepting || modalState.isLoading}
                   >
-                    {isAccepting || isLoading ? '🔄 Đang thử lại...' : '🔄 Thử lại'}
+                    {isAccepting || modalState.isLoading ? '🔄 Đang thử lại...' : '🔄 Thử lại'}
                   </button>
                 )}
                 <button 
@@ -374,14 +377,14 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
               <h3>Đang tạo gợi ý...</h3>
               <p>AI đang phân tích lịch trình và tìm khung giờ phù hợp</p>
             </div>
-          ) : isStep('suggestions') && aiSuggestion ? (
-            aiSuggestion.suggested_slots.length > 0 ? (
+          ) : isStep('suggestions') && modalState.aiSuggestion ? (
+            modalState.aiSuggestion.suggested_slots.length > 0 ? (
               <div className="suggestions-state">
                 <SuggestionsDisplay
-                  manualInput={aiSuggestion.manual_input}
-                  aiSuggestion={aiSuggestion}
-                  selectedSlotIndex={selectedSlotIndex}
-                  lockedSlots={lockedSlots}
+                  manualInput={modalState.aiSuggestion.manual_input}
+                  aiSuggestion={modalState.aiSuggestion}
+                  selectedSlotIndex={modalState.selectedSlotIndex}
+                  lockedSlots={modalState.lockedSlots}
                   onSlotSelect={handleSlotSelect}
                   onSlotLock={handleSlotLock}
                   onSlotUnlock={handleSlotUnlock}
@@ -406,7 +409,7 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
               </div>
             ) : (
               <FallbackUI
-                aiSuggestion={aiSuggestion}
+                aiSuggestion={modalState.aiSuggestion}
                 onSwitchToAutoMode={handleSwitchToAutoMode}
                 onEditInput={handleEditInput}
                 onClose={onClose}
@@ -424,11 +427,11 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
             <AnalyticsDashboard
               onClose={() => goToForm()}
             />
-          ) : isStep('confirmation') && aiSuggestion && scheduleEntryId ? (
+          ) : isStep('confirmation') && modalState.aiSuggestion && modalState.scheduleEntryId ? (
             <ConfirmationState
-              aiSuggestion={aiSuggestion}
-              selectedSlotIndex={selectedSlotIndex!}
-              scheduleEntryId={scheduleEntryId}
+              aiSuggestion={modalState.aiSuggestion}
+              selectedSlotIndex={modalState.selectedSlotIndex!}
+              scheduleEntryId={modalState.scheduleEntryId}
               onOpenSchedule={handleOpenSchedule}
               onCreateNew={handleCreateNew}
               onClose={onClose}
@@ -451,7 +454,7 @@ const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({
           ) : (
             <ManualInputForm 
               onSubmit={handleFormSubmit}
-              isLoading={isLoading}
+              isLoading={modalState.isLoading}
             />
           )}
         </div>

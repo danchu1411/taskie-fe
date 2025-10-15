@@ -1,5 +1,5 @@
 // Simple API Integration Hook Test
-const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.js');
+const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.ts');
 
 // Mock React hooks for testing
 const mockUseState = (initial) => {

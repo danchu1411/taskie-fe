@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AISuggestion } from '../types';
+import type { AISuggestion } from './types';
 import './styles/ConfirmationState.css';
 
 interface ConfirmationStateProps {

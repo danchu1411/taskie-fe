@@ -1,5 +1,3 @@
-import { ManualInput, AISuggestion } from '../types';
-
 export interface AcceptRequest {
   status: 1;
   selected_slot_index: number;
@@ -147,3 +145,6 @@ export const acceptServiceManager = new AISuggestionsAcceptServiceManager(mockAc
 
 // Export default service
 export const acceptService = acceptServiceManager.getService();
+
+// Explicit exports for TypeScript
+export type { AcceptRequest, AcceptResponse, AcceptError };

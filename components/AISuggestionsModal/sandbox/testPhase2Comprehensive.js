@@ -1,5 +1,5 @@
 // Comprehensive Test Suite for Phase 2 - History & Analytics
-const { MockAnalyticsService, AnalyticsServiceManager } = require('./utils/analytics.js');
+const { MockAnalyticsService, AnalyticsServiceManager } = require('./utils/analytics.ts');
 
 function testPhase2Comprehensive() {
   console.log('🚀 Starting Phase 2 Comprehensive Tests...\n');

@@ -1,5 +1,5 @@
-import React from 'react';
-import { AISuggestion } from './types';
+import type { FC } from 'react';
+import type { AISuggestion } from './types';
 import './styles/FallbackUI.css';
 
 interface FallbackUIProps {
@@ -9,7 +9,7 @@ interface FallbackUIProps {
   onClose: () => void;
 }
 
-const FallbackUI: React.FC<FallbackUIProps> = ({
+const FallbackUI: FC<FallbackUIProps> = ({
   aiSuggestion,
   onSwitchToAutoMode,
   onEditInput,

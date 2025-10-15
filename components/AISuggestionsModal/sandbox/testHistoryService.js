@@ -1,5 +1,5 @@
 // Test History Service Implementation
-const { mockHistoryService, realHistoryService, historyServiceManager } = require('./services/historyService.js');
+const { mockHistoryService, realHistoryService, historyServiceManager } = require('./services/historyService.ts');
 
 async function testHistoryService() {
   console.log('✅ Testing History Service Implementation...\n');

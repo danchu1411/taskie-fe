@@ -1,5 +1,4 @@
-import React from 'react';
-import { AISuggestion, ManualInput } from './types';
+import type { AISuggestion, ManualInput } from './types';
 import SuggestionCard from './SuggestionCard';
 import './styles/SuggestionsDisplay.css';
 

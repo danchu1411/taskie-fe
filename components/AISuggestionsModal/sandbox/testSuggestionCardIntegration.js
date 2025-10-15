@@ -1,5 +1,5 @@
 // Test SuggestionCard Integration with SuggestionsDisplay
-const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.js');
+const { mockAISuggestionsService } = require('./services/mockAISuggestionsService.ts');
 
 async function testSuggestionCardIntegration() {
   console.log('🔗 Testing SuggestionCard Integration with SuggestionsDisplay...\n');

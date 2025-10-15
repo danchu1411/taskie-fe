@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
-import { HistoryRequest, HistoryResponse, HistoryError, historyService } from '../services/historyService';
-import { AISuggestion } from '../types';
+import type { HistoryRequest } from '../services/historyService';
+import { historyService } from '../services/historyService';
+import type { AISuggestion } from '../types';
 
 export interface HistoryFilters {
   status?: number;
