@@ -22,6 +22,7 @@ export interface AuthService {
   logout(): Promise<void>;
   setToken(token: AuthToken): void;
   clearToken(): void;
+  syncFromExistingAuth(): Promise<boolean>;
 }
 
 // Default Authentication Service Implementation
@@ -48,6 +49,87 @@ export class DefaultAuthService implements AuthService {
     }
 
     return `${this.token.tokenType} ${this.token.accessToken}`;
+  }
+
+  // Auto-sync token from existing auth system
+  async syncFromExistingAuth(): Promise<boolean> {
+    try {
+      // Try to get token from taskie.auth.v1 (primary)
+      const taskieAuth = localStorage.getItem('taskie.auth.v1');
+      if (taskieAuth) {
+        try {
+          const authData = JSON.parse(taskieAuth);
+          if (authData && authData.tokens && authData.tokens.accessToken) {
+            // Parse JWT to get expiration
+            const tokenParts = authData.tokens.accessToken.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + (15 * 60 * 1000); // Default 15min
+              
+              this.setToken({
+                accessToken: authData.tokens.accessToken,
+                expiresAt: expiresAt,
+                tokenType: 'Bearer'
+              });
+              
+              console.log('✅ Synced token from taskie.auth.v1');
+              return true;
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to parse taskie.auth.v1:', error);
+        }
+      }
+      
+      // Fallback: Try to get token from localStorage (common auth patterns)
+      const existingToken = localStorage.getItem('auth_token') || 
+                           localStorage.getItem('access_token') || 
+                           localStorage.getItem('token');
+      
+      if (existingToken) {
+        // Try to parse as JWT to get expiration
+        const tokenParts = existingToken.split('.');
+        if (tokenParts.length === 3) {
+          try {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + (24 * 60 * 60 * 1000); // Default 24h
+            
+            this.setToken({
+              accessToken: existingToken,
+              expiresAt: expiresAt,
+              tokenType: 'Bearer'
+            });
+            
+            console.log('✅ Synced token from existing auth system');
+            return true;
+          } catch (error) {
+            console.warn('Failed to parse existing token:', error);
+          }
+        }
+      }
+      
+      // Try to get from sessionStorage
+      const sessionToken = sessionStorage.getItem('auth_token') || 
+                          sessionStorage.getItem('access_token') || 
+                          sessionStorage.getItem('token');
+      
+      if (sessionToken) {
+        this.setToken({
+          accessToken: sessionToken,
+          expiresAt: Date.now() + (24 * 60 * 60 * 1000), // Default 24h
+          tokenType: 'Bearer'
+        });
+        
+        console.log('✅ Synced token from session storage');
+        return true;
+      }
+      
+      console.log('ℹ️ No existing auth token found to sync');
+      return false;
+    } catch (error) {
+      console.error('Failed to sync from existing auth:', error);
+      return false;
+    }
   }
 
   async refreshToken(): Promise<string | null> {
@@ -216,10 +298,10 @@ export class MockAuthService implements AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthToken> {
-    // Mock login - always succeeds
+    // Mock login - always succeeds with real-looking token
     this.token = {
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
+      accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik1vY2sgVXNlciIsImlhdCI6MTUxNjIzOTAyMn0.mock-signature',
+      refreshToken: 'mock-refresh-token-' + Date.now(),
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
       tokenType: 'Bearer'
     };
@@ -258,8 +340,8 @@ export class AuthServiceManager {
   }
 
   private createDefaultService(): AuthService {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const useMockAuth = process.env.REACT_APP_USE_MOCK_AUTH === 'true';
+    const isDevelopment = (typeof process !== 'undefined' && process.env?.NODE_ENV) === 'development';
+    const useMockAuth = (typeof process !== 'undefined' && process.env?.REACT_APP_USE_MOCK_AUTH) === 'true';
     
     if (isDevelopment && useMockAuth) {
       return new MockAuthService();

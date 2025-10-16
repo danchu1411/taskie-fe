@@ -139,9 +139,13 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
             
             onNavigate?.("/today");
           }}
-          className="text-2xl font-bold text-indigo-600"
+          className="flex items-center"
         >
-          Taskie
+          <img 
+            src="/Logo.png" 
+            alt="Taskie" 
+            className="h-20 w-auto rounded-full"
+          />
         </button>
         
         {/* Navigation Items */}

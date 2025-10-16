@@ -50,6 +50,10 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
     return '🔴';
   };
 
+  const getConfidenceColor = (confidence: number) => {
+    return getConfidenceLabel(confidence).color;
+  };
+
   const getConfidenceText = (confidence: number) => {
     return getConfidenceLabel(confidence).label;
   };

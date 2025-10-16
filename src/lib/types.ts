@@ -147,3 +147,48 @@ export interface StudyProfileFormData {
   focusStyle: FocusStyle;
   workStyle: WorkStyle;
 }
+
+// Stats-related types
+export interface StatsOverview {
+  totalTasksCompleted: number;
+  totalChecklistItemsCompleted: number;
+  totalFocusMinutes: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string;
+  lastLoginAt: string;
+  totalLoginCount: number;
+}
+
+export interface DailyActivity {
+  date: string;
+  tasksCompleted: number;
+  checklistItemsCompleted: number;
+  focusMinutes: number;
+  sessionsCount: number;
+}
+
+export interface DailyActivityResponse {
+  dailyActivity: DailyActivity[];
+  meta: {
+    fromDate: string;
+    toDate: string;
+    totalDays: number;
+  };
+}
+
+export interface StreakPeriod {
+  id: string;
+  streakCount: number;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+}
+
+export interface StreakHistoryResponse {
+  streakHistory: StreakPeriod[];
+  meta: {
+    totalCount: number;
+    limit: number;
+  };
+}

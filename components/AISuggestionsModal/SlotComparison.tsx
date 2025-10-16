@@ -1,5 +1,5 @@
 import React from 'react';
-import type { SlotComparison } from '../types';
+import type { SlotComparison } from './types';
 import './styles/SlotComparison.css';
 
 interface SlotComparisonProps {
@@ -7,7 +7,7 @@ interface SlotComparisonProps {
   onClose: () => void;
 }
 
-const SlotComparison: React.FC<SlotComparisonProps> = ({ comparison, onClose }) => {
+const SlotComparisonView: React.FC<SlotComparisonProps> = ({ comparison, onClose }) => {
   const { slot1, slot2, comparison: comparisonData } = comparison;
 
   const formatDateTime = (dateString: string) => {
@@ -194,4 +194,4 @@ const SlotComparison: React.FC<SlotComparisonProps> = ({ comparison, onClose }) 
   );
 };
 
-export default SlotComparison;
+export default SlotComparisonView;

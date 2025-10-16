@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import type { AISuggestion, ManualInput } from './types';
 import SuggestionCard from './SuggestionCard';
-import SlotFilters from './SlotFilters';
-import SlotComparison from './SlotComparison';
+import SlotComparisonView from './SlotComparison';
 import useSlotSelection from './hooks/useSlotSelection';
 import './styles/SuggestionsDisplay.css';
-import './styles/SlotFilters.css';
 import './styles/SlotComparison.css';
 
 interface SuggestionsDisplayProps {
@@ -13,7 +11,6 @@ interface SuggestionsDisplayProps {
   aiSuggestion: AISuggestion;
   selectedSlotIndex?: number;
   onSlotSelect: (slotIndex: number) => void;
-  showFilters?: boolean;
   showComparison?: boolean;
 }
 
@@ -22,30 +19,20 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
   aiSuggestion,
   selectedSlotIndex,
   onSlotSelect,
-  showFilters = true,
   showComparison = true
 }) => {
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   
   const {
     selectedSlotIndex: internalSelectedSlot,
     comparisonMode,
     comparingSlots,
-    filters,
-    sortBy,
-    viewMode,
-    filteredSlots,
     sortedSlots,
     slotComparison,
     selectSlot,
     toggleComparisonMode,
     addToComparison,
     removeFromComparison,
-    clearComparison,
-    updateFilters,
-    setSortBy,
-    setViewMode,
-    resetSelection
+    clearComparison
   } = useSlotSelection(aiSuggestion.suggested_slots);
 
   // Use external selectedSlotIndex if provided, otherwise use internal state
@@ -175,15 +162,6 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
                 </span>
               </div>
               
-              {showFilters && (
-                <button 
-                  className="filter-toggle"
-                  onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                  type="button"
-                >
-                  🔍 Filters
-                </button>
-              )}
               
               {showComparison && (
                 <button 
@@ -197,16 +175,6 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
             </div>
           </div>
 
-          {/* Filters Panel */}
-          {showFilters && showFiltersPanel && (
-            <SlotFilters
-              filters={filters}
-              sortBy={sortBy}
-              onFiltersChange={updateFilters}
-              onSortChange={setSortBy}
-              onReset={resetSelection}
-            />
-          )}
 
           {/* Comparison Mode */}
           {comparisonMode && (
@@ -223,7 +191,7 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
 
           {/* Slot Comparison */}
           {slotComparison && (
-            <SlotComparison
+            <SlotComparisonView
               comparison={slotComparison}
               onClose={clearComparison}
             />

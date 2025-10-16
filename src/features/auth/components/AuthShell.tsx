@@ -41,11 +41,13 @@ export function AuthShell({ ctaLabel, ctaHref, children, highlights, onNavigate 
               window.location.href = "/";
             }
           }}
-          className="group inline-flex items-center justify-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-700 transition-all duration-200 hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+          className="group inline-flex items-center justify-center rounded-full bg-white/70 px-3 py-1 transition-all duration-200 hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
         >
-          <span className="transition-all duration-200 group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:via-purple-500 group-hover:to-slate-900 group-hover:bg-clip-text group-hover:text-transparent">
-            Taskie
-          </span>
+          <img 
+            src="/Logo.png" 
+            alt="Taskie" 
+            className="h-10 w-auto rounded-full"
+          />
         </button>
         <button
           onClick={(e) => {

@@ -1,7 +1,9 @@
 // HTTP Client for AI Suggestions API
-import { apiConfigManager, APIConfig } from '../config/apiConfig';
+import type { APIConfig } from '../config/apiConfig';
+import { apiConfigManager } from '../config/apiConfig';
 import { authServiceManager } from './authService';
-import { apiMonitorManager, APIMetric } from './apiMonitor';
+import { apiMonitorManager } from './apiMonitor';
+import type { APIMetric } from './apiMonitor';
 
 export interface HTTPRequest {
   url: string;
@@ -37,11 +39,12 @@ export interface RetryConfig {
 export class HTTPClient {
   private config: APIConfig;
   private retryConfig: RetryConfig;
+  private activeRequests = new Set<string>(); // Track active requests
 
   constructor(config?: APIConfig) {
     this.config = config || apiConfigManager.getConfig();
     this.retryConfig = {
-      attempts: this.config.retryAttempts,
+      attempts: 1, // DISABLED RETRY FOR BULKHEAD DEBUG
       delay: this.config.retryDelay,
       backoffMultiplier: 2,
       maxDelay: 10000 // 10 seconds
@@ -52,35 +55,52 @@ export class HTTPClient {
     const { attempts, delay } = this.retryConfig;
     let lastError: HTTPError | null = null;
 
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      try {
-        const response = await this.makeRequest<T>(request);
-        return response;
-      } catch (error) {
-        lastError = error as HTTPError;
-        
-        // Don't retry for certain error types
-        if (this.shouldNotRetry(error as HTTPError)) {
-          throw error;
-        }
-
-        // Don't retry on last attempt
-        if (attempt === attempts - 1) {
-          throw error;
-        }
-
-        // Calculate delay with exponential backoff
-        const retryDelay = Math.min(
-          delay * Math.pow(this.retryConfig.backoffMultiplier, attempt),
-          this.retryConfig.maxDelay
-        );
-
-        console.warn(`Request failed (attempt ${attempt + 1}/${attempts}), retrying in ${retryDelay}ms:`, error);
-        await this.sleep(retryDelay);
-      }
+    // Create request key for deduplication
+    const requestKey = `${request.method}:${request.url}:${JSON.stringify(request.body || {})}`;
+    
+    // Check if same request is already active
+    if (this.activeRequests.has(requestKey)) {
+      console.warn('⚠️ Duplicate request detected, ignoring:', requestKey);
+      throw new Error('Duplicate request detected');
     }
 
-    throw lastError;
+    // Add to active requests
+    this.activeRequests.add(requestKey);
+
+    try {
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          const response = await this.makeRequest<T>(request);
+          return response;
+        } catch (error) {
+          lastError = error as HTTPError;
+          
+          // Don't retry for certain error types
+          if (this.shouldNotRetry(error as HTTPError)) {
+            throw error;
+          }
+
+          // Don't retry on last attempt
+          if (attempt === attempts - 1) {
+            throw error;
+          }
+
+          // Calculate delay with exponential backoff
+          const retryDelay = Math.min(
+            delay * Math.pow(this.retryConfig.backoffMultiplier, attempt),
+            this.retryConfig.maxDelay
+          );
+
+          console.warn(`Request failed (attempt ${attempt + 1}/${attempts}), retrying in ${retryDelay}ms:`, error);
+          await this.sleep(retryDelay);
+        }
+      }
+
+      throw lastError;
+    } finally {
+      // Remove from active requests
+      this.activeRequests.delete(requestKey);
+    }
   }
 
   private async makeRequest<T>(request: HTTPRequest): Promise<HTTPResponse<T>> {
@@ -97,9 +117,9 @@ export class HTTPClient {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json';
     headers['Accept'] = headers['Accept'] || 'application/json';
 
-    // Create AbortController for timeout
+    // Create AbortController for timeout (DISABLED FOR BULKHEAD DEBUG)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout || this.config.timeout);
+    // const timeoutId = setTimeout(() => controller.abort(), timeout || this.config.timeout);
 
     let metric: APIMetric = {
       endpoint: this.extractEndpoint(url),
@@ -113,11 +133,11 @@ export class HTTPClient {
       const response = await fetch(url, {
         method,
         headers,
-        body: body ? JSON.stringify(body) : undefined,
-        signal: controller.signal
+        body: body ? JSON.stringify(body) : undefined
+        // signal: controller.signal  // DISABLED FOR BULKHEAD DEBUG
       });
 
-      clearTimeout(timeoutId);
+      // clearTimeout(timeoutId);
       const duration = Date.now() - startTime;
 
       // Parse response headers
@@ -160,18 +180,24 @@ export class HTTPClient {
         headers: responseHeaders
       };
 
-    } catch (error) {
-      clearTimeout(timeoutId);
+    } catch (error: any) {
+      // clearTimeout(timeoutId);
       const duration = Date.now() - startTime;
       
       // Update metric with error
       metric.duration = duration;
       metric.error = error.message;
       
-      if (error.name === 'AbortError') {
+      // Check for AbortError (DOMException "The user aborted a request")
+      if (error.name === 'AbortError' || error.message.includes('aborted')) {
         metric.status = 408; // Timeout
-        const timeoutError = new Error('Request timeout') as HTTPError;
+        const timeoutError = new Error('Request aborted by client') as HTTPError;
         timeoutError.isTimeoutError = true;
+        console.warn('🚫 Request aborted by client:', {
+          name: error.name,
+          message: error.message,
+          duration: `${duration}ms`
+        });
         apiMonitorManager.logRequest(metric);
         throw timeoutError;
       }
@@ -208,6 +234,11 @@ export class HTTPClient {
       if (contentType?.includes('application/json')) {
         errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
+        
+        // Log detailed validation errors for debugging
+        if (response.status === 400 && errorData.errors) {
+          console.error('🔍 Backend validation errors:', errorData.errors);
+        }
       } else {
         errorMessage = await response.text() || errorMessage;
       }
@@ -220,6 +251,11 @@ export class HTTPClient {
     error.statusText = response.statusText;
     error.response = response;
     error.isAuthError = response.status === 401 || response.status === 403;
+    
+    // Add validation errors to error object for frontend handling
+    if (response.status === 400 && errorData?.errors) {
+      (error as any).validationErrors = errorData.errors;
+    }
 
     return error;
   }

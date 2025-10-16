@@ -1,5 +1,47 @@
 @import './UIUXPolish.css';
 
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading indicator in header */
+.loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+.loading-indicator .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Disabled close button */
+.ai-suggestions-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Prevent backdrop interaction during loading */
+.ai-suggestions-modal-backdrop.loading {
+  pointer-events: none;
+}
+
+.ai-suggestions-modal-container.loading {
+  pointer-events: auto;
+}
+
 /* AI Suggestions Modal - Main Styles */
 
 .ai-suggestions-modal-backdrop {

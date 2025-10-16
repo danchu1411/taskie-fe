@@ -45,7 +45,7 @@ export class DefaultAPIMonitor implements APIMonitor {
     }
 
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
+    if ((typeof process !== 'undefined' && process.env?.NODE_ENV) === 'development') {
       console.log('API Request:', {
         endpoint: metric.endpoint,
         method: metric.method,
@@ -193,8 +193,8 @@ export class APIMonitorManager {
   }
 
   private createDefaultMonitor(): APIMonitor {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const useMockMonitor = process.env.REACT_APP_USE_MOCK_MONITOR === 'true';
+    const isDevelopment = (typeof process !== 'undefined' && process.env?.NODE_ENV) === 'development';
+    const useMockMonitor = (typeof process !== 'undefined' && process.env?.REACT_APP_USE_MOCK_MONITOR) === 'true';
     
     if (isDevelopment && useMockMonitor) {
       return new MockAPIMonitor();

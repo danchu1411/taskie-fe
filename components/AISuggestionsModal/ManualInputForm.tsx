@@ -29,7 +29,7 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
   // Handle external validation errors from backend
   useEffect(() => {
     if (validationErrors && Object.keys(validationErrors).length > 0) {
-      setBackendErrors(validationErrors);
+      setBackendErrors(validationErrors as Record<string, string>);
     }
   }, [validationErrors, setBackendErrors]);
 
@@ -60,6 +60,12 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isLoading) {
+      console.warn('⚠️ Form already submitting, ignoring duplicate submission');
+      return;
+    }
     
     try {
       await submitForm();

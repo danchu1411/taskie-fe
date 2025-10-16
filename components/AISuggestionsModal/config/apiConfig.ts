@@ -14,14 +14,14 @@ export interface APIConfig {
 
 // Default configuration
 const defaultConfig: APIConfig = {
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000',
+  baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_API_BASE_URL) || 'http://localhost:3000',
   endpoints: {
     generateSuggestions: '/api/ai-suggestions/generate',
     acceptSuggestion: '/api/ai-suggestions',
     getSuggestionHistory: '/api/ai-suggestions/history',
     getAnalytics: '/api/ai-suggestions/analytics'
   },
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 120 seconds for AI processing
   retryAttempts: 3,
   retryDelay: 1000 // 1 second
 };
@@ -31,23 +31,23 @@ const configs: Record<string, APIConfig> = {
   development: {
     ...defaultConfig,
     baseURL: 'http://localhost:3000',
-    timeout: 30000
+    timeout: 120000
   },
   staging: {
     ...defaultConfig,
-    baseURL: process.env.REACT_APP_STAGING_API_URL || 'https://staging-api.taskie.com',
+    baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_STAGING_API_URL) || 'https://staging-api.taskie.com',
     timeout: 45000
   },
   production: {
     ...defaultConfig,
-    baseURL: process.env.REACT_APP_PRODUCTION_API_URL || 'https://api.taskie.com',
+    baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_PRODUCTION_API_URL) || 'https://api.taskie.com',
     timeout: 60000
   }
 };
 
 // Get current environment configuration
 export const getAPIConfig = (): APIConfig => {
-  const env = process.env.NODE_ENV || 'development';
+  const env = (typeof process !== 'undefined' && process.env?.NODE_ENV) || 'development';
   return configs[env] || defaultConfig;
 };
 
@@ -96,15 +96,15 @@ export const getFullURL = (endpoint: keyof APIConfig['endpoints']): string => {
 };
 
 export const isProduction = (): boolean => {
-  return process.env.NODE_ENV === 'production';
+  return (typeof process !== 'undefined' && process.env?.NODE_ENV) === 'production';
 };
 
 export const isDevelopment = (): boolean => {
-  return process.env.NODE_ENV === 'development';
+  return (typeof process !== 'undefined' && process.env?.NODE_ENV) === 'development';
 };
 
 export const isStaging = (): boolean => {
-  return process.env.NODE_ENV === 'staging';
+  return (typeof process !== 'undefined' && process.env?.NODE_ENV) === 'staging';
 };
 
 // Environment validation

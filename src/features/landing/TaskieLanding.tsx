@@ -124,12 +124,14 @@ export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
       <header className="flex items-center justify-between border-b border-slate-200/80 px-6 py-5 md:px-10">
         <a
           href="#top"
-          className="group/logo inline-flex items-center justify-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-700 transition-all duration-200 hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+          className="group/logo inline-flex items-center justify-center rounded-full bg-white/70 px-3 py-1 transition-all duration-200 hover:-translate-y-[1px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
           aria-label="Taskie home"
         >
-          <span className="transition-all duration-200 group-hover/logo:bg-gradient-to-r group-hover/logo:from-indigo-500 group-hover/logo:via-purple-500 group-hover/logo:to-slate-900 group-hover/logo:text-transparent group-hover/logo:bg-clip-text">
-            Taskie
-          </span>
+          <img 
+            src="/Logo.png" 
+            alt="Taskie" 
+            className="h-16 w-auto rounded-full"
+          />
         </a>
         <nav className="hidden gap-6 md:flex">
           <a className={navLinkClass} href="#preview">

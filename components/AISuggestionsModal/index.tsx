@@ -17,6 +17,7 @@ import { serviceManager } from './hooks/useAISuggestions';
 import { realAISuggestionsService } from './services/realAISuggestionsService';
 import { acceptServiceManager } from './services/acceptService';
 import { realAcceptService } from './services/realAcceptService';
+import { authServiceManager } from './services/authService';
 import './styles/AISuggestionsModal.css';
 
 interface AISuggestionsModalProps {
@@ -30,12 +31,23 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  // Service toggle - switch to real API when environment variable is set
+  // Service toggle - switch to real API (FORCE ENABLED)
   useEffect(() => {
-    if (process.env.REACT_APP_USE_REAL_API === 'true') {
-      serviceManager.switchService(realAISuggestionsService);
-      acceptServiceManager.switchService(realAcceptService);
-    }
+    console.log('🔄 Switching to Real API Services...');
+    serviceManager.switchService(realAISuggestionsService);
+    acceptServiceManager.switchService(realAcceptService);
+    
+    // Auto-sync auth token from existing system
+    authServiceManager.getService().syncFromExistingAuth().then(success => {
+      if (success) {
+        console.log('✅ Auth token synced from existing system');
+      } else {
+        console.log('ℹ️ No existing auth token found - manual injection needed');
+        console.log('💡 Use: injectAuthToken("<YOUR_JWT>") in browser console');
+      }
+    });
+    
+    console.log('✅ Real API Services enabled');
   }, []);
 
   const {
