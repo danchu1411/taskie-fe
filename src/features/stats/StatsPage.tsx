@@ -4,6 +4,8 @@ import StatsOverviewCards from './components/StatsOverviewCards';
 import ActivityChart from './components/ActivityChart';
 import StreakVisualization from './components/StreakVisualization';
 import StatsError from './components/StatsError';
+import { StatsPageSkeleton } from './components/StatsSkeleton';
+import './styles/stats-animations.css';
 
 interface StatsPageProps {
   onNavigate?: (path: string) => void;
@@ -16,6 +18,10 @@ export default function StatsPage({ onNavigate }: StatsPageProps) {
 
   const isLoading = overviewLoading || dailyLoading || streakLoading;
   const hasError = overviewError || dailyError || streakError;
+
+  if (isLoading) {
+    return <StatsPageSkeleton />;
+  }
 
   if (hasError) {
     return (
@@ -35,7 +41,7 @@ export default function StatsPage({ onNavigate }: StatsPageProps) {
       <div className="min-h-screen bg-slate-50">
         <main className="mx-auto max-w-7xl px-6 py-12">
           {/* Page Header */}
-          <div className="mb-8">
+          <div className="mb-8 stats-fade-in-up">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Your Stats</h1>
             <p className="text-slate-600">Track your productivity and progress over time</p>
           </div>

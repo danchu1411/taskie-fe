@@ -117,7 +117,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
         onNavigate("/planner");
         break;
       case "stats":
-        // TODO: Add stats route
+        onNavigate("/stats");
         break;
     }
   };

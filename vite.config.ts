@@ -37,6 +37,9 @@ export default defineConfig({
             if (id.includes('axios')) {
               return 'vendor-utils';
             }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
             return 'vendor-other';
           }
           
@@ -46,6 +49,9 @@ export default defineConfig({
           }
           if (id.includes('src/features/tasks')) {
             return 'tasks';
+          }
+          if (id.includes('src/features/stats')) {
+            return 'stats';
           }
           if (id.includes('src/features/auth')) {
             return 'auth';

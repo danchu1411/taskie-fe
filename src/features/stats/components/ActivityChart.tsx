@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { DailyActivity } from '../../../lib/types';
 
@@ -14,7 +14,7 @@ interface ChartDataPoint {
   sessions: number;
 }
 
-export default function ActivityChart({ data, isLoading }: ActivityChartProps) {
+const ActivityChart = memo(function ActivityChart({ data, isLoading }: ActivityChartProps) {
   const [period, setPeriod] = useState<'7' | '30'>('7');
 
   const chartData: ChartDataPoint[] = useMemo(() => {
@@ -167,4 +167,6 @@ export default function ActivityChart({ data, isLoading }: ActivityChartProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ActivityChart;

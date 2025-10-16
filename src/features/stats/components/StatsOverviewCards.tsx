@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import type { StatsOverview } from '../../../lib/types';
 
 interface StatsOverviewCardsProps {
@@ -61,7 +61,7 @@ function StatCard({ title, value, icon, color, isLoading }: StatCardProps) {
   );
 }
 
-export default function StatsOverviewCards({ data, isLoading }: StatsOverviewCardsProps) {
+const StatsOverviewCards = memo(function StatsOverviewCards({ data, isLoading }: StatsOverviewCardsProps) {
   if (!data && !isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -123,4 +123,6 @@ export default function StatsOverviewCards({ data, isLoading }: StatsOverviewCar
       />
     </div>
   );
-}
+});
+
+export default StatsOverviewCards;
