@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import api from "../../lib/api";
+import { recordFocusSession } from "../../lib/api-stats";
 import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, SystemError, ChecklistItemModal } from "../../components/ui";
 import { WallpaperBackground } from "../../components/WallpaperBackground";
@@ -416,9 +417,25 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         statusMutation.mutate({ item, status: STATUS.IN_PROGRESS });
       }
     },
-    onComplete: (item) => {
+    onComplete: async (item) => {
       if (item && item.status !== STATUS.DONE) {
         statusMutation.mutate({ item, status: STATUS.DONE });
+      }
+      
+      // NEW: Record focus session to stats
+      if (item?.plannedMinutes) {
+        try {
+          await recordFocusSession(item.plannedMinutes);
+          
+          // Invalidate stats after recording
+          queryClient.invalidateQueries({ queryKey: ['stats'] });
+          
+          if (window.location.pathname === '/stats') {
+            queryClient.refetchQueries({ queryKey: ['stats'] });
+          }
+        } catch (error) {
+          console.error('Failed to record focus session:', error);
+        }
       }
     }
   });
@@ -523,6 +540,14 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         queryKey: SCHEDULE_QUERY_KEY,
         type: "active"
       });
+      
+      // NEW: Invalidate stats when task/checklist status changes
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      
+      // Refetch only if on stats page
+      if (window.location.pathname === '/stats') {
+        queryClient.refetchQueries({ queryKey: ['stats'] });
+      }
     },
     onSettled: () => {
       setPendingStatusId(null);

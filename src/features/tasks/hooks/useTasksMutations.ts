@@ -219,6 +219,13 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      
+      // NEW: Invalidate stats
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      
+      if (window.location.pathname === '/stats') {
+        queryClient.refetchQueries({ queryKey: ['stats'] });
+      }
     },
   });
 
@@ -266,6 +273,13 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      
+      // NEW: Invalidate stats
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      
+      if (window.location.pathname === '/stats') {
+        queryClient.refetchQueries({ queryKey: ['stats'] });
+      }
     },
   });
 
