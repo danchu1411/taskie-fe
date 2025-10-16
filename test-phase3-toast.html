@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3 Test: Toast Notification</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        .test-button:active {
+            transform: translateY(0);
+        }
+        
+        .streak-button {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+        }
+        
+        .milestone-button {
+            background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .performance-info {
+            background: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Phase 3 Test: Toast Notification</h1>
+        <p class="subtitle">Testing streak toast animations and behavior</p>
+        
+        <div class="instructions">
+            <h3>📋 Test Instructions:</h3>
+            <ul>
+                <li>Click buttons to show different toast notifications</li>
+                <li>Verify slide-in animation from top-right</li>
+                <li>Check counter animation increments smoothly</li>
+                <li>Verify auto-dismiss after 3 seconds</li>
+                <li>Test multiple toasts stacking correctly</li>
+                <li>Check progress bar animation</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🔥 Basic Streak Toast</div>
+            <button class="test-button streak-button" onclick="showStreakToast(1)">
+                Show Streak +1 Toast
+            </button>
+            <button class="test-button streak-button" onclick="showStreakToast(7)">
+                Show Streak +7 Toast
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🏆 Milestone Toast</div>
+            <button class="test-button milestone-button" onclick="showMilestoneToast(30)">
+                Show 30-Day Milestone
+            </button>
+            <button class="test-button milestone-button" onclick="showMilestoneToast(100)">
+                Show 100-Day Milestone
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">⚡ Multiple Toasts</div>
+            <button class="test-button" onclick="showMultipleToasts()">
+                Show 3 Toasts Rapidly
+            </button>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🎯 Manual Close Test</div>
+            <button class="test-button" onclick="showManualCloseToast()">
+                Show Toast (Manual Close)
+            </button>
+        </div>
+        
+        <div class="performance-info">
+            <strong>📊 Performance Monitoring:</strong><br>
+            • Watch for smooth slide-in/out animations<br>
+            • Counter should animate smoothly (no jumps)<br>
+            • Progress bar should shrink linearly<br>
+            • Multiple toasts should stack without overlap<br>
+            • No memory leaks from toast elements
+        </div>
+    </div>
+
+    <script>
+        let toastCount = 0;
+        
+        function createToast(message, streakCount, duration = 3000) {
+            const toastId = `toast-${Date.now()}-${Math.random()}`;
+            const toast = document.createElement('div');
+            
+            toast.id = toastId;
+            toast.className = 'toast-notification';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+                border: 1px solid #e2e8f0;
+                padding: 16px;
+                min-width: 300px;
+                max-width: 400px;
+                transform: translateX(100%);
+                opacity: 0;
+                transition: all 0.3s ease-out;
+            `;
+            
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="font-size: 24px;">🔥</div>
+                        <div>
+                            <div style="font-weight: 600; color: #1e293b;">${message}</div>
+                            <div style="font-size: 14px; color: #64748b;">
+                                Current streak: <span id="streak-${toastId}" style="font-weight: bold; color: #ea580c;">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="closeToast('${toastId}')" style="
+                        background: none;
+                        border: none;
+                        color: #94a3b8;
+                        cursor: pointer;
+                        padding: 4px;
+                        border-radius: 4px;
+                        transition: color 0.2s;
+                    " onmouseover="this.style.color='#64748b'" onmouseout="this.style.color='#94a3b8'">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div style="margin-top: 12px; width: 100%; background: #e2e8f0; border-radius: 4px; height: 4px;">
+                    <div id="progress-${toastId}" style="
+                        background: linear-gradient(90deg, #f97316, #dc2626);
+                        height: 4px;
+                        border-radius: 4px;
+                        width: 100%;
+                        transition: width ${duration}ms linear;
+                    "></div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Trigger slide-in animation
+            setTimeout(() => {
+                toast.style.transform = 'translateX(0)';
+                toast.style.opacity = '1';
+            }, 100);
+            
+            // Counter animation
+            animateCounter(`streak-${toastId}`, streakCount);
+            
+            // Progress bar animation
+            setTimeout(() => {
+                const progressBar = document.getElementById(`progress-${toastId}`);
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                }
+            }, 100);
+            
+            // Auto-dismiss
+            setTimeout(() => {
+                closeToast(toastId);
+            }, duration);
+            
+            toastCount++;
+        }
+        
+        function animateCounter(elementId, targetValue) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const duration = 1000;
+            const steps = 60;
+            const increment = targetValue / steps;
+            const stepDuration = duration / steps;
+            
+            let currentStep = 0;
+            const timer = setInterval(() => {
+                currentStep++;
+                const newValue = Math.min(Math.floor(increment * currentStep), targetValue);
+                element.textContent = newValue;
+                
+                if (currentStep >= steps) {
+                    clearInterval(timer);
+                    element.textContent = targetValue;
+                }
+            }, stepDuration);
+        }
+        
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (!toast) return;
+            
+            toast.style.transform = 'translateX(100%)';
+            toast.style.opacity = '0';
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+                toastCount--;
+            }, 300);
+        }
+        
+        function showStreakToast(streakCount) {
+            createToast(`🔥 Streak +${streakCount}! Keep it up!`, streakCount);
+        }
+        
+        function showMilestoneToast(days) {
+            createToast(`🏆 ${days}-Day Milestone Achieved!`, days);
+        }
+        
+        function showMultipleToasts() {
+            setTimeout(() => createToast('🔥 Streak +1! Keep it up!', 1), 0);
+            setTimeout(() => createToast('🔥 Streak +2! You\'re on fire!', 2), 500);
+            setTimeout(() => createToast('🔥 Streak +3! Amazing!', 3), 1000);
+        }
+        
+        function showManualCloseToast() {
+            createToast('🔥 Streak +1! Click X to close', 1, 10000); // 10 second duration
+        }
+        
+        console.log('🧪 Phase 3 Toast Test Page Loaded');
+        console.log('🎯 Click buttons to test toast notifications');
+    </script>
+</body>
+</html>

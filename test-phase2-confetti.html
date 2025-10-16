@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 2 Test: Confetti Animation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        .test-button:active {
+            transform: translateY(0);
+        }
+        
+        .fire-button {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+        }
+        
+        .celebration-button {
+            background: linear-gradient(135deg, #4ecdc4, #45b7d1);
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .performance-info {
+            background: #e2e3e5;
+            color: #383d41;
+            border: 1px solid #d6d8db;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Phase 2 Test: Confetti Animation</h1>
+        <p class="subtitle">Testing canvas-confetti integration and performance</p>
+        
+        <div class="instructions">
+            <h3>📋 Test Instructions:</h3>
+            <ul>
+                <li>Click each button to test different confetti effects</li>
+                <li>Verify confetti particles appear and animate smoothly</li>
+                <li>Check that animations don't overlap when clicked rapidly</li>
+                <li>Monitor browser performance (FPS should stay stable)</li>
+                <li>Test on different screen sizes if possible</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🎉 Basic Confetti</div>
+            <button class="test-button" onclick="testBasicConfetti()">
+                Show Basic Confetti
+            </button>
+            <div id="basic-status" class="status info" style="display: none;">
+                ✅ Basic confetti triggered successfully!
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🔥 Fire Confetti (Streak Theme)</div>
+            <button class="test-button fire-button" onclick="testFireConfetti()">
+                Show Fire Confetti
+            </button>
+            <div id="fire-status" class="status info" style="display: none;">
+                🔥 Fire confetti triggered successfully!
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🎊 Celebration Confetti</div>
+            <button class="test-button celebration-button" onclick="testCelebrationConfetti()">
+                Show Celebration Confetti
+            </button>
+            <div id="celebration-status" class="status info" style="display: none;">
+                🎊 Celebration confetti triggered successfully!
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">⚡ Rapid Click Test</div>
+            <button class="test-button" onclick="testRapidClicks()">
+                Rapid Click Test (5x)
+            </button>
+            <div id="rapid-status" class="status info" style="display: none;">
+                ⚡ Rapid click test completed - check for overlapping animations
+            </div>
+        </div>
+        
+        <div class="performance-info">
+            <strong>📊 Performance Monitoring:</strong><br>
+            • Watch for frame drops during animations<br>
+            • Confetti should complete within 2-3 seconds<br>
+            • No browser freezing or lag<br>
+            • Smooth particle movement
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script>
+        let confettiCount = 0;
+        let lastConfettiTime = 0;
+        const DEBOUNCE_MS = 1000;
+
+        function showStatus(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 3000);
+        }
+
+        function testBasicConfetti() {
+            try {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57']
+                });
+                showStatus('basic-status');
+                confettiCount++;
+            } catch (error) {
+                console.error('Basic confetti failed:', error);
+            }
+        }
+
+        function testFireConfetti() {
+            try {
+                // Main fire burst
+                confetti({
+                    particleCount: 150,
+                    spread: 60,
+                    origin: { y: 0.6 },
+                    colors: ['#ff6b35', '#f7931e', '#ffd23f', '#ff6b6b', '#ff8e53'],
+                    shapes: ['circle', 'square'],
+                    scalar: 1.2
+                });
+
+                // Secondary burst after delay
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 80,
+                        spread: 45,
+                        origin: { y: 0.7 },
+                        colors: ['#ff6b35', '#f7931e', '#ffd23f'],
+                        shapes: ['circle'],
+                        scalar: 0.8
+                    });
+                }, 200);
+
+                showStatus('fire-status');
+                confettiCount++;
+            } catch (error) {
+                console.error('Fire confetti failed:', error);
+            }
+        }
+
+        function testCelebrationConfetti() {
+            try {
+                const duration = 2000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                const interval = setInterval(() => {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        return;
+                    }
+
+                    const particleCount = 50 * (timeLeft / duration);
+
+                    // Left side burst
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                        colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57']
+                    });
+
+                    // Right side burst
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                        colors: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57']
+                    });
+                }, 250);
+
+                showStatus('celebration-status');
+                confettiCount++;
+            } catch (error) {
+                console.error('Celebration confetti failed:', error);
+            }
+        }
+
+        function testRapidClicks() {
+            const rapidButton = event.target;
+            rapidButton.disabled = true;
+            rapidButton.textContent = 'Testing...';
+            
+            let clickCount = 0;
+            const maxClicks = 5;
+            
+            const rapidInterval = setInterval(() => {
+                if (clickCount >= maxClicks) {
+                    clearInterval(rapidInterval);
+                    rapidButton.disabled = false;
+                    rapidButton.textContent = 'Rapid Click Test (5x)';
+                    showStatus('rapid-status');
+                    return;
+                }
+                
+                testBasicConfetti();
+                clickCount++;
+            }, 200);
+        }
+
+        // Performance monitoring
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        function monitorPerformance() {
+            frameCount++;
+            const currentTime = performance.now();
+            
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                console.log(`FPS: ${fps}`);
+                
+                if (fps < 30) {
+                    console.warn('⚠️ Low FPS detected during confetti animation');
+                }
+                
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(monitorPerformance);
+        }
+        
+        // Start performance monitoring
+        monitorPerformance();
+        
+        console.log('🧪 Phase 2 Confetti Test Page Loaded');
+        console.log('📊 Performance monitoring active');
+        console.log('🎯 Click buttons to test confetti animations');
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { StatsOverview, StreakPeriod } from '../../../lib/types';
 
 interface StreakVisualizationProps {
@@ -31,6 +31,9 @@ function Milestone({ target, achieved }: MilestoneProps) {
 
 export default function StreakVisualization({ overview, isLoading }: StreakVisualizationProps) {
   const [displayStreak, setDisplayStreak] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const previousStreakRef = useRef(0);
 
   useEffect(() => {
     if (isLoading) {
@@ -39,6 +42,17 @@ export default function StreakVisualization({ overview, isLoading }: StreakVisua
     }
 
     const targetStreak = overview?.currentStreak || 0;
+    const previousStreak = previousStreakRef.current;
+    
+    // Check if streak increased
+    if (targetStreak > previousStreak && previousStreak > 0) {
+      setIsAnimating(true);
+      setShowCelebration(true);
+      
+      // Hide celebration after animation
+      setTimeout(() => setShowCelebration(false), 2000);
+    }
+
     const duration = 1000; // 1 second
     const steps = 60; // 60fps
     const increment = targetStreak / steps;
@@ -53,6 +67,8 @@ export default function StreakVisualization({ overview, isLoading }: StreakVisua
       if (currentStep >= steps) {
         clearInterval(timer);
         setDisplayStreak(targetStreak);
+        setIsAnimating(false);
+        previousStreakRef.current = targetStreak;
       }
     }, stepDuration);
 
@@ -102,17 +118,41 @@ export default function StreakVisualization({ overview, isLoading }: StreakVisua
       {/* Current Streak Display */}
       <div className="text-center mb-6">
         <div className="relative inline-block">
-          <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mb-3 mx-auto">
-            <span className="text-4xl">🔥</span>
+          <div className={`w-24 h-24 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mb-3 mx-auto transition-all duration-500 ${
+            showCelebration ? 'scale-110 shadow-lg shadow-orange-200' : 'scale-100'
+          }`}>
+            <span className={`text-4xl transition-all duration-500 ${
+              showCelebration ? 'animate-bounce' : ''
+            }`}>🔥</span>
           </div>
-          <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          <div className={`absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full transition-all duration-500 ${
+            isAnimating ? 'scale-125 bg-green-500' : 'scale-100'
+          }`}>
             {displayStreak}
           </div>
+          
+          {/* Celebration overlay */}
+          {showCelebration && (
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-yellow-200 to-transparent opacity-30 animate-pulse"></div>
+              <div className="absolute -top-4 -left-4 text-yellow-400 text-lg animate-ping">✨</div>
+              <div className="absolute -top-2 -right-4 text-yellow-400 text-lg animate-ping" style={{ animationDelay: '0.5s' }}>✨</div>
+              <div className="absolute -bottom-2 -left-2 text-yellow-400 text-lg animate-ping" style={{ animationDelay: '1s' }}>✨</div>
+            </div>
+          )}
         </div>
-        <h4 className="text-2xl font-bold text-slate-900 mb-1">
+        
+        <h4 className={`text-2xl font-bold mb-1 transition-all duration-500 ${
+          showCelebration ? 'text-orange-600 scale-105' : 'text-slate-900'
+        }`}>
           {displayStreak} day{displayStreak !== 1 ? 's' : ''}
         </h4>
-        <p className="text-sm text-slate-600">Current streak</p>
+        
+        <p className={`text-sm transition-all duration-500 ${
+          showCelebration ? 'text-orange-600 font-medium' : 'text-slate-600'
+        }`}>
+          {showCelebration ? '🔥 Streak increased!' : 'Current streak'}
+        </p>
       </div>
 
       {/* Progress Bar */}

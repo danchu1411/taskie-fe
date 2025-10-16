@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import api from "../../../lib/api";
+import { useStreakUpdate } from "../../stats/hooks/useStreakUpdate";
+import { useStreakConfetti } from "../../stats/hooks/useStreakConfetti";
+import { useStreakToast } from "../../stats/hooks/useStreakToast";
 import type { 
   TaskRecord, 
   TaskListResponse, 

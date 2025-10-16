@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useRef } from 'react';
 import type { StatsOverview } from '../../../lib/types';
 
 interface StatsOverviewCardsProps {
@@ -12,15 +12,30 @@ interface StatCardProps {
   icon: React.ReactNode;
   color: string;
   isLoading?: boolean;
+  isStreakCard?: boolean;
 }
 
-function StatCard({ title, value, icon, color, isLoading }: StatCardProps) {
+function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }: StatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const previousValueRef = useRef(0);
 
   useEffect(() => {
     if (isLoading) {
       setDisplayValue(0);
       return;
+    }
+
+    const previousValue = previousValueRef.current;
+    
+    // Check if streak increased (only for streak card)
+    if (isStreakCard && value > previousValue && previousValue > 0) {
+      setIsAnimating(true);
+      setShowCelebration(true);
+      
+      // Hide celebration after animation
+      setTimeout(() => setShowCelebration(false), 2000);
     }
 
     // Animate counter from 0 to target value
@@ -38,25 +53,49 @@ function StatCard({ title, value, icon, color, isLoading }: StatCardProps) {
       if (currentStep >= steps) {
         clearInterval(timer);
         setDisplayValue(value);
+        setIsAnimating(false);
+        previousValueRef.current = value;
       }
     }, stepDuration);
 
     return () => clearInterval(timer);
-  }, [value, isLoading]);
+  }, [value, isLoading, isStreakCard]);
 
   return (
-    <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200 transition-all duration-200 hover:shadow-md hover:scale-[1.02]">
+    <div className={`bg-white rounded-lg p-6 shadow-sm border border-slate-200 transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
+      showCelebration ? 'ring-2 ring-orange-200 shadow-lg' : ''
+    }`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-600 mb-1">{title}</p>
-          <p className={`text-3xl font-bold ${color}`}>
+          <p className={`text-sm font-medium mb-1 transition-colors duration-500 ${
+            showCelebration ? 'text-orange-600' : 'text-slate-600'
+          }`}>{title}</p>
+          <p className={`text-3xl font-bold transition-all duration-500 ${
+            showCelebration ? 'text-orange-600 scale-110' : color
+          }`}>
             {isLoading ? '...' : displayValue.toLocaleString()}
           </p>
         </div>
-        <div className={`p-3 rounded-lg ${color.replace('text-', 'bg-').replace('-600', '-50')}`}>
-          {icon}
+        <div className={`p-3 rounded-lg transition-all duration-500 ${
+          showCelebration 
+            ? 'bg-orange-100 scale-110' 
+            : color.replace('text-', 'bg-').replace('-600', '-50')
+        }`}>
+          <div className={`transition-all duration-500 ${
+            showCelebration ? 'animate-bounce' : ''
+          }`}>
+            {icon}
+          </div>
         </div>
       </div>
+      
+      {/* Celebration overlay for streak card */}
+      {showCelebration && isStreakCard && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-2 right-2 text-yellow-400 text-sm animate-ping">✨</div>
+          <div className="absolute bottom-2 left-2 text-yellow-400 text-sm animate-ping" style={{ animationDelay: '0.5s' }}>✨</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -108,6 +147,7 @@ const StatsOverviewCards = memo(function StatsOverviewCards({ data, isLoading }:
         }
         color="text-orange-600"
         isLoading={isLoading}
+        isStreakCard={true}
       />
       
       <StatCard

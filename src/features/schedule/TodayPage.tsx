@@ -13,6 +13,10 @@ import {
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import api from "../../lib/api";
 import { recordFocusSession } from "../../lib/api-stats";
+import { useStreakUpdate } from "../stats/hooks/useStreakUpdate";
+import { useStreakConfetti } from "../stats/hooks/useStreakConfetti";
+import { useStreakToast } from "../stats/hooks/useStreakToast";
+import StreakToast from "../stats/components/StreakToast";
 import { useAuth } from "../auth/AuthContext";
 import { NavigationBar, SystemError, ChecklistItemModal } from "../../components/ui";
 import { WallpaperBackground } from "../../components/WallpaperBackground";
@@ -293,6 +297,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
   const [customDuration, setCustomDuration] = useState(getDefaultFocusDuration()); // minutes
+
+  // Streak celebration hooks
+  const { checkAndUpdateStreak } = useStreakUpdate();
+  const { showFireConfetti } = useStreakConfetti();
+  const { showToast, toasts, removeToast } = useStreakToast();
   const [confirmStopOpen, setConfirmStopOpen] = useState(false);
   const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
 
@@ -528,7 +537,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         queryClient.setQueryData(["today-tasks", userId], context.previousTasks);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
       // Invalidate to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
       // Keep Tasks page in sync
@@ -547,6 +556,20 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       // Refetch only if on stats page
       if (window.location.pathname === '/stats') {
         queryClient.refetchQueries({ queryKey: ['stats'] });
+      }
+
+      // NEW: Check streak update when completing tasks/checklists
+      if (status === STATUS.DONE) {
+        const streakIncreased = checkAndUpdateStreak();
+        if (streakIncreased) {
+          // Get current streak for toast
+          const statsData = queryClient.getQueryData(['stats', 'overview']) as any;
+          const currentStreak = statsData?.currentStreak || 1;
+          
+          // Show celebration
+          showFireConfetti();
+          showToast(`🔥 Streak +1! You're on fire!`, currentStreak);
+        }
       }
     },
     onSettled: () => {
@@ -1524,6 +1547,16 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           })()
         ) : null}
       </DragOverlay>
+
+      {/* Streak Toast Notifications */}
+      {toasts.map((toast) => (
+        <StreakToast
+          key={toast.id}
+          message={toast.message}
+          streakCount={toast.streakCount}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
     </DndContext>
   );
 }
