@@ -233,7 +233,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fall back to clearing state and setting error
       setAuthStateInternal(null);
       setStatus("idle");
-      setAuthError("Your session has expired. Please log in again.");
+      // Only set session expired message if no specific error is already set
+      if (!authError) {
+        setAuthError("Your session has expired. Please log in again.");
+      }
       console.warn("Unauthorized access detected:", error);
       return false;
     });
@@ -303,7 +306,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const handleAuthFailure = useCallback(
-    () => setStatus(authState ? "authenticated" : "idle"),
+    (errorMessage?: string) => {
+      setStatus(authState ? "authenticated" : "idle");
+      if (errorMessage) {
+        setAuthError(errorMessage);
+      }
+    },
     [authState],
   );
 
@@ -314,7 +322,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.post<AuthResponsePayload>("/auth/login", { email, password });
         hydrateState(response.data, remember, { promptVerification: false });
       } catch (error) {
-        handleAuthFailure();
+        handleAuthFailure("Invalid email or password. Please try again.");
         throw error;
       }
     },
@@ -328,7 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.post<AuthResponsePayload>("/auth/google", payload);
         hydrateState(response.data, payload.remember, { promptVerification: false });
       } catch (error) {
-        handleAuthFailure();
+        handleAuthFailure("Google authentication failed. Please try again.");
         throw error;
       }
     },
