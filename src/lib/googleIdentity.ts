@@ -162,10 +162,7 @@ export function createMockGooglePayload(email: string, name: string): MockGoogle
  * @throws Error if user cancels or authentication fails
  */
 export async function getGoogleIdToken(): Promise<GoogleCredential> {
-  // Check for mock mode - only log warning, don't return mock token
-  if (detectMockEnabled()) {
-    console.warn('Google Identity: Mock mode enabled - use createMockGooglePayload() helper instead of getGoogleIdToken()');
-  }
+  // Skip mock mode check - focus on real Google OAuth
 
   try {
     await initializeGoogleClient();

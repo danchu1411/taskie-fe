@@ -1,5 +1,6 @@
 import { useState, useEffect, memo, useRef } from 'react';
 import type { StatsOverview } from '../../../lib/types';
+import { formatFocusTime } from '../../../lib/focus-time-utils';
 
 interface StatsOverviewCardsProps {
   data: StatsOverview | null;
@@ -13,10 +14,13 @@ interface StatCardProps {
   color: string;
   isLoading?: boolean;
   isStreakCard?: boolean;
+  isFocusCard?: boolean;
+  displayValue?: string; // For custom display (e.g., "25 min")
 }
 
-function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }: StatCardProps) {
+function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, isFocusCard = false, displayValue: customDisplayValue }: StatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
+  const [displayText, setDisplayText] = useState('');
   const [isAnimating, setIsAnimating] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const previousValueRef = useRef(0);
@@ -24,6 +28,7 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }
   useEffect(() => {
     if (isLoading) {
       setDisplayValue(0);
+      setDisplayText('');
       return;
     }
 
@@ -36,6 +41,22 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }
       
       // Hide celebration after animation
       setTimeout(() => setShowCelebration(false), 2000);
+    }
+
+    // Check if focus time increased (only for focus card)
+    if (isFocusCard && value > previousValue && previousValue > 0) {
+      setIsAnimating(true);
+      setShowCelebration(true);
+      
+      // Hide celebration after animation
+      setTimeout(() => setShowCelebration(false), 2000);
+    }
+
+    // Handle custom display value (for focus time)
+    if (customDisplayValue) {
+      setDisplayText(customDisplayValue);
+      previousValueRef.current = value;
+      return;
     }
 
     // Animate counter from 0 to target value
@@ -59,7 +80,7 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }
     }, stepDuration);
 
     return () => clearInterval(timer);
-  }, [value, isLoading, isStreakCard]);
+  }, [value, isLoading, isStreakCard, isFocusCard, customDisplayValue]);
 
   return (
     <div className={`bg-white rounded-lg p-6 shadow-sm border border-slate-200 transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
@@ -73,7 +94,7 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }
           <p className={`text-3xl font-bold transition-all duration-500 ${
             showCelebration ? 'text-orange-600 scale-110' : color
           }`}>
-            {isLoading ? '...' : displayValue.toLocaleString()}
+            {isLoading ? '...' : (customDisplayValue || displayValue.toLocaleString())}
           </p>
         </div>
         <div className={`p-3 rounded-lg transition-all duration-500 ${
@@ -89,8 +110,8 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false }
         </div>
       </div>
       
-      {/* Celebration overlay for streak card */}
-      {showCelebration && isStreakCard && (
+      {/* Celebration overlay for streak and focus cards */}
+      {showCelebration && (isStreakCard || isFocusCard) && (
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-2 right-2 text-yellow-400 text-sm animate-ping">✨</div>
           <div className="absolute bottom-2 left-2 text-yellow-400 text-sm animate-ping" style={{ animationDelay: '0.5s' }}>✨</div>
@@ -129,7 +150,7 @@ const StatsOverviewCards = memo(function StatsOverviewCards({ data, isLoading }:
       
       <StatCard
         title="Focus Time"
-        value={Math.round((data?.totalFocusMinutes || 0) / 60)}
+        value={data?.totalFocusMinutes || 0}
         icon={
           <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -137,6 +158,8 @@ const StatsOverviewCards = memo(function StatsOverviewCards({ data, isLoading }:
         }
         color="text-green-600"
         isLoading={isLoading}
+        isFocusCard={true}
+        displayValue={formatFocusTime(data?.totalFocusMinutes || 0)}
       />
       
       <StatCard
