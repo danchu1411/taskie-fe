@@ -300,7 +300,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthState(snapshot, { remember });
       setVerification(normalizeVerification(payload.verification, snapshot.user));
       setShouldPromptVerification(Boolean(options?.promptVerification && !snapshot.user.emailVerified));
-      setStatus("authenticated");
+      
+      // For signup with unverified email, don't set authenticated status
+      if (options?.promptVerification && !snapshot.user.emailVerified) {
+        setStatus("idle");
+      } else {
+        setStatus("authenticated");
+      }
     },
     [setAuthState],
   );
@@ -320,7 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticating");
       try {
         const response = await api.post<AuthResponsePayload>("/auth/login", { email, password });
-        hydrateState(response.data, remember, { promptVerification: false });
+        hydrateState(response.data, remember, { promptVerification: !response.data.user.emailVerified });
       } catch (error) {
         handleAuthFailure("Invalid email or password. Please try again.");
         throw error;
@@ -334,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticating");
       try {
         const response = await api.post<AuthResponsePayload>("/auth/google", payload);
-        hydrateState(response.data, payload.remember, { promptVerification: false });
+        hydrateState(response.data, payload.remember, { promptVerification: !response.data.user.emailVerified });
       } catch (error) {
         handleAuthFailure("Google authentication failed. Please try again.");
         throw error;
@@ -490,7 +496,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: authState?.user ?? null,
       tokens: authState?.tokens ?? null,
       status,
-      isAuthenticated: Boolean(authState?.tokens?.accessToken),
+      isAuthenticated: Boolean(authState?.tokens?.accessToken && authState?.user?.emailVerified),
       shouldPromptVerification,
       verification,
       authError,

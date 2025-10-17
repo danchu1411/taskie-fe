@@ -64,7 +64,7 @@ export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
 
     try {
       await signUp({ name: name || undefined, email, password, remember: rememberMe });
-      authRedirect();
+      // Redirect will be handled by useEffect
     } catch (err) {
       if (isAxiosError(err)) {
         const data = err.response?.data as { message?: string; error?: string } | undefined;
@@ -80,8 +80,15 @@ export default function TaskieSignup({ onNavigate }: TaskieSignupProps) {
   useEffect(() => {
     if (isAuthenticated) {
       authRedirect();
+    } else if (shouldPromptVerification && user && !user.emailVerified) {
+      // Redirect to verify email page after signup
+      if (onNavigate) {
+        onNavigate("/auth/verify-email");
+      } else {
+        window.location.href = "/auth/verify-email";
+      }
     }
-  }, [isAuthenticated, authRedirect]);
+  }, [isAuthenticated, shouldPromptVerification, user, authRedirect, onNavigate]);
 
   const handleGoogleClick = () => {
     setGoogleHint("Google signup is coming soon. Please use email & password for now.");

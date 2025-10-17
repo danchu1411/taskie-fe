@@ -90,12 +90,30 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const resetStatus = params.get("reset");
+    const isVerified = params.get('verified') === 'true';
+    const verifiedEmail = params.get('email');
+    
     if (resetStatus === "success") {
       setSuccessMessage("Your password has been reset successfully. You can now log in with your new password.");
       const query = new URLSearchParams(window.location.search);
       query.delete("reset");
       const hash = window.location.hash;
       const next = `${window.location.pathname}${query ? `?${query}` : ""}${hash}`;
+      window.history.replaceState(null, "", next);
+    } else if (isVerified && verifiedEmail) {
+      // Email verification success
+      setFormState(prev => ({ ...prev, email: decodeURIComponent(verifiedEmail) }));
+      setSuccessMessage('Email verified successfully! Please login to continue.');
+      
+      // Clear success message after 10 seconds
+      setTimeout(() => setSuccessMessage(null), 10000);
+      
+      // Clean up URL parameters
+      const query = new URLSearchParams(window.location.search);
+      query.delete("verified");
+      query.delete("email");
+      const hash = window.location.hash;
+      const next = `${window.location.pathname}${query.toString() ? `?${query}` : ""}${hash}`;
       window.history.replaceState(null, "", next);
     }
   }, []);
@@ -173,9 +191,14 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
               </p>
             )}
             {successMessage && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-600">
-                {successMessage}
-              </p>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>{successMessage}</span>
+                </div>
+              </div>
             )}
 
             <button

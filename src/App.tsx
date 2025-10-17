@@ -122,12 +122,25 @@ function ResetPasswordRoute() {
   return <ResetPassword onNavigate={navigate} />;
 }
 
+function VerifyEmailRedirectRoute() {
+  const location = useLocation();
+  const token = new URLSearchParams(location.search).get('token');
+  
+  if (token && token.length > 10) { // Basic token validation
+    return <Navigate to={`/auth/verify-email?token=${token}`} replace />;
+  }
+  
+  // If no token, redirect to signup page
+  return <Navigate to="/signup" replace />;
+}
+
 function VerifyEmailRoute() {
   const auth = useAuth();
   const navigate = useNavigationHandler();
-  const needsVerification = auth.shouldPromptVerification && !auth.user?.emailVerified;
 
-  if (auth.isAuthenticated && !needsVerification) {
+  // Allow access to verify page even without auth (for email links)
+  // Only redirect if already verified
+  if (auth.user?.emailVerified) {
     return <Navigate to="/today" replace />;
   }
 
@@ -138,7 +151,7 @@ function AuthSuccessRoute() {
   const navigate = useNavigationHandler();
 
   return (
-    <RequireAuthRoute>
+    <RequireAuthRoute allowUnverified={true}>
       <AuthSuccess onNavigate={navigate} />
     </RequireAuthRoute>
   );
@@ -317,6 +330,7 @@ function App() {
       <Route path="/signup" element={<SignupRoute />} />
       <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
       <Route path="/reset-password" element={<ResetPasswordRoute />} />
+      <Route path="/verify-email" element={<VerifyEmailRedirectRoute />} />
       <Route path="/auth/verify-email" element={<VerifyEmailRoute />} />
       <Route path="/auth/success" element={<AuthSuccessRoute />} />
       <Route path="/error" element={<ErrorRoute />} />

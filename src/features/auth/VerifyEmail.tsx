@@ -23,31 +23,58 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const initialToken = useMemo(readTokenFromLocation, []);
 
   const handleVerifyToken = useCallback(
     async (token: string) => {
       const trimmed = token.trim();
-      if (!trimmed) return;
+      if (!trimmed || isVerifying) return;
+      
+      setIsVerifying(true);
       setCheckState("verifying");
       setMessage("Verifying token, please wait...");
       setError(null);
+      
       try {
         await verifyEmail(trimmed);
         setCheckState("success");
-        setMessage("Your email has been verified. You can go back to Taskie now.");
+        setMessage("Your email has been verified successfully! Redirecting to login...");
+        
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          const email = user?.email || '';
+          if (onNavigate) {
+            onNavigate(`/login?verified=true&email=${encodeURIComponent(email)}`);
+          } else {
+            window.location.href = `/login?verified=true&email=${encodeURIComponent(email)}`;
+          }
+        }, 2000);
       } catch (err) {
         setCheckState("idle");
         if (isAxiosError(err)) {
           const data = err.response?.data as { message?: string; error?: string; code?: string } | undefined;
-          const suffix = data?.code ? ` (${data.code})` : "";
-          setError(data?.message ?? data?.error ?? `Verification failed${suffix}. Please open the link from your email again.`);
+          const code = data?.code;
+          
+          // Enhanced error messages based on error codes
+          if (code === 'TOKEN_EXPIRED') {
+            setError("Verification link has expired. Please request a new one.");
+          } else if (code === 'TOKEN_USED') {
+            setError("This verification link has already been used. Please login to continue.");
+          } else if (code === 'TOKEN_INVALID') {
+            setError("Invalid verification link. Please check your email for the correct link.");
+          } else {
+            const suffix = code ? ` (${code})` : "";
+            setError(data?.message ?? data?.error ?? `Verification failed${suffix}. Please try again.`);
+          }
         } else {
           setError("Verification failed. Please open the link from your email again.");
         }
+      } finally {
+        setIsVerifying(false);
       }
     },
-    [verifyEmail]
+    [verifyEmail, user?.email, onNavigate, isVerifying]
   );
 
   useEffect(() => {
@@ -162,9 +189,33 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
             </p>
           )}
           {error && (
-            <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-600">
-              {error}
-            </p>
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+              <p className="text-sm text-rose-600">{error}</p>
+              {error.includes('expired') && (
+                <button 
+                  onClick={handleResend}
+                  disabled={resendLoading}
+                  className="mt-3 inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:opacity-50"
+                >
+                  Resend Verification Email
+                </button>
+              )}
+              {error.includes('already been used') && (
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onNavigate) {
+                      onNavigate('/login');
+                    } else {
+                      window.location.href = '/login';
+                    }
+                  }}
+                  className="mt-3 inline-flex items-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700"
+                >
+                  Go to Login
+                </button>
+              )}
+            </div>
           )}
 
           <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
