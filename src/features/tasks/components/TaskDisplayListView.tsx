@@ -90,9 +90,7 @@ export const TaskDisplayListView = React.memo(function TaskDisplayListView({
     return (
       <TaskEmptyState
         onCreateTask={onCreateTask}
-        searchTerm={filters.search}
-        statusFilter={filters.status}
-        priorityFilter={filters.priority}
+        filters={filters}
       />
     );
   }

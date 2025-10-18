@@ -31,10 +31,10 @@ export const useAcceptFlow = (): UseAcceptFlowReturn => {
   
   const lastRequest = useRef<{ suggestionId: string; selectedSlotIndex: number } | null>(null);
 
-  const acceptSuggestion = useCallback(async (
+  const acceptSuggestion: (suggestionId: string, selectedSlotIndex: number, suggestedStartAt?: string) => Promise<AcceptResponse> = useCallback(async (
     suggestionId: string, 
     selectedSlotIndex: number,
-    suggestedStartAt?: string // Add this parameter
+    suggestedStartAt?: string
   ): Promise<AcceptResponse> => {
     setIsAccepting(true);
     setError(null);

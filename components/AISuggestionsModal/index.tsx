@@ -85,6 +85,9 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     clearError: clearAcceptError
   } = useAcceptFlow();
 
+  // Explicit type annotation for acceptSuggestion
+  const acceptSuggestionTyped = acceptSuggestion as (suggestionId: string, selectedSlotIndex: number, suggestedStartAt?: string) => Promise<any>;
+
   const {
     // Analytics tracking functions
     track,
@@ -207,7 +210,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
         suggestedStartAt: selectedSlot.suggested_start_at
       });
       
-      const response = await acceptSuggestion(
+      const response = await acceptSuggestionTyped(
         modalState.aiSuggestion.id, 
         modalState.selectedSlotIndex!,
         selectedSlot.suggested_start_at // Pass suggested_start_at

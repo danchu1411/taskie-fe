@@ -329,6 +329,11 @@ export class MockAuthService implements AuthService {
     this.token = null;
     this.user = null;
   }
+
+  async syncFromExistingAuth(): Promise<boolean> {
+    // Mock implementation - always return false for mock service
+    return false;
+  }
 }
 
 // Authentication Service Manager

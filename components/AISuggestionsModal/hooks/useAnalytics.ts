@@ -136,7 +136,7 @@ const useAnalytics = (): UseAnalyticsReturn => {
 
   const trackError = useCallback(async (error: string, context?: string) => {
     try {
-      await serviceRef.current.trackError(error, context);
+      await serviceRef.current.trackError(new Error(error), context);
     } catch (analyticsError) {
       console.error('Analytics error tracking error:', analyticsError);
     }

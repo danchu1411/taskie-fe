@@ -6,11 +6,11 @@ import { StatusBadge, PriorityBadge, DueDateBadge } from "./ui";
 
 interface TaskDisplayCardProps {
   item: TaskDisplayItem;
-  onEdit: () => void;
-  onDelete: () => void;
-  onStatusChange: () => void;
-  onSchedule?: () => void;
-  onStart?: () => void;
+  onEdit: (item: TaskDisplayItem) => void;
+  onDelete: (item: TaskDisplayItem) => void;
+  onStatusChange: (item: TaskDisplayItem) => void;
+  onSchedule?: (item: TaskDisplayItem) => void;
+  onStart?: (item: TaskDisplayItem) => void;
   isUpdating?: boolean;
   isDragging?: boolean;
 }
@@ -88,7 +88,7 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onStart();
+                  onStart(item);
                 }}
                 className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
                 title="Start"
@@ -104,7 +104,7 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSchedule();
+                  onSchedule(item);
                 }}
                 className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all"
                 title="Schedule"
@@ -118,7 +118,7 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onEdit();
+                onEdit(item);
               }}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-all"
               title="Edit"
@@ -131,7 +131,7 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete();
+                onDelete(item);
               }}
               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all"
               title="Delete"
@@ -164,7 +164,7 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
           <div onPointerDown={(e) => e.stopPropagation()}>
             <StatusBadge
               status={item.status as StatusValue}
-              onClick={onStatusChange}
+              onClick={() => onStatusChange(item)}
               disabled={isUpdating}
             />
           </div>

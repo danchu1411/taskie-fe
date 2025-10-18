@@ -1,5 +1,5 @@
 import React from 'react';
-import type { SlotFilter, SlotSortOption } from '../types';
+import type { SlotFilter, SlotSortOption } from './types';
 import './styles/SlotFilters.css';
 
 interface SlotFiltersProps {
@@ -36,17 +36,19 @@ const SlotFilters: React.FC<SlotFiltersProps> = ({
   const handleTimeRangeChange = (type: 'start' | 'end', value: string) => {
     onFiltersChange({
       timeRange: {
-        ...filters.timeRange,
-        [type]: value || undefined
+        start: filters.timeRange?.start || '',
+        end: filters.timeRange?.end || '',
+        [type]: value || ''
       }
     });
   };
 
   const handleDurationRangeChange = (type: 'min' | 'max', value: string) => {
-    const numValue = value === '' ? undefined : parseInt(value);
+    const numValue = value === '' ? 0 : parseInt(value);
     onFiltersChange({
       durationRange: {
-        ...filters.durationRange,
+        min: filters.durationRange?.min || 0,
+        max: filters.durationRange?.max || 0,
         [type]: numValue
       }
     });

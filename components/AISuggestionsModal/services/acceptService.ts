@@ -1,6 +1,7 @@
 export interface AcceptRequest {
   status: 1;
   selected_slot_index: number;
+  suggested_start_at?: string;
   rejection_reason?: string;
 }
 

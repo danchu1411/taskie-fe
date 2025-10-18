@@ -43,9 +43,5 @@ export const withSuspense = (Component: React.ComponentType<any>) => (props: any
 export const SuspenseTaskModal = withSuspense(DynamicTaskModal);
 export const SuspenseScheduleModal = withSuspense(DynamicScheduleModal);
 export const SuspenseChecklistItemModal = withSuspense(DynamicChecklistItemModal);
-export const SuspenseStatusPickerModal = withSuspense(DynamicStatusPickerModal);
 export const SuspenseCalendarView = withSuspense(DynamicCalendarView);
-export const SuspenseFocusTimerFullscreen = withSuspense(DynamicFocusTimerFullscreen);
-export const SuspenseFocusTimerBottomSheet = withSuspense(DynamicFocusTimerBottomSheet);
 export const SuspenseBoardView = withSuspense(DynamicBoardView);
-export const SuspenseTaskBoardView = withSuspense(DynamicTaskBoardView);

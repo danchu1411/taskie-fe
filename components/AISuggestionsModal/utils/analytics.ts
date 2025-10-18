@@ -10,6 +10,7 @@ export interface AnalyticsEvent {
 export interface AnalyticsService {
   trackEvent(event: AnalyticsEvent): Promise<void>;
   getAnalytics(): Promise<AnalyticsData>;
+  clearAnalytics(): Promise<void>;
 }
 
 export interface AnalyticsData {
@@ -60,6 +61,11 @@ class AnalyticsServiceManager implements AnalyticsService {
       averageConfidence,
       popularTimeSlots
     };
+  }
+
+  async clearAnalytics(): Promise<void> {
+    this.events = [];
+    console.log('📊 Analytics data cleared');
   }
 
   // Event tracking methods

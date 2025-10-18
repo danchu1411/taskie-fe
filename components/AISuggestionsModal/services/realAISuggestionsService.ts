@@ -78,13 +78,13 @@ class RealAISuggestionsService implements AISuggestionsService {
         throw new Error('Backend returned empty response');
       }
       
-      // Backend returns suggestion directly in response.data, not response.data.data
-      if (!response.data.suggestion) {
+      // Backend returns suggestion in response.data.suggestion
+      if (!(response.data as any).suggestion) {
         console.error('❌ Response missing suggestion:', response.data);
         throw new Error('Backend response missing suggestion field');
       }
       
-      const backendSuggestion = response.data.suggestion;
+      const backendSuggestion = (response.data as any).suggestion;
 
       // Parse suggestion payload if it's a JSON string
       let suggestionData;
@@ -101,8 +101,8 @@ class RealAISuggestionsService implements AISuggestionsService {
 
       // Transform ALL items (support future checklist tasks)
       const items = suggestionData.items || [];
-      const transformedSlots = items.flatMap(item =>
-        item.suggested_slots?.map(slot => ({
+      const transformedSlots = items.flatMap((item: any) =>
+        item.suggested_slots?.map((slot: any) => ({
           slot_index: slot.original_index,
           suggested_start_at: slot.suggested_start_at,
           planned_minutes: slot.planned_minutes,
