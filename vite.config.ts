@@ -32,23 +32,10 @@ export default defineConfig({
       },
       output: {
         manualChunks: (id) => {
-          // Vendor libraries - Simplified approach
+          // Vendor libraries - Bundle everything together to avoid conflicts
           if (id.includes('node_modules')) {
-            // Keep ALL React-related packages together
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') || 
-                id.includes('@tanstack/react-query') || id.includes('@dnd-kit')) {
-              return 'vendor-react-all';
-            }
-            // Calendar and charts
-            if (id.includes('@fullcalendar') || id.includes('recharts')) {
-              return 'vendor-charts';
-            }
-            // Utils
-            if (id.includes('axios') || id.includes('framer-motion')) {
-              return 'vendor-utils';
-            }
-            // Everything else
-            return 'vendor-other';
+            // Bundle ALL vendor packages together to avoid React conflicts
+            return 'vendor-all';
           }
           
           // Application chunks
@@ -102,6 +89,11 @@ export default defineConfig({
       'react': 'react',
       'react-dom': 'react-dom',
     },
+  },
+  // Additional optimizations
+  esbuild: {
+    // Remove console logs in production
+    drop: ['console', 'debugger'],
   },
   // Define global variables for production
   define: {
