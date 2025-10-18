@@ -303,7 +303,7 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     goToForm();
     clearError();
     clearAcceptError();
-    resetAccept();
+    retryAccept();
   };
 
   if (!isOpen) return null;

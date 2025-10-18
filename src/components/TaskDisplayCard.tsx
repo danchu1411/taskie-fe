@@ -163,13 +163,13 @@ export const TaskDisplayCard = React.memo(function TaskDisplayCard({
         <div className="flex flex-wrap items-center gap-2">
           <div onPointerDown={(e) => e.stopPropagation()}>
             <StatusBadge
-              status={item.status}
+              status={item.status as StatusValue}
               onClick={onStatusChange}
               disabled={isUpdating}
             />
           </div>
           
-          {item.priority && <PriorityBadge priority={item.priority} />}
+          {item.priority && <PriorityBadge priority={item.priority as PriorityValue} />}
           
           {item.deadline && <DueDateBadge deadline={item.deadline} />}
         </div>

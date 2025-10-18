@@ -107,7 +107,7 @@ function BoardColumn({
               onEdit={onEdit}
               onDelete={onDelete}
               onStatusChange={onStatusChange}
-              onChecklist={onChecklist}
+              onChecklist={_onChecklist}
               onSchedule={onSchedule}
               
               onChecklistItemStatusChange={onChecklistItemStatusChange}
@@ -372,7 +372,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={onStatusChange}
-          onChecklist={onChecklist}
+          onChecklist={_onChecklist}
           onSchedule={onSchedule}
           
           onChecklistItemStatusChange={onChecklistItemStatusChange}
@@ -387,7 +387,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={onStatusChange}
-          onChecklist={onChecklist}
+          onChecklist={_onChecklist}
           onSchedule={onSchedule}
           
           onChecklistItemStatusChange={onChecklistItemStatusChange}
@@ -402,7 +402,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={onStatusChange}
-          onChecklist={onChecklist}
+          onChecklist={_onChecklist}
           onSchedule={onSchedule}
           
           onChecklistItemStatusChange={onChecklistItemStatusChange}
@@ -417,7 +417,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           onEdit={onEdit}
           onDelete={onDelete}
           onStatusChange={onStatusChange}
-          onChecklist={onChecklist}
+          onChecklist={_onChecklist}
           onSchedule={onSchedule}
           
           onChecklistItemStatusChange={onChecklistItemStatusChange}

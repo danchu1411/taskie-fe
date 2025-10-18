@@ -81,7 +81,7 @@ export const TaskDisplayListView = React.memo(function TaskDisplayListView({
   };
 
   const handleStart = (item: TaskDisplayItem) => {
-    if (item.originalTask) {
+    if (item.originalTask && onStart) {
       onStart(item.originalTask);
     }
   };

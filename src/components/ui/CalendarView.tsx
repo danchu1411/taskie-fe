@@ -610,7 +610,6 @@ export default function CalendarView({ userId }: { userId: string | null | undef
         isOpen={taskModalOpen}
         onClose={handleCloseTaskModal}
         onSubmit={handleSubmitTask}
-        selectedDate={selectedDateForTask}
         isLoading={createTaskMutation.isPending}
       />
 
