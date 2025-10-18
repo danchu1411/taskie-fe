@@ -104,7 +104,7 @@ export class HTTPClient {
   }
 
   private async makeRequest<T>(request: HTTPRequest): Promise<HTTPResponse<T>> {
-    const { url, method, headers = {}, body, timeout } = request;
+    const { url, method, headers = {}, body } = request;
     const startTime = Date.now();
     
     // Add authentication header
@@ -118,7 +118,7 @@ export class HTTPClient {
     headers['Accept'] = headers['Accept'] || 'application/json';
 
     // Create AbortController for timeout (DISABLED FOR BULKHEAD DEBUG)
-    const controller = new AbortController();
+    // const controller = new AbortController();
     // const timeoutId = setTimeout(() => controller.abort(), timeout || this.config.timeout);
 
     let metric: APIMetric = {

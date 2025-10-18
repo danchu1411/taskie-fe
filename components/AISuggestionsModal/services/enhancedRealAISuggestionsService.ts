@@ -1,12 +1,9 @@
-import type { ManualInput, AISuggestion, AISuggestionsService, BackendSuggestionResponse, BackendValidationError } from '../types';
+import type { ManualInput, AISuggestion, AISuggestionsService, BackendSuggestionResponse } from '../types';
 import { httpClient } from './httpClient';
 import { apiConfigManager } from '../config/apiConfig';
-import { preserveTimeChangeTimezone } from '../utils/timezoneUtils';
 
 // Enhanced Real AI Suggestions Service with HTTP Client
 class EnhancedRealAISuggestionsService implements AISuggestionsService {
-  private config = apiConfigManager.getConfig();
-
   constructor() {
     // Configuration is handled by apiConfigManager
   }

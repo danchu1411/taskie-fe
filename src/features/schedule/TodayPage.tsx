@@ -766,12 +766,6 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
       setEditingItem(null);
     },
   });
-  const _handleStatusChange = useCallback(
-    (item: TodayItem, nextStatus: StatusValue) => {
-      statusMutation.mutate({ item, status: nextStatus });
-    },
-    [statusMutation],
-  );
 
 
   const openTimer = useCallback((item: TodayItem) => {

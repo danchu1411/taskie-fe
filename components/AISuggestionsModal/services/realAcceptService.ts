@@ -4,7 +4,6 @@ import { apiConfigManager } from '../config/apiConfig';
 
 // Real Accept Service implementation with HTTP Client
 class RealAISuggestionsAcceptService implements AISuggestionsAcceptService {
-  private config = apiConfigManager.getConfig();
 
   constructor() {
     // Configuration is handled by apiConfigManager

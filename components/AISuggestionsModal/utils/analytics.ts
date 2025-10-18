@@ -43,8 +43,7 @@ class AnalyticsServiceManager implements AnalyticsService {
 
     // Calculate popular time slots
     const timeSlotCounts: Record<number, number> = {};
-    suggestions.forEach(e => {
-      const slots = e.properties.additional_data?.slots_count || 0;
+    suggestions.forEach(_e => {
       const hour = new Date().getHours();
       timeSlotCounts[hour] = (timeSlotCounts[hour] || 0) + 1;
     });

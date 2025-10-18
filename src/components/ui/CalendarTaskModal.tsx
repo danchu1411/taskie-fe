@@ -7,7 +7,6 @@ interface CalendarTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (taskData: Partial<TaskRecord>) => void;
-  selectedDate: Date | null;
   isLoading?: boolean;
 }
 
@@ -15,7 +14,6 @@ export default function CalendarTaskModal({
   isOpen, 
   onClose, 
   onSubmit, 
-  selectedDate,
   isLoading = false 
 }: CalendarTaskModalProps) {
   const [formData, setFormData] = useState({
@@ -60,14 +58,6 @@ export default function CalendarTaskModal({
 
   if (!isOpen) return null;
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">

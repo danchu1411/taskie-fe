@@ -147,25 +147,25 @@ function calculateWeightedWinner(
  * Legacy function kept for backwards compatibility
  * @deprecated Use calculateWeightedWinner instead for new implementations
  */
-function calculateMode(votes: number[]): number {
-  const frequency: Record<number, number> = {};
-  
-  votes.forEach(vote => {
-    frequency[vote] = (frequency[vote] || 0) + 1;
-  });
-  
-  let maxCount = 0;
-  let mode = votes[0]; // Default to first vote
-  
-  Object.entries(frequency).forEach(([value, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      mode = parseInt(value);
-    }
-  });
-  
-  return mode;
-}
+// function _calculateMode(votes: number[]): number {
+//   const frequency: Record<number, number> = {};
+//   
+//   votes.forEach(vote => {
+//     frequency[vote] = (frequency[vote] || 0) + 1;
+//   });
+//   
+//   let maxCount = 0;
+//   let mode = votes[0]; // Default to first vote
+//   
+//   Object.entries(frequency).forEach(([value, count]) => {
+//     if (count > maxCount) {
+//       maxCount = count;
+//       mode = parseInt(value);
+//     }
+//   });
+//   
+//   return mode;
+// }
 
 /**
  * Smart aggregation logic with weighted voting

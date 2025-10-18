@@ -16,8 +16,8 @@ interface QuizNavigationProps {
 }
 
 export function QuizNavigation({ 
-  currentStep, 
-  totalQuestions, 
+  currentStep: _currentStep, 
+  totalQuestions: _totalQuestions, 
   canGoNext, 
   canGoPrev, 
   isComplete, 

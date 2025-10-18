@@ -127,25 +127,6 @@ const useFormValidation = (): UseFormValidationReturn => {
     }
   }, [errors]);
 
-  // Validate specific field
-  const validateField = useCallback((field: keyof ManualInput, value: any): string | undefined => {
-    switch (field) {
-      case 'title':
-        return validateTitle(value);
-      case 'description':
-        return validateDescription(value || '');
-      case 'duration_minutes':
-        return validateDuration(value);
-      case 'deadline':
-        return validateDeadline(value);
-      case 'preferred_window':
-        return validatePreferredWindow(value);
-      case 'target_task_id':
-        return validateTargetTask(value);
-      default:
-        return undefined;
-    }
-  }, [validateTitle, validateDescription, validateDuration, validateDeadline, validatePreferredWindow, validateTargetTask]);
 
   // Validate all fields
   const validateForm = useCallback((): boolean => {

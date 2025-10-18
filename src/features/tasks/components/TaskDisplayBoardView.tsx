@@ -44,7 +44,7 @@ function BoardColumn({
   onEdit,
   onDelete,
   onStatusChange,
-  onChecklist,
+  onChecklist: _onChecklist,
   onSchedule,
   onChecklistItemStatusChange,
   isUpdating,
@@ -67,20 +67,20 @@ function BoardColumn({
     }
   };
 
-  const getStatusLabel = (status: StatusValue) => {
-    switch (status) {
-      case STATUS.PLANNED:
-        return "Planned";
-      case STATUS.IN_PROGRESS:
-        return "In Progress";
-      case STATUS.DONE:
-        return "Done";
-      case STATUS.SKIPPED:
-        return "Skipped";
-      default:
-        return "Unknown";
-    }
-  };
+  // const _getStatusLabel = (status: StatusValue) => {
+  //   switch (status) {
+  //     case STATUS.PLANNED:
+  //       return "Planned";
+  //     case STATUS.IN_PROGRESS:
+  //       return "In Progress";
+  //     case STATUS.DONE:
+  //       return "Done";
+  //     case STATUS.SKIPPED:
+  //       return "Skipped";
+  //     default:
+  //       return "Unknown";
+  //   }
+  // };
 
   return (
     <div className="flex flex-col">
@@ -125,7 +125,7 @@ function DraggableTaskCard({
   onEdit,
   onDelete,
   onStatusChange,
-  onChecklist,
+  onChecklist: _onChecklist,
   onSchedule,
   onChecklistItemStatusChange,
   isUpdating = false,
@@ -236,7 +236,7 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
   onDelete,
   onStatusChange,
   onDragStatusChange,
-  onChecklist,
+  onChecklist: _onChecklist,
   onSchedule,
   onChecklistItemStatusChange,
   onDragChecklistItemStatusChange,

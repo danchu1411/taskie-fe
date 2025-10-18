@@ -32,8 +32,7 @@ const HistorySection: FC<HistorySectionProps> = ({
     clearFilters,
     refreshHistory,
     reopenSuggestion,
-    clearError,
-    reset
+    clearError
   } = useHistory();
 
   const {

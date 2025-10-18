@@ -22,8 +22,7 @@ const ManualInputForm: React.FC<ManualInputFormProps> = ({
     isValid,
     updateField,
     submitForm,
-    setBackendErrors,
-    clearAllErrors
+    setBackendErrors
   } = useFormValidation();
 
   // Handle external validation errors from backend

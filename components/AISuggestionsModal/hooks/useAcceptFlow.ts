@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { AcceptRequest, AcceptResponse, AcceptError } from '../services/acceptService';
+import type { AcceptRequest, AcceptResponse } from '../services/acceptService';
 import { getAcceptService } from '../services/acceptService';
 
 export interface UseAcceptFlowReturn {

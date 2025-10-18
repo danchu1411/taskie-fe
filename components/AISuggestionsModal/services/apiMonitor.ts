@@ -171,7 +171,7 @@ export class MockAPIMonitor implements APIMonitor {
     };
   }
 
-  getMetricsForEndpoint(endpoint: string): APIMetrics {
+  getMetricsForEndpoint(_endpoint: string): APIMetrics {
     return this.getMetrics();
   }
 

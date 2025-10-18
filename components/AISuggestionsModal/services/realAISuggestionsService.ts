@@ -1,10 +1,9 @@
-import type { ManualInput, AISuggestion, AISuggestionsService, BackendSuggestionResponse, BackendValidationError } from '../types';
+import type { ManualInput, AISuggestion, AISuggestionsService, BackendSuggestionResponse } from '../types';
 import { httpClient } from './httpClient';
 import { apiConfigManager } from '../config/apiConfig';
 
 // Real AI Suggestions Service implementation with HTTP Client
 class RealAISuggestionsService implements AISuggestionsService {
-  private config = apiConfigManager.getConfig();
 
   constructor() {
     // Configuration is handled by apiConfigManager

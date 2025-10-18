@@ -52,11 +52,9 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
 
   const {
     generateSuggestions,
-    isLoading: apiLoading,
     error: apiError,
     retry,
-    clearError,
-    reset: resetAPI
+    clearError
   } = useAISuggestions();
 
   const {
@@ -64,23 +62,12 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     goToForm,
     goToLoading,
     goToSuggestions,
-    goToConfirmation,
-    goToSuccess,
     goToError,
     goToHistory,
-    goToAnalytics,
     setManualInput,
     setSelectedSlot,
-    lockSlot,
-    unlockSlot,
-    setError,
-    setLoading,
-    reset,
-    canGoBack,
-    canGoForward,
     getState,
     isStep,
-    hasSuggestion,
     hasSelectedSlot
   } = useModalState();
 
@@ -91,13 +78,11 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     // Accept Flow State
     isAccepting,
     error: acceptError,
-    lastResponse: acceptResponse,
     
     // Accept Flow Actions
     acceptSuggestion,
     retryAccept,
-    clearError: clearAcceptError,
-    reset: resetAccept
+    clearError: clearAcceptError
   } = useAcceptFlow();
 
   const {
@@ -108,27 +93,15 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     trackSuggestionRejected,
     trackSuggestionReopened,
     trackHistoryViewed,
-    trackFilterApplied,
     trackModalOpened,
     trackModalClosed,
-    trackError,
-    getAnalytics,
-    clearAnalytics,
-    setService: setAnalyticsService
+    trackError
   } = useAnalytics();
 
   const {
     // Form validation functions
-    formData: validationFormData,
     errors: validationErrors,
-    isValid: isFormValid,
-    updateField: updateValidationField,
-    validateForm: validateFormData,
-    submitForm: submitFormData,
-    resetForm: resetValidationForm,
-    getFormSummary: getValidationSummary,
-    setBackendErrors,
-    clearAllErrors
+    setBackendErrors
   } = useFormValidation();
 
   // Handle escape key
@@ -276,21 +249,6 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     }
   };
 
-  // Handle open schedule
-  const handleOpenSchedule = () => {
-    if (onSuccess && modalState.scheduleEntryId) {
-      onSuccess(modalState.scheduleEntryId);
-    }
-    onClose();
-  };
-
-  // Handle create new
-  const handleCreateNew = () => {
-    goToForm();
-    clearError();
-    clearAcceptError();
-    resetAccept();
-  };
 
   // Handle view suggestion from history
   const handleViewSuggestion = (suggestion: AISuggestion) => {
@@ -449,7 +407,6 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
               onSubmit={handleFormSubmit}
               isLoading={modalState.isLoading}
               validationErrors={validationErrors}
-              onClearErrors={clearAllErrors}
             />
           )}
         </div>

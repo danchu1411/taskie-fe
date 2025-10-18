@@ -20,8 +20,6 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, isFocusCard = false, displayValue: customDisplayValue }: StatCardProps) {
   const [displayValue, setDisplayValue] = useState(0);
-  const [displayText, setDisplayText] = useState('');
-  const [isAnimating, setIsAnimating] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const previousValueRef = useRef(0);
 
@@ -36,7 +34,6 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, 
     
     // Check if streak increased (only for streak card)
     if (isStreakCard && value > previousValue && previousValue > 0) {
-      setIsAnimating(true);
       setShowCelebration(true);
       
       // Hide celebration after animation
@@ -45,7 +42,6 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, 
 
     // Check if focus time increased (only for focus card)
     if (isFocusCard && value > previousValue && previousValue > 0) {
-      setIsAnimating(true);
       setShowCelebration(true);
       
       // Hide celebration after animation
@@ -54,7 +50,7 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, 
 
     // Handle custom display value (for focus time)
     if (customDisplayValue) {
-      setDisplayText(customDisplayValue);
+      setDisplayValue(value);
       previousValueRef.current = value;
       return;
     }
@@ -74,7 +70,6 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, 
       if (currentStep >= steps) {
         clearInterval(timer);
         setDisplayValue(value);
-        setIsAnimating(false);
         previousValueRef.current = value;
       }
     }, stepDuration);

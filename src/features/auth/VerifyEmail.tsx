@@ -39,15 +39,14 @@ export default function VerifyEmail({ onNavigate }: VerifyEmailProps) {
       try {
         await verifyEmail(trimmed);
         setCheckState("success");
-        setMessage("Your email has been verified successfully! Redirecting to login...");
+        setMessage("Your email has been verified successfully! Redirecting to quiz...");
         
-        // Redirect to login after 2 seconds
+        // Redirect to quiz after 2 seconds
         setTimeout(() => {
-          const email = user?.email || '';
           if (onNavigate) {
-            onNavigate(`/login?verified=true&email=${encodeURIComponent(email)}`);
+            onNavigate('/study-profile/quiz');
           } else {
-            window.location.href = `/login?verified=true&email=${encodeURIComponent(email)}`;
+            window.location.href = '/study-profile/quiz';
           }
         }, 2000);
       } catch (err) {

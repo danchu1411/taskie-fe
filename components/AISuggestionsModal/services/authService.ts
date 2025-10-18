@@ -297,7 +297,7 @@ export class MockAuthService implements AuthService {
     return this.user;
   }
 
-  async login(email: string, password: string): Promise<AuthToken> {
+  async login(email: string, _password: string): Promise<AuthToken> {
     // Mock login - always succeeds with real-looking token
     this.token = {
       accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik1vY2sgVXNlciIsImlhdCI6MTUxNjIzOTAyMn0.mock-signature',

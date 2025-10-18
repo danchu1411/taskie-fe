@@ -10,7 +10,6 @@ class MockAISuggestionsService {
   private generateSuggestedSlots(input: ManualInput): SuggestedSlot[] {
     const suggestions: SuggestedSlot[] = [];
     const deadline = new Date(input.deadline);
-    const now = new Date();
     
     // Calculate available time slots
     const timeSlots = this.calculateTimeSlots(deadline, input.duration_minutes);
@@ -20,8 +19,8 @@ class MockAISuggestionsService {
     
     for (let i = 0; i < numSuggestions; i++) {
       const slot = timeSlots[i];
-      const confidence = this.calculateConfidence(slot, input, i);
-      const reason = this.generateReason(slot, input, confidence);
+      const confidence = this.calculateConfidence(slot);
+      const reason = this.generateReason(slot, confidence);
       
       suggestions.push({
         slot_index: i,
@@ -38,11 +37,10 @@ class MockAISuggestionsService {
   // Calculate available time slots
   private calculateTimeSlots(deadline: Date, durationMinutes: number): Array<{start: Date, end: Date}> {
     const slots: Array<{start: Date, end: Date}> = [];
-    const now = new Date();
     
     // Generate slots for the next 7 days
     for (let day = 0; day < 7; day++) {
-      const currentDay = new Date(now);
+      const currentDay = new Date();
       currentDay.setDate(currentDay.getDate() + day);
       
       // Generate slots for different times of day
@@ -61,7 +59,7 @@ class MockAISuggestionsService {
         slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
         
         // Check if slot is valid (not in past, before deadline)
-        if (slotStart > now && slotEnd <= deadline) {
+        if (slotStart > new Date() && slotEnd <= deadline) {
           slots.push({ start: slotStart, end: slotEnd });
         }
       }
@@ -71,7 +69,7 @@ class MockAISuggestionsService {
   }
 
   // Calculate confidence based on slot characteristics
-  private calculateConfidence(slot: {start: Date, end: Date}, input: ManualInput, index: number): number {
+  private calculateConfidence(slot: {start: Date, end: Date}): number {
     const hour = slot.start.getHours();
     
     // High confidence for evening slots (Night Owl preference)
@@ -89,8 +87,7 @@ class MockAISuggestionsService {
   }
 
   // Generate reason for suggestion
-  private generateReason(slot: {start: Date, end: Date}, input: ManualInput, confidence: number): string {
-    const hour = slot.start.getHours();
+  private generateReason(slot: {start: Date, end: Date}, confidence: number): string {
     const dateStr = slot.start.toLocaleDateString('vi-VN');
     const timeStr = slot.start.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     
@@ -109,8 +106,7 @@ class MockAISuggestionsService {
   // Check if should return empty suggestions
   private shouldReturnEmptySuggestions(input: ManualInput): boolean {
     const deadline = new Date(input.deadline);
-    const now = new Date();
-    const timeDiff = deadline.getTime() - now.getTime();
+    const timeDiff = deadline.getTime() - new Date().getTime();
     const hoursDiff = timeDiff / (1000 * 60 * 60);
     
     // Return empty if deadline is too close (less than 2 hours)

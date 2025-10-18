@@ -1,5 +1,5 @@
 // Performance Optimization for Phase 2
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 
 // Performance monitoring utilities
 export const performanceMonitor = {
@@ -112,7 +112,7 @@ export const useOptimizedRendering = () => {
   const renderCountRef = useRef(0);
   const lastRenderTimeRef = useRef(Date.now());
   
-  const shouldRender = useCallback((dependencies: any[]) => {
+  const shouldRender = useCallback((_dependencies: any[]) => {
     const now = Date.now();
     const timeSinceLastRender = now - lastRenderTimeRef.current;
     

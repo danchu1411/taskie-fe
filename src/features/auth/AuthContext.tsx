@@ -399,6 +399,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...(authState?.user ?? response.data.user),
         ...response.data.user,
         emailVerified: Boolean(response.data.emailVerified ?? response.data.user?.emailVerified ?? true),
+        hasStudyProfile: Boolean(response.data.user?.hasStudyProfile ?? false),
       };
       setVerification({ status: "verified", expiresAt: null, lastRequestedAt: new Date().toISOString() });
       setShouldPromptVerification(false);
