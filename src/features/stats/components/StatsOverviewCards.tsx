@@ -26,7 +26,6 @@ function StatCard({ title, value, icon, color, isLoading, isStreakCard = false, 
   useEffect(() => {
     if (isLoading) {
       setDisplayValue(0);
-      setDisplayText('');
       return;
     }
 

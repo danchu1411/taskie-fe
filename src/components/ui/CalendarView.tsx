@@ -484,18 +484,18 @@ export default function CalendarView({ userId }: { userId: string | null | undef
                 const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                 return currentDate >= todayDate;
               })() && (
-                <button
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCreateTask(date);
                   }}
-                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 z-10"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 z-10 cursor-pointer"
                   title="Add task to this day"
                 >
                   <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                </button>
+                </div>
               )}
               
               <div className="flex items-center justify-between">
