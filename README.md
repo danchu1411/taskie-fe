@@ -1,3 +1,25 @@
+# Taskie Frontend
+
+## 🚀 Deployment Status
+- ✅ React Activity Error: FIXED
+- ✅ Mixed Content Error: FIXED  
+- ✅ HTTPS API Configuration: READY
+- ✅ Production Build: OPTIMIZED
+
+## 🔧 Environment Variables Required
+```bash
+VITE_API_BASE=https://taskie-api-env.eba-tddpmyzh.ap-southeast-1.elasticbeanstalk.com/api
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+```
+
+## 📊 Bundle Analysis
+- vendor-all: 759.37 KB (All packages bundled together)
+- Production optimizations: Enabled
+- ErrorBoundary: Added
+- React DevTools: Disabled in production
+
+---
+
 # Taskie API
 
 Backend Node.js (Express 5 + MSSQL) cho he thong Taskie. Tai lieu nay giai thich cach team front-end tich hop voi API: cach khoi dong, auth, quy uoc du lieu va tung endpoint chinh.
