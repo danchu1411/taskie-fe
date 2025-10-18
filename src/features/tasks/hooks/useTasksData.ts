@@ -30,14 +30,12 @@ export interface UseTasksDataResult {
 
 export function useTasksData(userId: string | null, filters: TaskFilters): UseTasksDataResult {
   const tasksQuery = useQuery<TaskListResponse>({
-    queryKey: ["tasks", userId, filters],
+    queryKey: ["tasks", userId], // Remove filters from queryKey - fetch all data
     enabled: Boolean(userId),
     queryFn: async () => {
       const params = new URLSearchParams();
       
-      if (filters.search) params.append("q", filters.search);
-      if (filters.status && filters.status !== 'all') params.append("status", filters.status.toString());
-      if (filters.priority && filters.priority !== 'all') params.append("priority", filters.priority.toString());
+      // Only send pagination params to backend, not filters
       params.append("page", (filters.page || PAGINATION.DEFAULT_PAGE).toString());
       params.append("pageSize", (filters.pageSize || 20).toString());
       params.append("includeChecklist", "true");
@@ -116,29 +114,60 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
     });
   }, [tasksData?.items, scheduleData]);
 
+  // Apply frontend filters to merged tasks
+  const filteredTasks = useMemo(() => {
+    if (!mergedTasks.length) return [];
+    
+    let filtered = mergedTasks;
+    
+    // Search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter(task => 
+        task.title.toLowerCase().includes(searchTerm) ||
+        task.description?.toLowerCase().includes(searchTerm) ||
+        task.checklist?.some(item => 
+          item.title.toLowerCase().includes(searchTerm)
+        )
+      );
+    }
+    
+    // Status filter
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(task => task.derived_status === filters.status);
+    }
+    
+    // Priority filter
+    if (filters.priority && filters.priority !== 'all') {
+      filtered = filtered.filter(task => task.priority === filters.priority);
+    }
+    
+    return filtered;
+  }, [mergedTasks, filters]);
+
   // Filter tasks by derived status for board view
   // Use derived_status (auto-computed for tasks with checklist)
   const tasksByStatus = useMemo((): TasksByStatus => {
-    if (!mergedTasks.length) return { planned: [], inProgress: [], done: [], skipped: [] };
+    if (!filteredTasks.length) return { planned: [], inProgress: [], done: [], skipped: [] };
     
     return {
-      planned: mergedTasks.filter(task => task.derived_status === STATUS.PLANNED),
-      inProgress: mergedTasks.filter(task => task.derived_status === STATUS.IN_PROGRESS),
-      done: mergedTasks.filter(task => task.derived_status === STATUS.DONE),
-      skipped: mergedTasks.filter(task => task.derived_status === STATUS.SKIPPED),
+      planned: filteredTasks.filter(task => task.derived_status === STATUS.PLANNED),
+      inProgress: filteredTasks.filter(task => task.derived_status === STATUS.IN_PROGRESS),
+      done: filteredTasks.filter(task => task.derived_status === STATUS.DONE),
+      skipped: filteredTasks.filter(task => task.derived_status === STATUS.SKIPPED),
     };
-  }, [mergedTasks]);
+  }, [filteredTasks]);
 
   // Flat list of all tasks
   const flatList = useMemo(() => {
-    return mergedTasks;
-  }, [mergedTasks]);
+    return filteredTasks;
+  }, [filteredTasks]);
 
   return {
     tasksQuery,
     tasksByStatus,
     flatList,
-    tasks: mergedTasks, // Use mergedTasks instead of raw tasksData to include schedule info
+    tasks: filteredTasks, // Use filteredTasks instead of mergedTasks
     isLoading: tasksQuery.isLoading,
     error: tasksQuery.error,
     refetch: tasksQuery.refetch,

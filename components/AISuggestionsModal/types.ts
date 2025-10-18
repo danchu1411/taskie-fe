@@ -204,6 +204,7 @@ export interface AISuggestionsService {
 export interface AcceptRequest {
   status: number;
   selected_slot_index: number;
+  suggested_start_at?: string; // Add this field
   rejection_reason?: string;
 }
 

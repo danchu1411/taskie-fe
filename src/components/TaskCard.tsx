@@ -216,7 +216,7 @@ export const TaskCard = React.memo(function TaskCard({
       <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-slate-50/80 border-b border-slate-200">
         <div className="flex items-center gap-3 flex-wrap">
               <StatusBadge 
-                status={task.derived_status} 
+                status={task.is_atomic ? task.status : (task.derived_status ?? task.status)} 
                 onClick={() => task.is_atomic ? onStatusChange(task) : undefined}
                 disabled={isUpdating || !task.is_atomic}
               />

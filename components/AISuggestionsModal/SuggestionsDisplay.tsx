@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { AISuggestion, ManualInput } from './types';
 import SuggestionCard from './SuggestionCard';
 import SlotComparisonView from './SlotComparison';
@@ -51,14 +51,15 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
     }
   };
   const formatDateTime = (isoString: string) => {
+    // Extract date components without timezone conversion
     const date = new Date(isoString);
-    return date.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    
+    return `${day}/${month}/${year}, ${hours}:${minutes}`;
   };
 
   const formatDuration = (minutes: number) => {
@@ -72,14 +73,6 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
       : `${hours}h`;
   };
 
-  const getConfidenceColor = (confidence: number) => {
-    switch (confidence) {
-      case 2: return '#10B981'; // Green
-      case 1: return '#F59E0B'; // Yellow
-      case 0: return '#EF4444'; // Red
-      default: return '#6B7280'; // Gray
-    }
-  };
 
   const getConfidenceIcon = (confidence: number) => {
     switch (confidence) {

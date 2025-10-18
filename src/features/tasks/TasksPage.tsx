@@ -81,7 +81,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
     changeChecklistItemStatus,
     isCreating,
     isUpdating,
-    isUpdatingChecklist,
   } = useTasksMutations(user?.id || null);
 
   // Schedule mutations - CREATE
@@ -227,10 +226,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   }, []);
 
 
-  const handleStart = useCallback((_task: TaskRecord) => {
-    // TODO: Implement start timer functionality
-    console.log("Start timer functionality coming soon!");
-  }, []);
 
   const handleAddChecklist = useCallback((task: TaskRecord) => {
     const tid = ((task as any).id || task.task_id) as string;
@@ -541,27 +536,41 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
             {/* Status Filter */}
             <div className="flex gap-2">
               <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value as StatusValue | 'all' })}
+                value={filters.status === 'all' ? 'all' : filters.status?.toString() || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'all') {
+                    setFilters({ ...filters, status: 'all' });
+                  } else {
+                    setFilters({ ...filters, status: parseInt(value) as StatusValue });
+                  }
+                }}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="all">All Status</option>
-                <option value="planned">Planned</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-                <option value="skipped">Skipped</option>
+                <option value={STATUS.PLANNED}>Planned</option>
+                <option value={STATUS.IN_PROGRESS}>In Progress</option>
+                <option value={STATUS.DONE}>Done</option>
+                <option value={STATUS.SKIPPED}>Skipped</option>
               </select>
               
               {/* Priority Filter */}
               <select
-                value={filters.priority || 'all'}
-                onChange={(e) => setFilters({ ...filters, priority: e.target.value as PriorityValue | 'all' })}
+                value={filters.priority === 'all' ? 'all' : filters.priority?.toString() || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === 'all') {
+                    setFilters({ ...filters, priority: 'all' });
+                  } else {
+                    setFilters({ ...filters, priority: parseInt(value) as PriorityValue });
+                  }
+                }}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="all">All Priority</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+                <option value="1">High</option>
+                <option value="2">Medium</option>
+                <option value="3">Low</option>
               </select>
               
               {/* View Toggle */}
@@ -695,7 +704,6 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
           onStatusChange={openStatusModal}
-          onStart={handleStart}
           onSchedule={openScheduleModal}
           onAddChecklist={handleAddChecklist}
           onEditChecklistItem={handleEditChecklistItem}

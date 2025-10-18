@@ -1,6 +1,7 @@
 import type { ManualInput, AISuggestion, AISuggestionsService, BackendSuggestionResponse, BackendValidationError } from '../types';
 import { httpClient } from './httpClient';
 import { apiConfigManager } from '../config/apiConfig';
+import { preserveTimeChangeTimezone } from '../utils/timezoneUtils';
 
 // Enhanced Real AI Suggestions Service with HTTP Client
 class EnhancedRealAISuggestionsService implements AISuggestionsService {
@@ -14,10 +15,19 @@ class EnhancedRealAISuggestionsService implements AISuggestionsService {
     try {
       const url = apiConfigManager.getEndpoint('generateSuggestions');
       
+      // Get local timezone info
+      const localDate = new Date();
+      const timezoneOffset = localDate.getTimezoneOffset();
+      const offsetHours = Math.floor(Math.abs(timezoneOffset) / 60);
+      const offsetMinutes = Math.abs(timezoneOffset) % 60;
+      const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+      const timezoneOffsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+
       const requestBody = {
         suggestionType: 0, // Manual Input Mode
         manual_input: input,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone_offset: timezoneOffsetString // e.g., "+07:00" for Vietnam
       };
       
       const response = await httpClient.post<BackendSuggestionResponse>(url, requestBody);

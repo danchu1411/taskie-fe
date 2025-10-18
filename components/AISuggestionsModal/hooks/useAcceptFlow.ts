@@ -33,7 +33,8 @@ export const useAcceptFlow = (): UseAcceptFlowReturn => {
 
   const acceptSuggestion = useCallback(async (
     suggestionId: string, 
-    selectedSlotIndex: number
+    selectedSlotIndex: number,
+    suggestedStartAt?: string // Add this parameter
   ): Promise<AcceptResponse> => {
     setIsAccepting(true);
     setError(null);
@@ -42,7 +43,8 @@ export const useAcceptFlow = (): UseAcceptFlowReturn => {
     try {
       const request: AcceptRequest = {
         status: 1, // Accepted
-        selected_slot_index: selectedSlotIndex
+        selected_slot_index: selectedSlotIndex,
+        suggested_start_at: suggestedStartAt // Add this field
       };
 
       console.log('Accepting suggestion:', { suggestionId, request });

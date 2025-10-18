@@ -10,7 +10,7 @@ export interface TaskListViewProps {
   onEdit: (task: TaskRecord) => void;
   onDelete: (taskId: string) => void;
   onStatusChange: (task: TaskRecord) => void;
-  onStart: (task: TaskRecord) => void;
+  onStart?: (task: TaskRecord) => void;
   onSchedule: (item: TaskRecord | ChecklistItemRecord) => void;
   onAddChecklist: (task: TaskRecord) => void;
   onEditChecklistItem: (item: ChecklistItemRecord) => void;

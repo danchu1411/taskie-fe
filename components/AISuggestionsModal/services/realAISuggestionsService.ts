@@ -34,10 +34,19 @@ class RealAISuggestionsService implements AISuggestionsService {
         formattedInput.target_task_id = input.target_task_id;
       }
 
+      // Get local timezone info
+      const localDate = new Date();
+      const timezoneOffset = localDate.getTimezoneOffset();
+      const offsetHours = Math.floor(Math.abs(timezoneOffset) / 60);
+      const offsetMinutes = Math.abs(timezoneOffset) % 60;
+      const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+      const timezoneOffsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+
       const requestBody = {
         suggestionType: 0, // Manual Input Mode (0-2)
         manual_input: formattedInput,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone_offset: timezoneOffsetString // e.g., "+07:00" for Vietnam
       };
       
       console.log('📤 Sending request to backend:', JSON.stringify(requestBody, null, 2));

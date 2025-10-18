@@ -14,12 +14,12 @@ export interface APIConfig {
 
 // Default configuration
 const defaultConfig: APIConfig = {
-  baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_API_BASE_URL) || 'http://localhost:3000',
+  baseURL: (import.meta.env.VITE_API_BASE as string) || 'http://localhost:3000/api',
   endpoints: {
-    generateSuggestions: '/api/ai-suggestions/generate',
-    acceptSuggestion: '/api/ai-suggestions',
-    getSuggestionHistory: '/api/ai-suggestions/history',
-    getAnalytics: '/api/ai-suggestions/analytics'
+    generateSuggestions: '/ai-suggestions/generate',
+    acceptSuggestion: '/ai-suggestions',
+    getSuggestionHistory: '/ai-suggestions/history',
+    getAnalytics: '/ai-suggestions/analytics'
   },
   timeout: 120000, // 120 seconds for AI processing
   retryAttempts: 3,
@@ -30,24 +30,24 @@ const defaultConfig: APIConfig = {
 const configs: Record<string, APIConfig> = {
   development: {
     ...defaultConfig,
-    baseURL: 'http://localhost:3000',
+    baseURL: (import.meta.env.VITE_API_BASE as string) || 'http://localhost:3000/api',
     timeout: 120000
   },
   staging: {
     ...defaultConfig,
-    baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_STAGING_API_URL) || 'https://staging-api.taskie.com',
+    baseURL: (import.meta.env.VITE_API_BASE as string) || 'https://staging-api.taskie.com/api',
     timeout: 45000
   },
   production: {
     ...defaultConfig,
-    baseURL: (typeof process !== 'undefined' && process.env?.REACT_APP_PRODUCTION_API_URL) || 'https://api.taskie.com',
+    baseURL: (import.meta.env.VITE_API_BASE as string) || 'https://api.taskie.com/api',
     timeout: 60000
   }
 };
 
 // Get current environment configuration
 export const getAPIConfig = (): APIConfig => {
-  const env = (typeof process !== 'undefined' && process.env?.NODE_ENV) || 'development';
+  const env = import.meta.env.MODE || 'development';
   return configs[env] || defaultConfig;
 };
 

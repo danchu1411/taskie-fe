@@ -226,12 +226,19 @@ const AISuggestionsModal: FC<AISuggestionsModalProps> = ({
     if (!hasSelectedSlot() || !modalState.aiSuggestion) return;
     
     try {
+      const selectedSlot = modalState.aiSuggestion.suggested_slots[modalState.selectedSlotIndex!];
+      
       console.log('Starting accept flow:', {
         suggestionId: modalState.aiSuggestion.id,
-        selectedSlotIndex: modalState.selectedSlotIndex
+        selectedSlotIndex: modalState.selectedSlotIndex,
+        suggestedStartAt: selectedSlot.suggested_start_at
       });
       
-      const response = await acceptSuggestion(modalState.aiSuggestion.id, modalState.selectedSlotIndex!);
+      const response = await acceptSuggestion(
+        modalState.aiSuggestion.id, 
+        modalState.selectedSlotIndex!,
+        selectedSlot.suggested_start_at // Pass suggested_start_at
+      );
       
       console.log('Accept successful:', response);
       

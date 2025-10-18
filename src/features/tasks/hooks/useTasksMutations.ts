@@ -1,9 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import api from "../../../lib/api";
-import { useStreakUpdate } from "../../stats/hooks/useStreakUpdate";
-import { useStreakConfetti } from "../../stats/hooks/useStreakConfetti";
-import { useStreakToast } from "../../stats/hooks/useStreakToast";
 import type { 
   TaskRecord, 
   TaskListResponse, 
@@ -12,6 +9,45 @@ import type {
 } from "../../../lib";
 import { STATUS } from "../../../lib";
 import { arrayMove } from "@dnd-kit/sortable";
+import { SCHEDULE_QUERY_KEY } from "../../schedule/hooks/useScheduleData";
+
+// Helper function to calculate derived status from checklist items
+function calculateDerivedStatus(checklistItems: ChecklistItemRecord[]): StatusValue {
+  if (!checklistItems || checklistItems.length === 0) {
+    return STATUS.PLANNED; // Default for atomic tasks
+  }
+
+  // Count each status
+  const counts = {
+    inProgress: checklistItems.filter(item => item.status === STATUS.IN_PROGRESS).length,
+    planned: checklistItems.filter(item => item.status === STATUS.PLANNED).length,
+    done: checklistItems.filter(item => item.status === STATUS.DONE).length,
+    skipped: checklistItems.filter(item => item.status === STATUS.SKIPPED).length,
+  };
+
+  // Rule 1: Any item IN_PROGRESS → Task IN_PROGRESS
+  if (counts.inProgress > 0) {
+    return STATUS.IN_PROGRESS;
+  }
+
+  // Rule 2: Some DONE + Some PLANNED → Task IN_PROGRESS (partial progress)
+  if (counts.done > 0 && counts.planned > 0) {
+    return STATUS.IN_PROGRESS;
+  }
+
+  // Rule 3: All items DONE → Task DONE
+  if (counts.done > 0 && counts.planned === 0 && counts.inProgress === 0) {
+    return STATUS.DONE;
+  }
+
+  // Rule 4: All items SKIPPED → Task SKIPPED
+  if (counts.skipped > 0 && counts.planned === 0 && counts.inProgress === 0 && counts.done === 0) {
+    return STATUS.SKIPPED;
+  }
+
+  // Rule 5: Default (has PLANNED items) → Task PLANNED
+  return STATUS.PLANNED;
+}
 
 export interface UseTasksMutationsResult {
   // Task mutations
@@ -98,14 +134,14 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     onMutate: async ({ taskId, taskData }) => {
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches - use partial matching for all task queries
       await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
       
-      // Snapshot the previous value
-      const previousTasks = queryClient.getQueryData(["tasks", userId]) as TaskListResponse | undefined;
+      // Snapshot the previous value - get all task queries
+      const previousTasksQueries = queryClient.getQueriesData({ queryKey: ["tasks", userId] });
       
-      // Optimistically update to the new value
-      queryClient.setQueryData(["tasks", userId], (old: TaskListResponse | undefined) => {
+      // Optimistically update all task queries
+      queryClient.setQueriesData({ queryKey: ["tasks", userId] }, (old: TaskListResponse | undefined) => {
         if (!old?.items) return old;
         
         return {
@@ -113,20 +149,28 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
           items: old.items.map((task: TaskRecord) => {
             // Use same logic as TodayPage to compare taskId - check both id and task_id
             const taskTaskId = (task as any).id || task.task_id;
-            return taskTaskId === taskId
-              ? { ...task, ...taskData }
-              : task;
+            if (taskTaskId === taskId) {
+              // For atomic tasks, derived_status should equal status
+              const updatedTask = { ...task, ...taskData };
+              if (task.is_atomic && taskData.status !== undefined) {
+                updatedTask.derived_status = taskData.status;
+              }
+              return updatedTask;
+            }
+            return task;
           })
         };
       });
       
-      return { previousTasks };
+      return { previousTasksQueries };
     },
     onError: (error: any, _variables, context) => {
       console.error('TasksPage updateTask error:', error.response?.data || error);
-      // Revert to previous value on error
-      if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", userId], context.previousTasks);
+      // Revert all previous task queries on error
+      if (context?.previousTasksQueries) {
+        context.previousTasksQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
     },
     onSuccess: () => {
@@ -178,6 +222,8 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      // Invalidate schedule queries to remove orphaned schedule entries
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
     },
   });
 
@@ -190,14 +236,14 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     onMutate: async ({ task, newStatus }) => {
       const taskId = (task as any).id || task.task_id;
       
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches - use partial matching for all task queries
       await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
       
-      // Snapshot the previous value
-      const previousTasks = queryClient.getQueryData(["tasks", userId]) as TaskListResponse | undefined;
+      // Snapshot the previous value - get all task queries
+      const previousTasksQueries = queryClient.getQueriesData({ queryKey: ["tasks", userId] });
       
-      // Optimistically update the status
-      queryClient.setQueryData(["tasks", userId], (old: TaskListResponse | undefined) => {
+      // Optimistically update all task queries
+      queryClient.setQueriesData({ queryKey: ["tasks", userId] }, (old: TaskListResponse | undefined) => {
         if (!old?.items) return old;
         
         return {
@@ -211,12 +257,15 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
         };
       });
       
-      return { previousTasks };
+      return { previousTasksQueries };
     },
     onError: (error: any, _variables, context) => {
       console.error('changeTaskStatus error:', error);
-      if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", userId], context.previousTasks);
+      if (context?.previousTasksQueries) {
+        // Restore all previous task queries
+        context.previousTasksQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
     },
     onSuccess: () => {
@@ -238,14 +287,14 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
       await api.patch(`/checklist-items/${itemId}`, { status: newStatus });
     },
     onMutate: async ({ itemId, newStatus }) => {
-      // Cancel any outgoing refetches
+      // Cancel any outgoing refetches - use partial matching for all task queries
       await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
       
-      // Snapshot the previous value
-      const previousTasks = queryClient.getQueryData(["tasks", userId]) as TaskListResponse | undefined;
+      // Snapshot the previous value - get all task queries
+      const previousTasksQueries = queryClient.getQueriesData({ queryKey: ["tasks", userId] });
       
-      // Optimistically update the checklist item status
-      queryClient.setQueryData(["tasks", userId], (old: TaskListResponse | undefined) => {
+      // Optimistically update all task queries
+      queryClient.setQueriesData({ queryKey: ["tasks", userId] }, (old: TaskListResponse | undefined) => {
         if (!old?.items) return old;
         
         return {
@@ -253,24 +302,33 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
           items: old.items.map((task: TaskRecord) => {
             if (!task.checklist) return task;
             
+            const updatedChecklist = task.checklist.map((item: ChecklistItemRecord) =>
+              item.checklist_item_id === itemId
+                ? { ...item, status: newStatus }
+                : item
+            );
+            
+            // Calculate new derived_status based on updated checklist
+            const newDerivedStatus = calculateDerivedStatus(updatedChecklist);
+            
             return {
               ...task,
-              checklist: task.checklist.map((item: ChecklistItemRecord) =>
-                item.checklist_item_id === itemId
-                  ? { ...item, status: newStatus }
-                  : item
-              )
+              checklist: updatedChecklist,
+              derived_status: newDerivedStatus
             };
           })
         };
       });
       
-      return { previousTasks };
+      return { previousTasksQueries };
     },
     onError: (error: any, _variables, context) => {
       console.error('changeChecklistItemStatus error:', error);
-      if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", userId], context.previousTasks);
+      if (context?.previousTasksQueries) {
+        // Restore all previous task queries
+        context.previousTasksQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
     },
     onSuccess: () => {
@@ -316,6 +374,51 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
       console.log('updateChecklistItem mutation:', { itemId, body });
       return api.patch(`/checklist-items/${itemId}`, body);
     },
+    onMutate: async ({ itemId, payload }) => {
+      // Cancel any outgoing refetches - use partial matching for all task queries
+      await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
+      
+      // Snapshot the previous value - get all task queries
+      const previousTasksQueries = queryClient.getQueriesData({ queryKey: ["tasks", userId] });
+      
+      // Optimistically update all task queries
+      queryClient.setQueriesData({ queryKey: ["tasks", userId] }, (old: TaskListResponse | undefined) => {
+        if (!old?.items) return old;
+        
+        return {
+          ...old,
+          items: old.items.map((task: TaskRecord) => {
+            if (!task.checklist) return task;
+            
+            const updatedChecklist = task.checklist.map((item: ChecklistItemRecord) =>
+              item.checklist_item_id === itemId
+                ? { ...item, ...payload }
+                : item
+            );
+            
+            // Calculate new derived_status based on updated checklist
+            const newDerivedStatus = calculateDerivedStatus(updatedChecklist);
+            
+            return {
+              ...task,
+              checklist: updatedChecklist,
+              derived_status: newDerivedStatus
+            };
+          })
+        };
+      });
+      
+      return { previousTasksQueries };
+    },
+    onError: (error: any, _variables, context) => {
+      console.error('updateChecklistItem error:', error);
+      if (context?.previousTasksQueries) {
+        // Restore all previous task queries
+        context.previousTasksQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
@@ -327,9 +430,54 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
     mutationFn: async (itemId: string) => {
       await api.delete(`/checklist-items/${itemId}`);
     },
+    onMutate: async (itemId) => {
+      // Cancel any outgoing refetches - use partial matching for all task queries
+      await queryClient.cancelQueries({ queryKey: ["tasks", userId] });
+      
+      // Snapshot the previous value - get all task queries
+      const previousTasksQueries = queryClient.getQueriesData({ queryKey: ["tasks", userId] });
+      
+      // Optimistically update all task queries
+      queryClient.setQueriesData({ queryKey: ["tasks", userId] }, (old: TaskListResponse | undefined) => {
+        if (!old?.items) return old;
+        
+        return {
+          ...old,
+          items: old.items.map((task: TaskRecord) => {
+            if (!task.checklist) return task;
+            
+            const updatedChecklist = task.checklist.filter((item: ChecklistItemRecord) =>
+              item.checklist_item_id !== itemId
+            );
+            
+            // Calculate new derived_status based on updated checklist
+            const newDerivedStatus = calculateDerivedStatus(updatedChecklist);
+            
+            return {
+              ...task,
+              checklist: updatedChecklist,
+              derived_status: newDerivedStatus
+            };
+          })
+        };
+      });
+      
+      return { previousTasksQueries };
+    },
+    onError: (error: any, _variables, context) => {
+      console.error('deleteChecklistItem error:', error);
+      if (context?.previousTasksQueries) {
+        // Restore all previous task queries
+        context.previousTasksQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      // Invalidate schedule queries to remove orphaned schedule entries
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_QUERY_KEY });
     },
   });
 

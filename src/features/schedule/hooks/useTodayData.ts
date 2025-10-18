@@ -95,24 +95,40 @@ function useTaskCategories(items: TodayItem[]) {
   return useMemo(() => {
     const inProgress = items
       .filter((item) => item.status === STATUS.IN_PROGRESS)
-      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      .sort((a, b) => {
+        // 1. Sort by priority first (High=1, Medium=2, Low=3, null=4)
+        const aPriority = a.priority ?? 4;
+        const bPriority = b.priority ?? 4;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+
+        // 2. Then by most recently updated (most active first)
+        return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+      });
 
     const planned = items
       .filter((item) => item.status === STATUS.PLANNED)
       .sort((a, b) => {
-        const aStart = toDateValue(a.startAt);
-        const bStart = toDateValue(b.startAt);
-        if (aStart && bStart) return aStart - bStart;
-        if (aStart) return -1;
-        if (bStart) return 1;
+        // 1. Sort by priority first (High=1, Medium=2, Low=3, null=4)
+        const aPriority = a.priority ?? 4;
+        const bPriority = b.priority ?? 4;
+        if (aPriority !== bPriority) return aPriority - bPriority;
 
+        // 2. Then by deadline (earliest first)
         const aDeadline = toDateValue(a.deadline);
         const bDeadline = toDateValue(b.deadline);
         if (aDeadline && bDeadline) return aDeadline - bDeadline;
         if (aDeadline) return -1;
         if (bDeadline) return 1;
 
-        return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+        // 3. Then by scheduled time (earliest first)
+        const aStart = toDateValue(a.startAt);
+        const bStart = toDateValue(b.startAt);
+        if (aStart && bStart) return aStart - bStart;
+        if (aStart) return -1;
+        if (bStart) return 1;
+
+        // 4. Finally by creation time (oldest first - most recent updatedAt last)
+        return (a.updatedAt ?? 0) - (b.updatedAt ?? 0);
       });
 
     const completed = items

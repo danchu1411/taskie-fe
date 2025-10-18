@@ -42,16 +42,17 @@ const ConfirmationState: React.FC<ConfirmationStateProps> = ({
     return () => clearInterval(interval);
   }, [onClose]);
 
-  // Format date/time for display
+  // Format date/time for display without timezone conversion
   const formatDateTime = (isoString: string) => {
+    // Extract date components without timezone conversion
     const date = new Date(isoString);
-    return date.toLocaleString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    
+    return `${hours}:${minutes}, ${day}/${month}/${year}`;
   };
 
   // Format duration for display

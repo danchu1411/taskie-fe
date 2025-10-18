@@ -17,6 +17,7 @@ export class EnhancedRealAISuggestionsAcceptService implements AISuggestionsAcce
       const requestBody = {
         status: 'accepted', // Backend expects string 'accepted'
         selected_slot_index: request.selected_slot_index,
+        suggested_start_at: request.suggested_start_at, // Add this field
         // schedule_entry_id: request.schedule_entry_id, // If backend supports this in PATCH
       };
       

@@ -478,8 +478,9 @@ export default function CalendarView({ userId }: { userId: string | null | undef
               ].join(" ")}
             >
               {/* Add task button - top right corner (only for today and future dates) */}
-              {!outside && (() => {
-                const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+              {(() => {
+                const now = new Date();
+                const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 const currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                 return currentDate >= todayDate;
               })() && (
