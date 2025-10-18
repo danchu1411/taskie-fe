@@ -32,19 +32,12 @@ export default defineConfig({
       },
       output: {
         manualChunks: (id) => {
-          // Vendor libraries - Keep React ecosystem together
+          // Vendor libraries - Simplified approach
           if (id.includes('node_modules')) {
-            // Keep React core together - this is critical
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor-react-core';
-            }
-            // Keep React router separate but stable
-            if (id.includes('react-router')) {
-              return 'vendor-react-router';
-            }
-            // Keep React ecosystem together
-            if (id.includes('@tanstack/react-query') || id.includes('@dnd-kit')) {
-              return 'vendor-react-ecosystem';
+            // Keep ALL React-related packages together
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router') || 
+                id.includes('@tanstack/react-query') || id.includes('@dnd-kit')) {
+              return 'vendor-react-all';
             }
             // Calendar and charts
             if (id.includes('@fullcalendar') || id.includes('recharts')) {
@@ -118,5 +111,9 @@ export default defineConfig({
     // Disable React DevTools in production
     '__REACT_DEVTOOLS_GLOBAL_HOOK__': 'undefined',
     'window.__REACT_DEVTOOLS_GLOBAL_HOOK__': 'undefined',
+    // Additional React production flags
+    '__REACT_DEVTOOLS_GLOBAL_HOOK__.inject': 'undefined',
+    '__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberRoot': 'undefined',
+    '__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberUnmount': 'undefined',
   },
 })
