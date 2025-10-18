@@ -8,7 +8,7 @@
 
 ## 🔧 Environment Variables Required
 ```bash
-VITE_API_BASE=https://taskie-api-env.eba-tddpmyzh.ap-southeast-1.elasticbeanstalk.com/api
+VITE_API_BASE=https://u8y31meg0e.execute-api.ap-southeast-1.amazonaws.com/api
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
