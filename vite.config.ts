@@ -3,18 +3,29 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Ensure React is properly configured for production
+      jsxRuntime: 'automatic',
+      jsxImportSource: 'react',
+    })
+  ],
   build: {
     // Tối ưu hóa bundle size
     target: 'esnext',
     minify: 'terser',
-    // terserOptions: {
-    //   compress: {
-    //     drop_console: true,
-    //     drop_debugger: true,
-    //   },
-    // },
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
+      },
+    },
     rollupOptions: {
+      external: () => {
+        // Don't externalize React in browser builds
+        return false;
+      },
       output: {
         manualChunks: (id) => {
           // Vendor libraries - Keep React ecosystem together
@@ -85,5 +96,15 @@ export default defineConfig({
   // Ensure proper module resolution
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {
+      // Ensure single React instance
+      'react': 'react',
+      'react-dom': 'react-dom',
+    },
+  },
+  // Define global variables for production
+  define: {
+    __DEV__: false,
+    'process.env.NODE_ENV': '"production"',
   },
 })
