@@ -29,8 +29,11 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
   for (const task of tasks) {
     console.log('🔍 Processing task:', {
       title: task.title,
+      status: task.status,
+      derived_status: task.derived_status,
       hasChecklist: !!(task.checklist && task.checklist.length > 0),
-      checklistLength: task.checklist?.length || 0
+      checklistLength: task.checklist?.length || 0,
+      is_atomic: task.is_atomic
     });
 
     // If task has checklist items, show each checklist item instead of the task
@@ -63,7 +66,7 @@ export function transformTasksForDisplay(tasks: TaskRecord[]): TaskDisplayItem[]
         source: "task",
         title: task.title,
         parentTitle: null,
-        status: task.status,
+        status: task.derived_status || task.status, // Use derived_status if available, fallback to status
         priority: task.priority ?? null,
         deadline: task.deadline ?? null,
         startAt: task.start_at ?? null,

@@ -1,6 +1,5 @@
-import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { isAxiosError } from "axios";
-import GoogleIcon from "../../components/icons/GoogleIcon";
 import CalendarIcon from "../../components/icons/CalendarIcon";
 import TimerIcon from "../../components/icons/TimerIcon";
 import ChartIcon from "../../components/icons/ChartIcon";
@@ -9,12 +8,9 @@ import AuthLoadingOverlay from "./AuthLoadingOverlay";
 import { 
   AuthShell, 
   AuthFormField, 
-  AuthCheckboxRow, 
-  AuthGoogleMockDialog 
+  AuthCheckboxRow
 } from "./components";
 import { useAuthNavigation, useAuthRedirect } from "./hooks";
-import { useGoogleAuth } from "./useGoogleAuth";
-import { detectMockEnabled } from "../../lib/googleIdentity";
 
 type NavigateHandler = (path: string) => void;
 
@@ -47,7 +43,6 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
     { isAuthenticated, shouldPromptVerification, user },
     onNavigate
   );
-  const googleAuth = useGoogleAuth();
   
   const [formState, setFormState] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(true);
@@ -117,14 +112,6 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
       window.history.replaceState(null, "", next);
     }
   }, []);
-
-  const handleGoogleClick = async (event: MouseEvent<HTMLButtonElement>) => {
-    if (event.altKey && detectMockEnabled()) {
-      googleAuth.openMockDialog();
-      return;
-    }
-    await googleAuth.signInWithGoogle(rememberMe);
-  };
 
   const formDisabled = isSubmitting;
 
@@ -209,32 +196,6 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
               {isSubmitting ? "Signing in..." : "Log in"}
             </button>
 
-            <div className="relative py-2 text-center text-[11px] uppercase tracking-[0.28em] text-slate-400">
-              <span className="relative z-[1] bg-white px-3">Or</span>
-              <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-slate-200" aria-hidden />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleClick}
-              disabled={formDisabled || googleAuth.loadingGoogle}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/70 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <GoogleIcon className="h-4 w-4" />
-              {googleAuth.loadingGoogle ? "Signing in with Google..." : "Continue with Google"}
-            </button>
-
-            {googleAuth.googleHint && (
-              <p className="text-center text-xs text-emerald-600">{googleAuth.googleHint}</p>
-            )}
-            {googleAuth.googleError && (
-              <p className="text-center text-xs text-rose-600">{googleAuth.googleError}</p>
-            )}
-            {detectMockEnabled() && (
-              <p className="text-center text-xs text-slate-400">
-                Alt+click for mock login
-              </p>
-            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
@@ -252,14 +213,6 @@ function TaskieLogin({ onNavigate }: TaskieLoginProps) {
           </p>
         </div>
       </AuthShell>
-
-      <AuthGoogleMockDialog
-        open={googleAuth.showMockDialog}
-        onClose={googleAuth.closeMockDialog}
-        onSubmit={googleAuth.submitMock}
-        loading={googleAuth.loadingGoogle}
-        error={googleAuth.googleError}
-      />
     </>
   );
 }

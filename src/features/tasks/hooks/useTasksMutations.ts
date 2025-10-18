@@ -150,11 +150,23 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
             // Use same logic as TodayPage to compare taskId - check both id and task_id
             const taskTaskId = (task as any).id || task.task_id;
             if (taskTaskId === taskId) {
-              // For atomic tasks, derived_status should equal status
+              // Update task with new data
               const updatedTask = { ...task, ...taskData };
-              if (task.is_atomic && taskData.status !== undefined) {
-                updatedTask.derived_status = taskData.status;
+              
+              // Calculate derived_status based on task type and checklist
+              if (taskData.status !== undefined) {
+                if (task.is_atomic) {
+                  // For atomic tasks, derived_status should equal status
+                  updatedTask.derived_status = taskData.status;
+                } else if (task.checklist && task.checklist.length > 0) {
+                  // For tasks with checklist, recalculate derived_status from checklist items
+                  updatedTask.derived_status = calculateDerivedStatus(task.checklist);
+                } else {
+                  // Fallback: use the new status as derived_status
+                  updatedTask.derived_status = taskData.status;
+                }
               }
+              
               return updatedTask;
             }
             return task;
@@ -177,6 +189,9 @@ export function useTasksMutations(userId: string | null): UseTasksMutationsResul
       // Invalidate to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["today-tasks", userId] });
+      
+      // Force refetch to ensure fresh data
+      queryClient.refetchQueries({ queryKey: ["tasks", userId] });
     },
   });
 

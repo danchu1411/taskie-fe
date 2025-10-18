@@ -263,8 +263,15 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
   }, [editingChecklistItem, checklistModalTaskId, createChecklistItem, updateChecklistItem]);
 
   const handleTaskStatusChange = useCallback((taskId: string, newStatus: StatusValue) => {
+    console.log('🎯 handleTaskStatusChange called:', { taskId, newStatus });
     handleUpdateTask({ status: newStatus }, taskId);
-  }, [handleUpdateTask]);
+    
+    // Force clear cache and refetch
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.refetchQueries({ queryKey: ["tasks", user?.id] });
+    }, 100);
+  }, [handleUpdateTask, queryClient, user?.id]);
 
   const handleChecklistItemStatusChange = useCallback((itemId: string, newStatus: StatusValue) => {
     changeChecklistItemStatus(itemId, newStatus);

@@ -1,7 +1,7 @@
 import React from "react";
 import { clsx } from "../lib";
 import type { TaskDisplayItem } from "../features/tasks/utils/transformTasksForDisplay";
-import { STATUS } from "../lib";
+import { STATUS, type StatusValue, type PriorityValue } from "../lib";
 import { StatusBadge, PriorityBadge, DueDateBadge } from "./ui";
 
 interface TaskDisplayCardProps {

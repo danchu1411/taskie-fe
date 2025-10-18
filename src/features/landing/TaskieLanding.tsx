@@ -114,11 +114,6 @@ export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
     aboutRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleLoginNavClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    goToLogin();
-  };
-
   return (
     <div id="top" className="min-h-screen bg-neutral-50 text-slate-900 selection:bg-indigo-200 selection:text-slate-900">
       <header className="flex items-center justify-between border-b border-slate-200/80 px-6 py-5 md:px-10">
@@ -134,14 +129,8 @@ export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
           />
         </a>
         <nav className="hidden gap-6 md:flex">
-          <a className={navLinkClass} href="#preview">
-            Preview
-          </a>
           <a className={navLinkClass} href="#about" onClick={handleAboutClick}>
             About
-          </a>
-          <a className={navLinkClass} href="/login" onClick={handleLoginNavClick}>
-            Log in
           </a>
         </nav>
       </header>
@@ -170,7 +159,7 @@ export default function TaskieLanding({ onNavigate }: TaskieLandingProps = {}) {
                 Taskie combines intentional planning, calm timers, and celebration of streaks so you keep moving forward every single day.
               </p>
 
-              <AuthCTAButtons onEmailClick={goToLogin} onNavigate={onNavigate} />
+              <AuthCTAButtons onEmailClick={goToLogin} onNavigate={onNavigate} showGoogle={false} />
 
               <ul className="mt-8 flex flex-col gap-3 text-left text-sm text-slate-500 sm:flex-row sm:flex-wrap sm:gap-5">
                 <li className="inline-flex items-center gap-2">

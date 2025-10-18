@@ -1,10 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import api from "../../../lib/api";
-import type { TaskListResponse, TaskFilters, TaskRecord } from "../../../lib";
+import type { TaskListResponse, TaskFilters, TaskRecord, StatusValue, ChecklistItemRecord } from "../../../lib";
 import { STATUS } from "../../../lib";
 import { CACHE_CONFIG, PAGINATION } from "../../schedule/constants/cacheConfig";
 import { useScheduleData, type ScheduleEntry } from "../../schedule/hooks/useScheduleData";
+
+// Helper function to calculate derived status from checklist items
+function calculateDerivedStatus(checklistItems: ChecklistItemRecord[]): StatusValue {
+  if (!checklistItems || checklistItems.length === 0) {
+    return STATUS.PLANNED; // Default for atomic tasks
+  }
+
+  // Count each status
+  const counts = {
+    inProgress: checklistItems.filter(item => item.status === STATUS.IN_PROGRESS).length,
+    planned: checklistItems.filter(item => item.status === STATUS.PLANNED).length,
+    done: checklistItems.filter(item => item.status === STATUS.DONE).length,
+    skipped: checklistItems.filter(item => item.status === STATUS.SKIPPED).length,
+  };
+
+  // Rule 1: Any item IN_PROGRESS → Task IN_PROGRESS
+  if (counts.inProgress > 0) {
+    return STATUS.IN_PROGRESS;
+  }
+
+  // Rule 2: Some DONE + Some PLANNED → Task IN_PROGRESS (partial progress)
+  if (counts.done > 0 && counts.planned > 0) {
+    return STATUS.IN_PROGRESS;
+  }
+
+  // Rule 3: All items DONE → Task DONE
+  if (counts.done > 0 && counts.planned === 0 && counts.inProgress === 0) {
+    return STATUS.DONE;
+  }
+
+  // Rule 4: All items SKIPPED → Task SKIPPED
+  if (counts.skipped > 0 && counts.planned === 0 && counts.inProgress === 0 && counts.done === 0) {
+    return STATUS.SKIPPED;
+  }
+
+  // Rule 5: Default (has PLANNED items) → Task PLANNED
+  return STATUS.PLANNED;
+}
 
 export interface TasksByStatus {
   planned: TaskRecord[];
@@ -90,6 +128,15 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
           ...task,
           start_at: scheduleEntry.start_at,
           planned_minutes: scheduleEntry.planned_minutes || scheduleEntry.plannedMinutes,
+          derived_status: task.status, // For atomic tasks, derived_status = status
+        };
+      }
+      
+      // For atomic tasks without schedule entry, also set derived_status = status
+      if (task.is_atomic && !scheduleEntry) {
+        return {
+          ...task,
+          derived_status: task.status, // For atomic tasks, derived_status = status
         };
       }
       
@@ -107,9 +154,23 @@ export function useTasksData(userId: string | null, filters: TaskFilters): UseTa
         return item;
       });
       
+      // Calculate derived_status based on task type and checklist
+      let derivedStatus: StatusValue;
+      if (task.is_atomic) {
+        // For atomic tasks, derived_status should equal status
+        derivedStatus = task.status;
+      } else if (updatedChecklist && updatedChecklist.length > 0) {
+        // For tasks with checklist, calculate from checklist items
+        derivedStatus = calculateDerivedStatus(updatedChecklist);
+      } else {
+        // Fallback to existing derived_status or status
+        derivedStatus = task.derived_status || task.status;
+      }
+
       return {
         ...task,
         checklist: updatedChecklist,
+        derived_status: derivedStatus,
       };
     });
   }, [tasksData?.items, scheduleData]);

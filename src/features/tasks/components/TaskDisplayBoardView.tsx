@@ -255,7 +255,16 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
       skipped: [] as TaskDisplayItem[],
     };
 
+    console.log('🔍 Grouping displayItems by status:', displayItems.length, 'items');
+    
     for (const item of displayItems) {
+      console.log('🔍 Processing display item:', {
+        id: item.id,
+        title: item.title,
+        status: item.status,
+        source: item.source
+      });
+      
       switch (item.status) {
         case STATUS.PLANNED:
           grouped.planned.push(item);
@@ -271,6 +280,13 @@ export const TaskDisplayBoardView = React.memo(function TaskDisplayBoardView({
           break;
       }
     }
+
+    console.log('🔍 Final grouped counts:', {
+      planned: grouped.planned.length,
+      inProgress: grouped.inProgress.length,
+      done: grouped.done.length,
+      skipped: grouped.skipped.length
+    });
 
     return grouped;
   }, [displayItems]);
