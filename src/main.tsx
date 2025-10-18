@@ -6,6 +6,11 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext'
 
+// Import production enforcement (only in production builds)
+if (import.meta.env.PROD) {
+  import('./production-enforcement')
+}
+
 const qc = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(

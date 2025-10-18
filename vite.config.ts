@@ -19,6 +19,10 @@ export default defineConfig({
         drop_console: true,
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
+        // Remove React DevTools references
+        global_defs: {
+          '__REACT_DEVTOOLS_GLOBAL_HOOK__': 'undefined',
+        },
       },
     },
     rollupOptions: {
@@ -30,9 +34,13 @@ export default defineConfig({
         manualChunks: (id) => {
           // Vendor libraries - Keep React ecosystem together
           if (id.includes('node_modules')) {
-            // Keep React core together
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
+            // Keep React core together - this is critical
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-react-core';
+            }
+            // Keep React router separate but stable
+            if (id.includes('react-router')) {
+              return 'vendor-react-router';
             }
             // Keep React ecosystem together
             if (id.includes('@tanstack/react-query') || id.includes('@dnd-kit')) {
@@ -106,5 +114,9 @@ export default defineConfig({
   define: {
     __DEV__: false,
     'process.env.NODE_ENV': '"production"',
+    'process.env.REACT_APP_ENV': '"production"',
+    // Disable React DevTools in production
+    '__REACT_DEVTOOLS_GLOBAL_HOOK__': 'undefined',
+    'window.__REACT_DEVTOOLS_GLOBAL_HOOK__': 'undefined',
   },
 })
