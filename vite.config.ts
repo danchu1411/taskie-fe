@@ -17,29 +17,25 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Vendor libraries
+          // Vendor libraries - Keep React ecosystem together
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
+            // Keep React core together
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'vendor-react';
             }
-            if (id.includes('react-router')) {
-              return 'vendor-router';
+            // Keep React ecosystem together
+            if (id.includes('@tanstack/react-query') || id.includes('@dnd-kit')) {
+              return 'vendor-react-ecosystem';
             }
-            if (id.includes('@tanstack/react-query')) {
-              return 'vendor-query';
-            }
-            if (id.includes('@dnd-kit')) {
-              return 'vendor-dnd';
-            }
-            if (id.includes('@fullcalendar')) {
-              return 'vendor-calendar';
-            }
-            if (id.includes('axios')) {
-              return 'vendor-utils';
-            }
-            if (id.includes('recharts')) {
+            // Calendar and charts
+            if (id.includes('@fullcalendar') || id.includes('recharts')) {
               return 'vendor-charts';
             }
+            // Utils
+            if (id.includes('axios') || id.includes('framer-motion')) {
+              return 'vendor-utils';
+            }
+            // Everything else
             return 'vendor-other';
           }
           
@@ -83,6 +79,11 @@ export default defineConfig({
       'react-router-dom',
       '@tanstack/react-query',
       'axios',
+      'framer-motion',
     ],
+  },
+  // Ensure proper module resolution
+  resolve: {
+    dedupe: ['react', 'react-dom'],
   },
 })
