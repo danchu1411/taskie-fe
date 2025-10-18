@@ -13,7 +13,8 @@ declare module 'axios' {
   }
 }
 
-const baseURL = (import.meta.env.VITE_API_BASE as MaybeString) ?? "/api";
+const baseURL = (import.meta.env.VITE_API_BASE as MaybeString) ?? 
+  (import.meta.env.PROD ? "https://taskie-api-env.eba-tddpmyzh.ap-southeast-1.elasticbeanstalk.com/api" : "/api");
 
 const api = axios.create({
   baseURL,

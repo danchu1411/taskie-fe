@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE || 'https://taskie-api-env.eba-tddpmyzh.ap-southeast-1.elasticbeanstalk.com/api' }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           
       - name: Setup Pages
