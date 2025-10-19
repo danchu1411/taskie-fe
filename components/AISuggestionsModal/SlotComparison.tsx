@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SlotComparison } from './types';
+import { formatLocalDateTime } from './utils/dateTime';
 import './styles/SlotComparison.css';
 
 interface SlotComparisonProps {
@@ -9,22 +10,6 @@ interface SlotComparisonProps {
 
 const SlotComparisonView: React.FC<SlotComparisonProps> = ({ comparison, onClose }) => {
   const { slot1, slot2, comparison: comparisonData } = comparison;
-
-  const formatDateTime = (dateString: string) => {
-    // Extract date components without timezone conversion
-    const date = new Date(dateString);
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    // Format as "Sat, Oct 18, 06:05"
-    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weekday = weekdays[date.getUTCDay()];
-    const monthName = months[date.getUTCMonth()];
-    
-    return `${weekday}, ${monthName} ${day}, ${hours}:${minutes}`;
-  };
 
   const formatDuration = (minutes: number) => {
     if (minutes < 60) {
@@ -76,7 +61,17 @@ const SlotComparisonView: React.FC<SlotComparisonProps> = ({ comparison, onClose
           <div className="slot-details">
             <div className="detail-item">
               <span className="detail-icon">📅</span>
-              <span className="detail-value">{formatDateTime(slot1.suggested_start_at)}</span>
+              <span className="detail-value">
+                {formatLocalDateTime(slot1.suggested_start_at, {
+                  locale: 'vi-VN',
+                  weekday: 'short',
+                  month: 'short',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })}
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-icon">⏱️</span>
@@ -153,7 +148,17 @@ const SlotComparisonView: React.FC<SlotComparisonProps> = ({ comparison, onClose
           <div className="slot-details">
             <div className="detail-item">
               <span className="detail-icon">📅</span>
-              <span className="detail-value">{formatDateTime(slot2.suggested_start_at)}</span>
+              <span className="detail-value">
+                {formatLocalDateTime(slot2.suggested_start_at, {
+                  locale: 'vi-VN',
+                  weekday: 'short',
+                  month: 'short',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                })}
+              </span>
             </div>
             <div className="detail-item">
               <span className="detail-icon">⏱️</span>

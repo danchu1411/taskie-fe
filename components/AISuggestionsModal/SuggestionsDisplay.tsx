@@ -3,6 +3,7 @@ import type { AISuggestion, ManualInput } from './types';
 import SuggestionCard from './SuggestionCard';
 import SlotComparisonView from './SlotComparison';
 import useSlotSelection from './hooks/useSlotSelection';
+import { formatLocalDateTime } from './utils/dateTime';
 import './styles/SuggestionsDisplay.css';
 import './styles/SlotComparison.css';
 
@@ -50,18 +51,6 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
       onSlotSelect(slotIndex);
     }
   };
-  const formatDateTime = (isoString: string) => {
-    // Extract date components without timezone conversion
-    const date = new Date(isoString);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    return `${day}/${month}/${year}, ${hours}:${minutes}`;
-  };
-
   const formatDuration = (minutes: number) => {
     if (minutes < 60) {
       return `${minutes} min`;
@@ -120,14 +109,16 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
             
             <div className="input-field">
               <label>Deadline:</label>
-              <span className="input-value">{formatDateTime(manualInput.deadline)}</span>
+              <span className="input-value">
+                {formatLocalDateTime(manualInput.deadline, { locale: 'vi-VN' })}
+              </span>
             </div>
             
             {manualInput.preferred_window && (
               <div className="input-field">
                 <label>Preferred time window:</label>
                 <span className="input-value">
-                  {formatDateTime(manualInput.preferred_window[0])} - {formatDateTime(manualInput.preferred_window[1])}
+                  {formatLocalDateTime(manualInput.preferred_window[0], { locale: 'vi-VN' })} - {formatLocalDateTime(manualInput.preferred_window[1], { locale: 'vi-VN' })}
                 </span>
               </div>
             )}

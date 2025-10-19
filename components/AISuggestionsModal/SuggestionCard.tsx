@@ -1,4 +1,5 @@
 import type { SuggestedSlot } from './types';
+import { formatLocalDateTime } from './utils/dateTime';
 import './styles/SuggestionCard.css';
 
 interface SuggestionCardProps {
@@ -16,18 +17,6 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   isComparing = false,
   onSelect
 }) => {
-  const formatDateTime = (isoString: string) => {
-    // Extract date components without timezone conversion
-    const date = new Date(isoString);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    return `${day}/${month}/${year}, ${hours}:${minutes}`;
-  };
-
   const formatDuration = (minutes: number) => {
     if (minutes < 60) {
       return `${minutes} min`;
@@ -106,7 +95,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
           <div className="time-item">
             <span className="time-icon">📅</span>
             <span className="time-value">
-              {formatDateTime(slot.suggested_start_at)}
+              {formatLocalDateTime(slot.suggested_start_at, { locale: 'vi-VN' })}
             </span>
           </div>
           <div className="time-item">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { AISuggestion } from './types';
+import { formatLocalDateTime } from './utils/dateTime';
 import './styles/ConfirmationState.css';
 
 interface ConfirmationStateProps {
@@ -41,19 +42,6 @@ const ConfirmationState: React.FC<ConfirmationStateProps> = ({
 
     return () => clearInterval(interval);
   }, [onClose]);
-
-  // Format date/time for display without timezone conversion
-  const formatDateTime = (isoString: string) => {
-    // Extract date components without timezone conversion
-    const date = new Date(isoString);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    return `${hours}:${minutes}, ${day}/${month}/${year}`;
-  };
 
   // Format duration for display
   const formatDuration = (minutes: number) => {
@@ -120,7 +108,17 @@ const ConfirmationState: React.FC<ConfirmationStateProps> = ({
           <div className="detail-item">
             <span className="detail-icon">📅</span>
             <span className="detail-label">Thời gian:</span>
-            <span className="detail-value">{formatDateTime(selectedSlot.suggested_start_at)}</span>
+            <span className="detail-value">
+              {formatLocalDateTime(selectedSlot.suggested_start_at, {
+                locale: 'vi-VN',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })}
+            </span>
           </div>
           
           <div className="detail-item">
