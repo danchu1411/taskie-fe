@@ -1,5 +1,6 @@
 import { memo } from "react";
 import type { TodayItem } from "../hooks/useTodayData";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 interface ChecklistItem {
   title: string;
@@ -30,13 +31,15 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
   onCancel,
   loading,
 }: ChecklistAssignModalProps) {
+  const { t } = useLanguage();
+  
   if (!open || !selectedTask) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Add Checklist</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t('today.modals.checklist.title')}</h3>
           <p className="text-sm text-slate-600">{selectedTask.title}</p>
         </div>
         
@@ -46,7 +49,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
               <div className="flex-1 space-y-2">
                 <input
                   type="text"
-                  placeholder="Checklist item title"
+                  placeholder={t('today.modals.checklist.itemTitle')}
                   value={item.title}
                   onChange={(e) => onItemChange(index, "title", e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -54,7 +57,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
                 <div className="flex gap-2">
                   <input
                     type="datetime-local"
-                    placeholder="Deadline (optional)"
+                    placeholder={t('today.modals.checklist.deadline')}
                     value={item.deadline || ""}
                     onChange={(e) => onItemChange(index, "deadline", e.target.value)}
                     className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -67,10 +70,10 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
                     }}
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   >
-                    <option value="">Priority</option>
-                    <option value={1}>High</option>
-                    <option value={2}>Medium</option>
-                    <option value={3}>Low</option>
+                    <option value="">{t('today.modals.checklist.priority')}</option>
+                    <option value={1}>{t('today.modals.edit.highPriority')}</option>
+                    <option value={2}>{t('today.modals.edit.mediumPriority')}</option>
+                    <option value={3}>{t('today.modals.edit.lowPriority')}</option>
                   </select>
                 </div>
               </div>
@@ -79,7 +82,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
                 onClick={() => onRemoveItem(index)}
                 className="mt-2 rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
               >
-                Remove
+                {t('today.modals.checklist.remove')}
               </button>
             </div>
           ))}
@@ -91,7 +94,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
             onClick={onAddItem}
             className="w-full rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
           >
-            + Add another item
+            {t('today.modals.checklist.addAnotherItem')}
           </button>
         </div>
         
@@ -101,7 +104,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
             onClick={onCancel}
             className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -111,7 +114,7 @@ export const ChecklistAssignModal = memo(function ChecklistAssignModal({
               loading ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
-            {loading ? "Creating..." : "Create Checklist"}
+            {loading ? t('today.modals.checklist.creating') : t('today.modals.checklist.createChecklist')}
           </button>
         </div>
       </div>

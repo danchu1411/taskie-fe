@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import type { TodayItem, StatusValue } from "../hooks/useTodayData";
 
 interface TodayTaskCardProps {
@@ -21,21 +22,21 @@ function formatDateTime(value: string | null | undefined, options?: Intl.DateTim
   return new Date(timestamp).toLocaleString(undefined, options ?? { dateStyle: "medium", timeStyle: "short" });
 }
 
-function statusLabel(value: StatusValue) {
-  if (value === 1) return "In progress";
-  if (value === 2) return "Done";
-  if (value === 3) return "Skipped";
-  return "Planned";
+function statusLabel(value: StatusValue, t: (key: string) => string) {
+  if (value === 1) return t("today.status.inProgress");
+  if (value === 2) return t("today.status.done");
+  if (value === 3) return t("today.status.skipped");
+  return t("today.status.planned");
 }
 
-function priorityLabel(value: 1 | 2 | 3): string {
+function priorityLabel(value: 1 | 2 | 3, t: (key: string) => string): string {
   switch (value) {
     case 1:
-      return "Must";    // Fix: 1 = Must (same as TasksPage)
+      return t("today.priority.must");    // Fix: 1 = Must (same as TasksPage)
     case 2:
-      return "Should";  // 2 = Should (same as TasksPage)
+      return t("today.priority.should");  // 2 = Should (same as TasksPage)
     case 3:
-      return "Want";    // Fix: 3 = Want (same as TasksPage)
+      return t("today.priority.want");    // Fix: 3 = Want (same as TasksPage)
     default:
       return "";
   }
@@ -63,6 +64,7 @@ const StatusChip = memo(function StatusChip({
   onOpenModal: () => void; 
   disabled: boolean; 
 }) {
+  const { t } = useLanguage();
   const getStatusStyles = (status: StatusValue) => {
     switch (status) {
       case 1: // IN_PROGRESS
@@ -81,12 +83,12 @@ const StatusChip = memo(function StatusChip({
       type="button"
       onClick={onOpenModal}
       disabled={disabled}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50 ${getStatusStyles(status)}`}
-      title={`Status: ${statusLabel(status)}`}
-      aria-label={`Change status from ${statusLabel(status)}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50 whitespace-nowrap ${getStatusStyles(status)}`}
+      title={`Status: ${statusLabel(status, t)}`}
+      aria-label={`Change status from ${statusLabel(status, t)}`}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-      {statusLabel(status)}
+      {statusLabel(status, t)}
     </button>
   );
 });
@@ -101,6 +103,7 @@ export const TodayTaskCard = memo(function TodayTaskCard({
   onStart,
   onBack,
 }: TodayTaskCardProps) {
+  const { t } = useLanguage();
   const {
     attributes,
     listeners,
@@ -158,11 +161,11 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               type="button"
               onClick={onEdit}
               disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Edit"
-              aria-label="Edit task"
+              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 whitespace-nowrap"
+              title={t('today.buttons.edit')}
+              aria-label={t('today.buttons.edit')}
             >
-              Edit
+              {t('today.buttons.edit')}
             </button>
           )}
           {onChecklist && (
@@ -170,11 +173,11 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               type="button"
               onClick={onChecklist}
               disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Add Checklist"
-              aria-label="Add checklist items"
+              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 whitespace-nowrap"
+              title={t('today.buttons.checklist')}
+              aria-label={t('today.buttons.checklist')}
             >
-              Checklist
+              {t('today.buttons.checklist')}
             </button>
           )}
           {onSchedule && (
@@ -182,11 +185,11 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               type="button"
               onClick={onSchedule}
               disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Schedule"
-              aria-label="Schedule task"
+              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 whitespace-nowrap"
+              title={t('today.buttons.schedule')}
+              aria-label={t('today.buttons.schedule')}
             >
-              Schedule
+              {t('today.buttons.schedule')}
             </button>
           )}
           {onStart && (
@@ -194,11 +197,11 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               type="button"
               onClick={onStart}
               disabled={isUpdating}
-              className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-              title="Start Timer"
-              aria-label="Start focus timer"
+              className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-700 whitespace-nowrap"
+              title={t('today.buttons.start')}
+              aria-label={t('today.buttons.start')}
             >
-              Start
+              {t('today.buttons.start')}
             </button>
           )}
           {onBack && (
@@ -206,11 +209,11 @@ export const TodayTaskCard = memo(function TodayTaskCard({
               type="button"
               onClick={onBack}
               disabled={isUpdating}
-              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
-              title="Back to Planned"
-              aria-label="Move back to planned"
+              className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 whitespace-nowrap"
+              title={t('today.buttons.back')}
+              aria-label={t('today.buttons.back')}
             >
-              Back
+              {t('today.buttons.back')}
             </button>
           )}
           </div>
@@ -243,13 +246,13 @@ export const TodayTaskCard = memo(function TodayTaskCard({
             return null;
           })()}
           {item.priority && (
-            <span className={`flex items-center gap-1 ${getPriorityStyles(item.priority)}`}>
+            <span className={`flex items-center gap-1 whitespace-nowrap ${getPriorityStyles(item.priority)}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${
                 item.priority === 1 ? 'bg-red-500' :    // Fix: 1 = Must (red)
                 item.priority === 2 ? 'bg-blue-500' :   // 2 = Should (blue)
                 'bg-slate-400'                          // Fix: 3 = Want (grey)
               }`}></span>
-              {priorityLabel(item.priority)}
+              {priorityLabel(item.priority, t)}
             </span>
           )}
           {item.deadline && (

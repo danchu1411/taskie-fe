@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import type { TodayItem } from "../hooks/useTodayData";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 interface EditTaskModalProps {
   open: boolean;
@@ -32,6 +33,8 @@ export const EditTaskModal = memo(function EditTaskModal({
   onCancel,
   loading,
 }: EditTaskModalProps) {
+  const { t } = useLanguage();
+  
   // Get current time in local timezone for min attribute
   const minDateTime = useMemo(() => {
     const now = new Date();
@@ -58,13 +61,13 @@ export const EditTaskModal = memo(function EditTaskModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Edit Task</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t('today.modals.edit.title')}</h3>
         </div>
         
         <div className="space-y-4">
           <div>
             <label htmlFor="edit-title" className="block text-sm font-medium text-slate-700 mb-1">
-              Title
+              {t('today.modals.edit.taskTitle')}
             </label>
             <input
               id="edit-title"
@@ -77,7 +80,7 @@ export const EditTaskModal = memo(function EditTaskModal({
           
           <div>
             <label htmlFor="edit-description" className="block text-sm font-medium text-slate-700 mb-1">
-              Description (optional)
+              {t('today.modals.edit.description')}
             </label>
             <textarea
               id="edit-description"
@@ -90,7 +93,7 @@ export const EditTaskModal = memo(function EditTaskModal({
           
           <div>
             <label htmlFor="edit-deadline" className="block text-sm font-medium text-slate-700 mb-1">
-              Deadline (optional)
+              {t('today.modals.edit.deadline')}
             </label>
             <input
               id="edit-deadline"
@@ -109,14 +112,14 @@ export const EditTaskModal = memo(function EditTaskModal({
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                Cannot set deadline in the past. Please select a future time.
+                {t('today.modals.edit.cannotSetPastDeadline')}
               </p>
             )}
           </div>
           
           <div>
             <label htmlFor="edit-priority" className="block text-sm font-medium text-slate-700 mb-1">
-              Priority
+              {t('today.modals.edit.priority')}
             </label>
             <select
               id="edit-priority"
@@ -127,10 +130,10 @@ export const EditTaskModal = memo(function EditTaskModal({
               }}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
-              <option value="">No priority</option>
-              <option value={1}>High</option>
-              <option value={2}>Medium</option>
-              <option value={3}>Low</option>
+              <option value="">{t('today.modals.edit.noPriority')}</option>
+              <option value={1}>{t('today.modals.edit.highPriority')}</option>
+              <option value={2}>{t('today.modals.edit.mediumPriority')}</option>
+              <option value={3}>{t('today.modals.edit.lowPriority')}</option>
             </select>
           </div>
         </div>
@@ -141,7 +144,7 @@ export const EditTaskModal = memo(function EditTaskModal({
             onClick={onCancel}
             className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -151,7 +154,7 @@ export const EditTaskModal = memo(function EditTaskModal({
               (loading || isPastDeadline) ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t('today.modals.edit.saving') : t('today.modals.edit.saveChanges')}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import type { TodayItem, StatusValue } from "../hooks/useTodayData";
 import { STATUS } from "../hooks/useTodayData";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 interface StatusPickerModalProps {
   open: boolean;
@@ -10,49 +11,6 @@ interface StatusPickerModalProps {
   loading: boolean;
 }
 
-const statusOptions = [
-  { 
-    value: STATUS.PLANNED, 
-    label: "Planned", 
-    description: "Task is planned but not started",
-    dotColor: "bg-blue-500",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
-    hoverColor: "hover:bg-blue-100",
-    textColor: "text-blue-700"
-  },
-  { 
-    value: STATUS.IN_PROGRESS, 
-    label: "In Progress", 
-    description: "Currently working on this task",
-    dotColor: "bg-amber-500",
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-200",
-    hoverColor: "hover:bg-amber-100",
-    textColor: "text-amber-700"
-  },
-  { 
-    value: STATUS.DONE, 
-    label: "Done", 
-    description: "Task has been completed",
-    dotColor: "bg-green-500",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-200",
-    hoverColor: "hover:bg-green-100",
-    textColor: "text-green-700"
-  },
-  { 
-    value: STATUS.SKIPPED, 
-    label: "Skipped", 
-    description: "Task was skipped or cancelled",
-    dotColor: "bg-slate-400",
-    bgColor: "bg-slate-50",
-    borderColor: "border-slate-200",
-    hoverColor: "hover:bg-slate-100",
-    textColor: "text-slate-600"
-  },
-];
-
 export const StatusPickerModal = memo(function StatusPickerModal({
   open,
   selectedItem,
@@ -60,13 +18,58 @@ export const StatusPickerModal = memo(function StatusPickerModal({
   onCancel,
   loading,
 }: StatusPickerModalProps) {
+  const { t } = useLanguage();
+  
+  const statusOptions = [
+    { 
+      value: STATUS.PLANNED, 
+      label: t('today.status.planned'), 
+      description: t('today.modals.status.plannedDesc'),
+      dotColor: "bg-blue-500",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200",
+      hoverColor: "hover:bg-blue-100",
+      textColor: "text-blue-700"
+    },
+    { 
+      value: STATUS.IN_PROGRESS, 
+      label: t('today.status.inProgress'), 
+      description: t('today.modals.status.inProgressDesc'),
+      dotColor: "bg-amber-500",
+      bgColor: "bg-amber-50",
+      borderColor: "border-amber-200",
+      hoverColor: "hover:bg-amber-100",
+      textColor: "text-amber-700"
+    },
+    { 
+      value: STATUS.DONE, 
+      label: t('today.status.done'), 
+      description: t('today.modals.status.doneDesc'),
+      dotColor: "bg-green-500",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-200",
+      hoverColor: "hover:bg-green-100",
+      textColor: "text-green-700"
+    },
+    { 
+      value: STATUS.SKIPPED, 
+      label: t('today.status.skipped'), 
+      description: t('today.modals.status.skippedDesc'),
+      dotColor: "bg-slate-400",
+      bgColor: "bg-slate-50",
+      borderColor: "border-slate-200",
+      hoverColor: "hover:bg-slate-100",
+      textColor: "text-slate-600"
+    },
+  ];
+  
   if (!open || !selectedItem) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-slate-900">Change Status</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t('today.modals.status.title')}</h3>
           <p className="text-sm text-slate-600">{selectedItem.title}</p>
         </div>
         
@@ -117,7 +120,7 @@ export const StatusPickerModal = memo(function StatusPickerModal({
             onClick={onCancel}
             className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

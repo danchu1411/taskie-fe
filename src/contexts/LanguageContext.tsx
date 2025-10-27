@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Language } from '../i18n';
-import { translations, getTranslation } from '../i18n';
+import { getTranslation } from '../i18n';
 
 interface LanguageContextValue {
   language: Language;

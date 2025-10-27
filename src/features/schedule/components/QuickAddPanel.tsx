@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { Button, Input } from "../../../components/ui";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 interface QuickAddPanelProps {
   open: boolean;
@@ -14,6 +15,8 @@ interface QuickAddPanelProps {
 
 export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
   ({ open, title, onTitleChange, onAdd, onCancel, error, loading, inputRef }, ref) => {
+    const { t } = useLanguage();
+    
     return (
       <div
         ref={ref}
@@ -30,7 +33,7 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <span className="text-sm font-bold">+</span>
           </div>
-          <h3 className="font-semibold text-slate-800">Quick Add Task</h3>
+          <h3 className="font-semibold text-slate-800">{t('today.modals.quickAdd')}</h3>
         </div>
         <div className="space-y-3">
           <Input
@@ -43,7 +46,7 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
                 onAdd(title);
               }
             }}
-            placeholder="What needs to be done?"
+            placeholder={t('today.modals.quickAddPlaceholder')}
             size="lg"
             className="bg-slate-50 focus:bg-white"
             disabled={!open}
@@ -57,7 +60,7 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
               className="flex-1"
               disabled={!open}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -68,7 +71,7 @@ export const QuickAddPanel = forwardRef<HTMLDivElement, QuickAddPanelProps>(
               loading={loading}
               className="flex-1"
             >
-              Add Task
+              {t('today.modals.quickAddButton')}
             </Button>
           </div>
           {error && (

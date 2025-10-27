@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { getNextDuration } from "../constants";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import type { TodayItem } from "../hooks/useTodayData";
 
 interface FocusTimerBottomSheetProps {
@@ -40,6 +41,8 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
   onSkipBreaksChange,
   onTaskSelect,
 }: FocusTimerBottomSheetProps) {
+  const { t } = useLanguage();
+  
   // Debug: Log conditions for dropdown visibility
   console.log('FocusTimer Debug:', {
     timerRunning,
@@ -64,11 +67,11 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
         <div className="mx-auto max-w-md px-8 py-8">
           {/* Header */}
           <div className="mb-8 text-center">
-            <h3 className="text-xl font-semibold text-gray-900">Focus Session</h3>
+            <h3 className="text-xl font-semibold text-gray-900">{t('today.timer.session')}</h3>
             {timerItem ? (
               <p className="mt-1 text-sm text-gray-600">{timerItem.title}</p>
             ) : (
-              <p className="mt-1 text-sm text-gray-600">Select a task to focus on</p>
+              <p className="mt-1 text-sm text-gray-600">{t('today.timer.focus')}</p>
             )}
           </div>
 
@@ -76,7 +79,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
           {!timerRunning && !timerItem && availableTasks.length > 0 && (
             <div className="mb-8">
               <label htmlFor="task-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Choose a task
+                {t('today.timer.focus')}
               </label>
               <select
                 id="task-select"
@@ -89,11 +92,11 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3"
                 defaultValue=""
               >
-                <option value="" disabled>Select a task...</option>
+                <option value="" disabled>{t('today.modals.quickAddPlaceholder')}</option>
                 {availableTasks.map((task) => (
                   <option key={task.id} value={task.id}>
                     {task.parentTitle ? `${task.parentTitle} › ` : ''}{task.title}
-                    {task.plannedMinutes ? ` (${task.plannedMinutes} min)` : ''}
+                    {task.plannedMinutes ? ` (${task.plannedMinutes} ${t('common.minutes')})` : ''}
                   </option>
                 ))}
               </select>
@@ -113,7 +116,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
           {!timerRunning && (
             <div className="mb-8">
               <div className="text-center mb-6">
-                <label className="text-sm font-medium text-gray-700">Total Duration</label>
+                <label className="text-sm font-medium text-gray-700">{t('today.timer.customDuration')}</label>
                 <div className="mt-3 flex items-center justify-center gap-4">
                   <button
                     type="button"
@@ -126,7 +129,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                   </button>
                   <div className="text-center">
                     <div className="text-2xl font-medium text-gray-900">{customDuration}</div>
-                    <div className="text-sm text-gray-600">minutes</div>
+                    <div className="text-sm text-gray-600">{t('common.minutes') || 'minutes'}</div>
                   </div>
                   <button
                     type="button"
@@ -153,7 +156,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                   htmlFor="skip-breaks-toggle"
                   className={`text-sm font-medium ${timerRunning ? 'text-gray-400' : 'text-gray-700 cursor-pointer'}`}
                 >
-                  Skip breaks
+                  {t('today.timer.skipBreaks')}
                 </label>
               </div>
               
@@ -166,7 +169,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
-                  <span className="font-medium">Start {customDuration}min Session</span>
+                  <span className="font-medium">{t('common.start') || 'Start'} {customDuration}min {t('today.timer.session')}</span>
                 </button>
               </div>
             </div>
@@ -183,7 +186,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                 </svg>
-                <span className="font-medium">Pause</span>
+                <span className="font-medium">{t('today.timer.pause')}</span>
               </button>
             </div>
           )}
@@ -195,7 +198,7 @@ export const FocusTimerBottomSheet = memo(function FocusTimerBottomSheet({
               onClick={onClose}
               className="text-sm text-gray-500 hover:text-gray-700 transition"
             >
-              Close
+              {t('common.close')}
             </button>
           </div>
         </div>

@@ -18,6 +18,7 @@ import { useStreakConfetti } from "../stats/hooks/useStreakConfetti";
 import { useStreakToast } from "../stats/hooks/useStreakToast";
 import StreakToast from "../stats/components/StreakToast";
 import { useAuth } from "../auth/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { NavigationBar, SystemError, ChecklistItemModal } from "../../components/ui";
 import { WallpaperBackground } from "../../components/WallpaperBackground";
 import { useTodayKeyboardShortcuts } from "./hooks/useTodayKeyboardShortcuts";
@@ -37,11 +38,11 @@ import { FocusTimerFullscreen } from "./components/FocusTimerFullscreen";
 import { FocusTimerBottomSheet } from "./components/FocusTimerBottomSheet";
 import type { TaskRecord, ChecklistItemRecord, WorkItemRecord } from "../../lib/types";
 
-function statusLabel(value: StatusValue) {
-  if (value === STATUS.IN_PROGRESS) return "In progress";
-  if (value === STATUS.DONE) return "Done";
-  if (value === STATUS.SKIPPED) return "Skipped";
-  return "Planned";
+function statusLabel(value: StatusValue, t: (key: string) => string) {
+  if (value === STATUS.IN_PROGRESS) return t("today.status.inProgress");
+  if (value === STATUS.DONE) return t("today.status.done");
+  if (value === STATUS.SKIPPED) return t("today.status.skipped");
+  return t("today.status.planned");
 }
 
 function clsx(...parts: Array<string | false | null | undefined>) {
@@ -96,6 +97,8 @@ type StatusChipProps = {
 };
 
 const StatusChip = memo(function StatusChip({ status, onOpenModal, disabled }: StatusChipProps) {
+  const { t } = useLanguage();
+  
   return (
     <button
       type="button"
@@ -113,7 +116,7 @@ const StatusChip = memo(function StatusChip({ status, onOpenModal, disabled }: S
         status === STATUS.SKIPPED && "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
         disabled && "cursor-not-allowed opacity-60",
       )}
-      aria-label={"Change status from " + statusLabel(status)}
+      aria-label={"Change status from " + statusLabel(status, t)}
       aria-disabled={disabled ? "true" : undefined}
       title="Click to select status"
     >
@@ -124,7 +127,7 @@ const StatusChip = memo(function StatusChip({ status, onOpenModal, disabled }: S
         status === STATUS.DONE && "bg-green-500",
         status === STATUS.SKIPPED && "bg-slate-400",
       )} aria-hidden />
-      {statusLabel(status)}
+      {statusLabel(status, t)}
     </button>
   );
 });
@@ -149,6 +152,7 @@ const ProgressOverview = memo(function ProgressOverview({
   completedCount,
   progressValue,
 }: ProgressOverviewProps) {
+  const { t } = useLanguage();
   return (
     <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-lg bg-white p-4 shadow-sm border border-slate-200">
@@ -159,7 +163,7 @@ const ProgressOverview = memo(function ProgressOverview({
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Total Tasks</p>
+            <p className="text-sm font-medium text-slate-600">{t('today.progress.totalTasks')}</p>
             <p className="text-2xl font-bold text-slate-900">{totalTasks}</p>
           </div>
         </div>
@@ -173,7 +177,7 @@ const ProgressOverview = memo(function ProgressOverview({
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">In Progress</p>
+            <p className="text-sm font-medium text-slate-600">{t('today.progress.inProgress')}</p>
             <p className="text-2xl font-bold text-slate-900">{inProgressCount}</p>
           </div>
         </div>
@@ -187,7 +191,7 @@ const ProgressOverview = memo(function ProgressOverview({
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Completed</p>
+            <p className="text-sm font-medium text-slate-600">{t('today.progress.completed')}</p>
             <p className="text-2xl font-bold text-slate-900">{completedCount}</p>
           </div>
         </div>
@@ -199,7 +203,7 @@ const ProgressOverview = memo(function ProgressOverview({
             <Ring value={progressValue} />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Progress</p>
+            <p className="text-sm font-medium text-slate-600">{t('today.progress.progress')}</p>
             <p className="text-2xl font-bold text-slate-900">{progressValue}%</p>
           </div>
         </div>
@@ -276,6 +280,7 @@ interface StatusMutationPayload {
 }
 function TodayPageContent({ onNavigate }: TodayPageProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
 
@@ -1219,11 +1224,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                     {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
                   <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl">
-                    Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user?.name?.split(' ')[0] ?? 'there'}
+                    {new Date().getHours() < 12 ? t('today.greeting.morning') : new Date().getHours() < 18 ? t('today.greeting.afternoon') : t('today.greeting.evening')}, {user?.name?.split(' ')[0] ?? 'there'}
                   </h1>
                   <div className="h-1 w-24 bg-gradient-to-r from-white/80 to-white/60 rounded-full shadow-lg"></div>
                   <p className="text-lg font-medium text-white/95 drop-shadow-lg">
-                    Let's focus on what matters today.
+                    {t('today.subtitle')}
                   </p>
                 </div>
                 
@@ -1235,7 +1240,7 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">⏱</span>
-                      <span className="font-medium">Start Focus</span>
+                      <span className="font-medium">{t('today.buttons.start')}</span>
                     </div>
                   </button>
                 </div>
@@ -1250,15 +1255,15 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           <div className="mb-6">
             <SystemError
               variant="error"
-              title="Unable to load today schedule"
-              message={errorMessage}
-              actions={[
-                {
-                  label: 'Retry',
-                  onClick: handleRetry,
-                  variant: 'primary'
-                }
-              ]}
+            title={t('today.modals.errorTitle')}
+            message={errorMessage}
+            actions={[
+              {
+                label: t('today.modals.errorRetry'),
+                onClick: handleRetry,
+                variant: 'primary'
+              }
+            ]}
             />
           </div>
         )}
@@ -1267,11 +1272,11 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
           <div className="mb-6">
             <SystemError
               variant="warning"
-              title="Operation failed"
+              title={t('today.modals.operationFailed')}
               message={statusError}
               actions={[
                 {
-                  label: 'Dismiss',
+                  label: t('today.modals.dismiss'),
                   onClick: () => setStatusError(null),
                   variant: 'secondary'
                 }
@@ -1295,8 +1300,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
         <div className="grid gap-8 lg:grid-cols-3">
           <TodaySection
             id="planned-column"
-            title="Planned"
-            subtitle="Ready to start"
+            title={t('today.sections.planned')}
+            subtitle={t('today.sections.plannedSubtitle')}
             icon="📋"
             iconBg="bg-blue-50"
             iconText="text-blue-600"
@@ -1315,8 +1320,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
           <TodaySection
             id="in-progress-column"
-            title="In Progress"
-            subtitle="Currently working on"
+            title={t('today.sections.inProgress')}
+            subtitle={t('today.sections.inProgressSubtitle')}
             icon="⏳"
             iconBg="bg-amber-50"
             iconText="text-amber-600"
@@ -1335,8 +1340,8 @@ function TodayPageContent({ onNavigate }: TodayPageProps) {
 
           <TodaySection
             id="completed-column"
-            title="Done"
-            subtitle="Completed tasks"
+            title={t('today.sections.done')}
+            subtitle={t('today.sections.doneSubtitle')}
             icon="✓"
             iconBg="bg-green-50"
             iconText="text-green-600"
