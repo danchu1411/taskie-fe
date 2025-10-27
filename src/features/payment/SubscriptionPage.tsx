@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { QRPaymentModal } from './QRPaymentModal';
 import { motion } from 'framer-motion';
 import { NavigationBar } from '../../components/ui';
+import { useAuth } from '../auth/AuthContext';
+import { sendInvoice, createInvoiceData } from '../../lib/payment-service';
 
 interface SubscriptionPlan {
   id: string;
@@ -17,6 +19,7 @@ interface SubscriptionPageProps {
 }
 
 export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
@@ -60,7 +63,7 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
     }, 3000);
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
     setShowPayment(false);
     
     // Save premium status to localStorage
@@ -70,6 +73,25 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
       planName: selectedPlan?.name,
       subscribedAt: new Date().toISOString()
     }));
+    
+    // Send invoice email to user
+    if (selectedPlan && user?.email) {
+      try {
+        const invoiceData = createInvoiceData(
+          selectedPlan.id,
+          selectedPlan.name,
+          selectedPlan.price,
+          user.email,
+          user.name || ''
+        );
+        
+        await sendInvoice(invoiceData);
+        console.log('✓ Invoice email sent successfully');
+      } catch (error) {
+        console.error('⚠ Failed to send invoice email:', error);
+        // Don't block the flow if email fails
+      }
+    }
     
     setShowSuccess(true);
     
