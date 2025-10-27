@@ -3,6 +3,7 @@ import { QRPaymentModal } from './QRPaymentModal';
 import { motion } from 'framer-motion';
 import { NavigationBar } from '../../components/ui';
 import { useAuth } from '../auth/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { sendInvoice, createInvoiceData } from '../../lib/payment-service';
 
 interface SubscriptionPlan {
@@ -20,6 +21,7 @@ interface SubscriptionPageProps {
 
 export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
@@ -115,13 +117,13 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
             className="mb-4"
           >
             <div className="text-sm font-semibold tracking-wider text-blue-600 uppercase mb-3">
-              Premium Subscription
+              {t('payment.subscription.badge')}
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl mb-4">
-              Nâng cấp lên Taskie Premium
+              {t('payment.subscription.title')}
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Khám phá tất cả tính năng premium với gói subscription
+              {t('payment.subscription.subtitle')}
             </p>
           </motion.div>
         </div>
@@ -143,7 +145,7 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
             >
               {plan.isPopular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
-                  Phổ biến nhất
+                  {t('payment.subscription.popular')}
                 </div>
               )}
 
@@ -180,7 +182,7 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
                   disabled
                   className="w-full py-4 px-6 rounded-xl bg-gray-400 text-white font-semibold shadow-lg cursor-not-allowed"
                 >
-                  Bạn đã đăng ký rồi
+                  {t('payment.subscription.alreadySubscribed')}
                 </button>
               ) : (
                 <button
@@ -188,14 +190,14 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
                   disabled={isLoadingQR}
                   className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoadingQR ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                      <span>Đang tải QR...</span>
-                    </div>
-                  ) : (
-                    'Đăng ký ngay'
-                  )}
+                {isLoadingQR ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                    <span>{t('payment.subscription.loadingQR')}</span>
+                  </div>
+                ) : (
+                  t('payment.subscription.registerNow')
+                )}
                 </button>
               )}
             </motion.div>
@@ -234,13 +236,13 @@ export function SubscriptionPage({ onNavigate }: SubscriptionPageProps) {
                   </svg>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Thanh toán thành công!
+                  {t('payment.qrModal.success')}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Cảm ơn bạn đã đăng ký {selectedPlan?.name}
+                  {t('payment.qrModal.thankYou')} {selectedPlan?.name}
                 </p>
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-sm text-gray-500 mt-3">Đang chuyển hướng...</p>
+                <p className="text-sm text-gray-500 mt-3">{t('payment.qrModal.redirecting')}</p>
               </div>
             </motion.div>
           </div>

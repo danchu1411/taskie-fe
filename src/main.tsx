@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './features/auth/AuthContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 import ErrorBoundary from './components/ErrorBoundary'
 
 // Import production enforcement (only in production builds)
@@ -18,11 +19,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={qc}>
-        <AuthProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
+        </LanguageProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,

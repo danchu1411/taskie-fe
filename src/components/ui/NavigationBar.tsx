@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../features/auth/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 // Utility function
 function clsx(...parts: Array<string | false | null | undefined>) {
@@ -13,6 +14,7 @@ interface NavigationBarProps {
 
 export default function NavigationBar({ onNavigate, activeNav = "today" }: NavigationBarProps) {
   const { user, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -58,7 +60,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
   const navigationItems = [
     { 
       id: "today", 
-      label: "Today", 
+      label: t("nav.today"), 
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -67,7 +69,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
     },
     { 
       id: "tasks", 
-      label: "Tasks", 
+      label: t("nav.tasks"), 
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -76,7 +78,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
     },
     { 
       id: "planner", 
-      label: "Planner", 
+      label: t("nav.planner"), 
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -85,7 +87,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
     },
     { 
       id: "stats", 
-      label: "Stats", 
+      label: t("nav.stats"), 
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -184,7 +186,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V2.75A.75.75 0 0112 2h.25a.25.25 0 000-.5H12a.75.75 0 01-.75-.75V.5a.75.75 0 011.5 0v.25a.25.25 0 00.5 0V.75a.75.75 0 011.5 0v.255a.25.25 0 00.5 0V.75A.75.75 0 0116 .75v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V2.75a.75.75 0 011.5 0v14.5a.75.75 0 01-1.5 0v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V19.25a.75.75 0 011.5 0v.25a.25.25 0 00.5 0v-.25a.75.75 0 01.75-.75h.25a.25.25 0 000-.5h-.25a.75.75 0 01-.75-.75v-.255a.25.25 0 00-.5 0v.25a.75.75 0 01-1.5 0V2.75A.75.75 0 014 2.75v14.5a.75.75 0 01-1.5 0v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75H1.5a.75.75 0 01-.75-.75V2.75A.75.75 0 011.5 2h.25a.25.25 0 000-.5H1.5A.75.75 0 01.75.75V.5a.75.75 0 011.5 0v.25a.25.25 0 00.5 0V.75a.75.75 0 011.5 0v.255a.25.25 0 00.5 0V.75A.75.75 0 018 .75v-.25a.25.25 0 00-.5 0v.25A.75.75 0 016.75.75h-.25a.25.25 0 000 .5h.25A.75.75 0 017.5 2v.255a.25.25 0 00.5 0V2.75A.75.75 0 018.75 2h.5A.75.75 0 0110 2.75v-.255a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75V2.75a.75.75 0 01-.75.75A.75.75 0 0110 2z" clipRule="evenodd" />
             </svg>
-            Upgrade
+            {t("nav.upgrade")}
           </button>
         </nav>
 
@@ -213,6 +215,23 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
                     <div className="text-xs text-slate-500">{user?.email || "guest@example.com"}</div>
                   </div>
                   
+                  {/* Language Switcher */}
+                  <div className="border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                      className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors duration-150 flex items-center gap-3"
+                    >
+                      <span className="text-xl">
+                        {language === 'vi' ? '🇻🇳' : '🇬🇧'}
+                      </span>
+                      <span>{language === 'vi' ? 'Tiếng Việt' : 'English'}</span>
+                      <svg className="h-4 w-4 ml-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  </div>
+
                   {/* Menu Items */}
                   <div className="border-t border-slate-100">
                     <button
@@ -224,7 +243,7 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        Log out
+                        {t("user.logout")}
                       </div>
                     </button>
                   </div>
