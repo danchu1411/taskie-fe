@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { StudyProfileSummary } from '../study-profile/components/StudyProfileSummary';
+import { DonationModal } from '../payment/DonationModal';
 
 interface SettingsPageProps {
   onNavigate: (path: string) => void;
 }
 
 export function SettingsPage({ onNavigate }: SettingsPageProps) {
+  const [showDonation, setShowDonation] = useState(false);
+
   const handleEditProfile = () => {
     onNavigate('/study-profile/quiz');
   };
@@ -30,6 +34,33 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </p>
             
             <StudyProfileSummary onEdit={handleEditProfile} />
+          </div>
+
+          {/* Subscription Section */}
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-md p-6 border-2 border-blue-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Premium</h2>
+              <div className="text-2xl">⭐</div>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Nâng cấp để truy cập tất cả tính năng premium của Taskie.
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => onNavigate('/subscription')}
+                className="w-full py-3 px-4 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+              >
+                Xem các gói Premium
+              </button>
+              <button
+                onClick={() => setShowDonation(true)}
+                className="w-full py-3 px-4 rounded-lg bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors border-2 border-gray-300"
+              >
+                ❤️ Ủng hộ Taskie
+              </button>
+            </div>
           </div>
 
           {/* Other Settings Sections */}
@@ -117,6 +148,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
           </div>
         </div>
       </div>
+
+      {showDonation && <DonationModal onClose={() => setShowDonation(false)} />}
     </div>
   );
 }

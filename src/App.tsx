@@ -15,6 +15,7 @@ import TasksPage from "./features/tasks/TasksPage";
 import { StudyProfileQuiz } from "./features/study-profile/StudyProfileQuiz";
 import { setNavigateFunction } from "./lib/navigation-utils";
 import { SettingsPage } from "./features/settings/SettingsPage";
+import { SubscriptionPage } from "./features/payment/SubscriptionPage";
 import { AISuggestionsPage } from "./features/ai-suggestions/AISuggestionsPage";
 import StatsPage from "./features/stats/StatsPage";
 
@@ -207,6 +208,16 @@ function SettingsRoute() {
   );
 }
 
+function SubscriptionRoute() {
+  const navigate = useNavigationHandler();
+  
+  return (
+    <RequireAuthRoute>
+      <SubscriptionPage onNavigate={navigate} />
+    </RequireAuthRoute>
+  );
+}
+
 function AISuggestionsRoute() {
   const navigate = useNavigationHandler();
   
@@ -336,6 +347,7 @@ function App() {
       <Route path="/error" element={<ErrorRoute />} />
       <Route path="/study-profile/quiz" element={<StudyProfileQuizRoute />} />
       <Route path="/settings" element={<SettingsRoute />} />
+      <Route path="/subscription" element={<SubscriptionRoute />} />
       <Route path="/ai-suggestions" element={<AISuggestionsRoute />} />
       <Route path="/today" element={<TodayRoute />} />
       <Route path="/tasks" element={<TasksRoute />} />

@@ -8,7 +8,7 @@ function clsx(...parts: Array<string | false | null | undefined>) {
 
 interface NavigationBarProps {
   onNavigate?: (path: string) => void;
-  activeNav?: "today" | "tasks" | "planner" | "stats";
+  activeNav?: "today" | "tasks" | "planner" | "stats" | "subscription" | "pricing";
 }
 
 export default function NavigationBar({ onNavigate, activeNav = "today" }: NavigationBarProps) {
@@ -119,6 +119,9 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
       case "stats":
         onNavigate("/stats");
         break;
+      case "pricing":
+        onNavigate("/subscription");
+        break;
     }
   };
 
@@ -166,8 +169,25 @@ export default function NavigationBar({ onNavigate, activeNav = "today" }: Navig
               {nav.label}
             </button>
           ))}
+          
+          {/* Upgrade Button */}
+          <button
+            type="button"
+            onClick={() => handleNavigation("pricing")}
+            className={clsx(
+              "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-200",
+              activeNav === "subscription" || activeNav === "pricing"
+                ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md"
+                : "text-slate-600 hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-600 hover:text-white hover:shadow-md hover:scale-105"
+            )}
+          >
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V2.75A.75.75 0 0112 2h.25a.25.25 0 000-.5H12a.75.75 0 01-.75-.75V.5a.75.75 0 011.5 0v.25a.25.25 0 00.5 0V.75a.75.75 0 011.5 0v.255a.25.25 0 00.5 0V.75A.75.75 0 0116 .75v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V2.75a.75.75 0 011.5 0v14.5a.75.75 0 01-1.5 0v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75v.255a.25.25 0 00.5 0V19.25a.75.75 0 011.5 0v.25a.25.25 0 00.5 0v-.25a.75.75 0 01.75-.75h.25a.25.25 0 000-.5h-.25a.75.75 0 01-.75-.75v-.255a.25.25 0 00-.5 0v.25a.75.75 0 01-1.5 0V2.75A.75.75 0 014 2.75v14.5a.75.75 0 01-1.5 0v-.25a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75H1.5a.75.75 0 01-.75-.75V2.75A.75.75 0 011.5 2h.25a.25.25 0 000-.5H1.5A.75.75 0 01.75.75V.5a.75.75 0 011.5 0v.25a.25.25 0 00.5 0V.75a.75.75 0 011.5 0v.255a.25.25 0 00.5 0V.75A.75.75 0 018 .75v-.25a.25.25 0 00-.5 0v.25A.75.75 0 016.75.75h-.25a.25.25 0 000 .5h.25A.75.75 0 017.5 2v.255a.25.25 0 00.5 0V2.75A.75.75 0 018.75 2h.5A.75.75 0 0110 2.75v-.255a.25.25 0 00-.5 0v.25a.75.75 0 01-.75.75h-.25a.25.25 0 000 .5h.25a.75.75 0 01.75.75V2.75a.75.75 0 01-.75.75A.75.75 0 0110 2z" clipRule="evenodd" />
+            </svg>
+            Upgrade
+          </button>
         </nav>
-        
+
         {/* User Profile Dropdown */}
         <div className="flex items-center">
           <div className="relative" data-dropdown>
