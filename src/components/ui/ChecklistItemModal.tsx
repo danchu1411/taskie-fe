@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { STATUS, PRIORITY } from '../../lib';
 import type { ChecklistItemRecord, StatusValue, PriorityValue } from '../../lib';
 import { Button, Input } from './index';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ChecklistItemModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export default function ChecklistItemModal({
   taskPriority,
   isLoading = false
 }: ChecklistItemModalProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -105,12 +107,13 @@ export default function ChecklistItemModal({
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-              {item ? "Edit Checklist Item" : "Add New Checklist Item"}
+              {item ? t('tasks.modal.editTitle') : t('today.modals.checklist.title')}
             </h2>
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 transition-colors"
               disabled={isLoading}
+              aria-label={t('common.close')}
             >
               <span className="text-2xl">×</span>
             </button>
@@ -120,13 +123,13 @@ export default function ChecklistItemModal({
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Title *
+                {t('tasks.modal.titleLabel')} *
               </label>
               <Input
                 type="text"
                 value={formData.title}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('title', e.target.value)}
-                placeholder="Enter checklist item title"
+                placeholder={t('today.modals.checklist.itemTitle')}
                 className={errors.title ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
                 disabled={isLoading}
               />
@@ -138,7 +141,7 @@ export default function ChecklistItemModal({
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Status
+                {t('tasks.modal.statusLabel')}
               </label>
               <select
                 value={formData.status}
@@ -146,17 +149,17 @@ export default function ChecklistItemModal({
                 className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 disabled={isLoading}
               >
-                <option value={STATUS.PLANNED}>Planned</option>
-                <option value={STATUS.IN_PROGRESS}>In Progress</option>
-                <option value={STATUS.DONE}>Done</option>
-                <option value={STATUS.SKIPPED}>Skipped</option>
+                <option value={STATUS.PLANNED}>{t('today.status.planned')}</option>
+                <option value={STATUS.IN_PROGRESS}>{t('today.status.inProgress')}</option>
+                <option value={STATUS.DONE}>{t('today.status.done')}</option>
+                <option value={STATUS.SKIPPED}>{t('today.status.skipped')}</option>
               </select>
             </div>
 
             {/* Priority */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Priority
+                {t('tasks.modal.priorityLabel')}
               </label>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -168,7 +171,7 @@ export default function ChecklistItemModal({
                     disabled={isLoading}
                   />
                   <span className="ml-2 text-sm text-slate-600">
-                    Use task priority {taskPriority && `(${taskPriority === PRIORITY.MUST ? 'Must' : taskPriority === PRIORITY.SHOULD ? 'Should' : 'Want'})`}
+                    Use task priority {taskPriority && `(${t('today.priority.' + (taskPriority === PRIORITY.MUST ? 'must' : taskPriority === PRIORITY.SHOULD ? 'should' : 'want'))})`}
                   </span>
                 </label>
                 
@@ -179,10 +182,10 @@ export default function ChecklistItemModal({
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     disabled={isLoading}
                   >
-                    <option value="">No priority</option>
-                    <option value={PRIORITY.MUST}>Must (High)</option>
-                    <option value={PRIORITY.SHOULD}>Should (Medium)</option>
-                    <option value={PRIORITY.WANT}>Want (Low)</option>
+                    <option value="">{t('today.modals.edit.noPriority')}</option>
+                    <option value={PRIORITY.MUST}>{t('today.priority.must')}</option>
+                    <option value={PRIORITY.SHOULD}>{t('today.priority.should')}</option>
+                    <option value={PRIORITY.WANT}>{t('today.priority.want')}</option>
                   </select>
                 )}
               </div>
@@ -191,7 +194,7 @@ export default function ChecklistItemModal({
             {/* Deadline */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Deadline
+                {t('tasks.modal.deadlineLabel')}
               </label>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -234,7 +237,7 @@ export default function ChecklistItemModal({
                 disabled={isLoading}
                 className="w-full sm:w-auto order-2 sm:order-1"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -242,7 +245,7 @@ export default function ChecklistItemModal({
                 disabled={isLoading || !formData.title.trim()}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
-                {isLoading ? "Saving..." : item ? "Update Item" : "Add Item"}
+                {isLoading ? t('common.save') : item ? t('common.save') : t('today.modals.checklist.createChecklist')}
               </Button>
             </div>
           </form>

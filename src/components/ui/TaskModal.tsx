@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { Button, Input } from "./";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { TaskRecord, StatusValue, PriorityValue } from "../../lib";
 import { STATUS, PRIORITY } from "../../lib";
 
@@ -18,6 +19,7 @@ export default function TaskModal({
   task, 
   isLoading = false 
 }: TaskModalProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -89,14 +91,14 @@ export default function TaskModal({
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-              {task ? "Edit Task" : "Create New Task"}
+              {task ? t('tasks.modal.editTitle') : t('tasks.modal.createTitle')}
             </h2>
             <button
               type="button"
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 transition-colors"
               disabled={isLoading}
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <span className="text-2xl" aria-hidden>&times;</span>
             </button>
@@ -106,13 +108,13 @@ export default function TaskModal({
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Title *
+                {t('tasks.modal.titleLabel')} *
               </label>
               <Input
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                placeholder="Enter task title..."
+                placeholder={t('tasks.modal.titleLabel')}
                 required
                 disabled={isLoading}
               />
@@ -121,12 +123,12 @@ export default function TaskModal({
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Description
+                {t('tasks.modal.descriptionLabel')}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
-                placeholder="Enter task description..."
+                placeholder={t('tasks.modal.descriptionLabel')}
                 rows={3}
                 disabled={isLoading}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500"
@@ -139,7 +141,7 @@ export default function TaskModal({
               {task && !hasChecklist && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Status
+                    {t('tasks.modal.statusLabel')}
                   </label>
                   <select
                     value={formData.status}
@@ -147,17 +149,17 @@ export default function TaskModal({
                     disabled={isLoading}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500"
                   >
-                    <option value={STATUS.PLANNED}>Planned</option>
-                    <option value={STATUS.IN_PROGRESS}>In Progress</option>
-                    <option value={STATUS.DONE}>Done</option>
-                    <option value={STATUS.SKIPPED}>Skipped</option>
+                    <option value={STATUS.PLANNED}>{t('today.status.planned')}</option>
+                    <option value={STATUS.IN_PROGRESS}>{t('today.status.inProgress')}</option>
+                    <option value={STATUS.DONE}>{t('today.status.done')}</option>
+                    <option value={STATUS.SKIPPED}>{t('today.status.skipped')}</option>
                   </select>
                 </div>
               )}
 
               <div className={task && !hasChecklist ? "" : "md:col-span-2"}>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Priority
+                  {t('tasks.modal.priorityLabel')}
                 </label>
                 <select
                   value={formData.priority || ""}
@@ -165,10 +167,10 @@ export default function TaskModal({
                   disabled={isLoading}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-500"
                 >
-                  <option value="">No Priority</option>
-                  <option value={PRIORITY.MUST}>Must</option>
-                  <option value={PRIORITY.SHOULD}>Should</option>
-                  <option value={PRIORITY.WANT}>Want</option>
+                  <option value="">{t('today.modals.edit.noPriority')}</option>
+                  <option value={PRIORITY.MUST}>{t('today.priority.must')}</option>
+                  <option value={PRIORITY.SHOULD}>{t('today.priority.should')}</option>
+                  <option value={PRIORITY.WANT}>{t('today.priority.want')}</option>
                 </select>
               </div>
             </div>
@@ -176,7 +178,7 @@ export default function TaskModal({
             {/* Deadline */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Deadline
+                {t('tasks.modal.deadlineLabel')}
               </label>
               <Input
                 type="date"
@@ -190,7 +192,7 @@ export default function TaskModal({
             {!hasChecklist && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  💡 <strong>Tip:</strong> Use the <strong>"Schedule"</strong> button on the task card to set start time and duration.
+                  💡 <strong>Tip:</strong> Use the <strong>"{t('today.buttons.schedule')}"</strong> button on the task card to set start time and duration.
                 </p>
               </div>
             )}
@@ -204,7 +206,7 @@ export default function TaskModal({
                 disabled={isLoading}
                 className="w-full sm:w-auto order-2 sm:order-1"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -212,7 +214,7 @@ export default function TaskModal({
                 disabled={isLoading || !formData.title.trim()}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
-                {isLoading ? "Saving..." : task ? "Update Task" : "Create Task"}
+                {isLoading ? (task ? t('common.save') : t('common.save')) : task ? t('common.save') : t('common.save')}
               </Button>
             </div>
           </form>

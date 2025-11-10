@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import type { 
   TaskRecord, 
   TaskFilters, 
@@ -31,6 +32,7 @@ import { TaskDisplayBoardView } from "./components/TaskDisplayBoardView";
 // Main Tasks Page Component
 export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<TaskFilters>({
     search: "",
@@ -242,10 +244,10 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
 
   const handleDeleteChecklistItem = useCallback((itemId: string) => {
     if (!itemId) return;
-    if (confirm('Are you sure you want to delete this checklist item?')) {
+    if (confirm(t('tasks.error.deleteConfirm'))) {
       deleteChecklistItem(itemId);
     }
-  }, [deleteChecklistItem]);
+  }, [deleteChecklistItem, t]);
 
 
   const handleChecklistItemSubmit = useCallback((data: Partial<ChecklistItemRecord>) => {
@@ -433,11 +435,11 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           <SystemError
             fullScreen
             variant="error"
-            title="Error Loading Tasks"
-            message={error instanceof Error ? error.message : "An unexpected error occurred while loading your tasks."}
+            title={t('tasks.error.loadingTitle')}
+            message={error instanceof Error ? error.message : t('tasks.error.loadingMessage')}
             actions={[
               {
-                label: 'Retry',
+                label: t('common.retry'),
                 onClick: () => refetch(),
                 variant: 'primary'
               }
@@ -490,10 +492,10 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="text-sm font-medium tracking-wider text-white/90 uppercase drop-shadow-sm mb-2">
-                  Task Management
+                  {t('tasks.subtitle')}
                 </div>
                 <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl drop-shadow-xl">
-                  Tasks
+                  {t('tasks.pageTitle')}
                 </h1>
               </div>
               
@@ -505,7 +507,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg">🤖</span>
-                    <span className="font-medium">AI Scheduling</span>
+                    <span className="font-medium">{t('tasks.aiScheduling')}</span>
                   </div>
                 </button>
                 
@@ -516,7 +518,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg">+</span>
-                    <span className="font-medium">New Task</span>
+                    <span className="font-medium">{t('tasks.newTask')}</span>
                   </div>
                 </button>
               </div>
@@ -533,7 +535,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search tasks..."
+                placeholder={t('tasks.searchPlaceholder')}
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -554,11 +556,11 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 }}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
-                <option value="all">All Status</option>
-                <option value={STATUS.PLANNED}>Planned</option>
-                <option value={STATUS.IN_PROGRESS}>In Progress</option>
-                <option value={STATUS.DONE}>Done</option>
-                <option value={STATUS.SKIPPED}>Skipped</option>
+                <option value="all">{t('tasks.allStatus')}</option>
+                <option value={STATUS.PLANNED}>{t('today.status.planned')}</option>
+                <option value={STATUS.IN_PROGRESS}>{t('today.status.inProgress')}</option>
+                <option value={STATUS.DONE}>{t('today.status.done')}</option>
+                <option value={STATUS.SKIPPED}>{t('today.status.skipped')}</option>
               </select>
               
               {/* Priority Filter */}
@@ -574,10 +576,10 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                 }}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
-                <option value="all">All Priority</option>
-                <option value="1">High</option>
-                <option value="2">Medium</option>
-                <option value="3">Low</option>
+                <option value="all">{t('tasks.allPriority')}</option>
+                <option value="1">{t('today.modals.edit.highPriority')}</option>
+                <option value="2">{t('today.modals.edit.mediumPriority')}</option>
+                <option value="3">{t('today.modals.edit.lowPriority')}</option>
               </select>
               
               {/* View Toggle */}
@@ -590,7 +592,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  List
+                  {t('common.list')}
                 </button>
                 <button
                   onClick={() => setView('board')}
@@ -600,7 +602,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Board
+                  {t('common.board')}
                 </button>
               </div>
             </div>
@@ -618,7 +620,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">Total</p>
+                  <p className="text-sm font-medium text-slate-600">{t('tasks.stats.total')}</p>
                   <p className="text-2xl font-bold text-slate-900">{taskStats.total}</p>
                 </div>
               </div>
@@ -632,7 +634,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">Planned</p>
+                  <p className="text-sm font-medium text-slate-600">{t('tasks.stats.planned')}</p>
                   <p className="text-2xl font-bold text-slate-900">{taskStats.planned}</p>
                 </div>
               </div>
@@ -646,7 +648,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">In Progress</p>
+                  <p className="text-sm font-medium text-slate-600">{t('tasks.stats.inProgress')}</p>
                   <p className="text-2xl font-bold text-slate-900">{taskStats.inProgress}</p>
                 </div>
               </div>
@@ -660,7 +662,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">Done</p>
+                  <p className="text-sm font-medium text-slate-600">{t('tasks.stats.done')}</p>
                   <p className="text-2xl font-bold text-slate-900">{taskStats.done}</p>
                 </div>
               </div>
@@ -674,7 +676,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-slate-600">Skipped</p>
+                  <p className="text-sm font-medium text-slate-600">{t('tasks.stats.skipped')}</p>
                   <p className="text-2xl font-bold text-slate-900">{taskStats.skipped}</p>
                 </div>
               </div>
@@ -777,7 +779,7 @@ export default function TasksPage({ onNavigate }: { onNavigate?: (path: string) 
           setChecklistStatusModalOpen(false);
           setChecklistStatusModalItem(null);
         }}
-        title="Change Checklist Item Status"
+        title={t('tasks.modal.checklistItemStatusTitle')}
       />
 
       {/* Schedule Modal */}
